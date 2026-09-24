@@ -122,17 +122,17 @@
         { id: "F-11", title: "Pagination, error handler, constants", done: true },
         { id: "F-12", title: "CI/CD pipeline (lint + tests + coverage)", done: true },
       ]},
-      { id: 1, name: "Authentication", status: "in_progress", total: 10, done: 2, desc: "JWT login/logout, user model, role-based routing, protected routes", tasks: [
+      { id: 1, name: "Authentication", status: "completed", total: 10, done: 10, desc: "JWT login/logout, user model, role-based routing, protected routes", tasks: [
         { id: "A-01", title: "Custom User model with roles", done: true },
         { id: "A-02", title: "Migration + Django admin", done: true },
-        { id: "A-03", title: "POST /auth/login/ endpoint", done: false },
-        { id: "A-04", title: "Refresh, logout, me endpoints", done: false },
-        { id: "A-05", title: "DRF throttling on login", done: false },
-        { id: "A-06", title: "Bootstrap business management command", done: false },
-        { id: "A-07", title: "Backend auth tests", done: false },
-        { id: "A-08", title: "Frontend authStore (Zustand)", done: false },
-        { id: "A-09", title: "API client interceptors", done: false },
-        { id: "A-10", title: "LoginPage + protected routes", done: false },
+        { id: "A-03", title: "POST /auth/login/ endpoint", done: true },
+        { id: "A-04", title: "Refresh, logout, me endpoints", done: true },
+        { id: "A-05", title: "DRF throttling on login", done: true },
+        { id: "A-06", title: "Bootstrap business management command", done: true },
+        { id: "A-07", title: "Backend auth tests (12 tests)", done: true },
+        { id: "A-08", title: "Frontend authStore (Zustand)", done: true },
+        { id: "A-09", title: "API client interceptors", done: true },
+        { id: "A-10", title: "LoginPage + protected routes + role-based routing", done: true },
       ]},
       { id: 2, name: "Business / Tenant", status: "in_progress", total: 6, done: 1, desc: "Business profile, tenant isolation, multi-tenancy foundation", tasks: [
         { id: "B-01", title: "Business model + migration", done: true },
@@ -347,7 +347,8 @@
         <h2>Sprint Milestones</h2>
         <div class="milestone-track">
           <div class="milestone-seg done" title="Foundation">FND<span class="milestone-label">Foundation</span></div>
-          <div class="milestone-seg current" title="Auth + Business + Staff">AUTH<span class="milestone-label">Auth+Biz</span></div>
+          <div class="milestone-seg done" title="Authentication">AUTH<span class="milestone-label">Auth</span></div>
+          <div class="milestone-seg current" title="Business + Staff">BIZ<span class="milestone-label">Biz+Staff</span></div>
           <div class="milestone-seg pending" title="Customers + Meals + Plans">CMP<span class="milestone-label">Cust+Plans</span></div>
           <div class="milestone-seg pending" title="Subscriptions + Payments">S+P<span class="milestone-label">Subs+Pay</span></div>
           <div class="milestone-seg pending" title="Deliveries + Skip/Pause">DEL<span class="milestone-label">Delivery</span></div>

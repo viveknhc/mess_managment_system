@@ -1,4 +1,5 @@
 """Shared constants."""
+
 from types import SimpleNamespace
 
 Role = SimpleNamespace(

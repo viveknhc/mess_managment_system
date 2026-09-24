@@ -3,6 +3,7 @@
 Every business-owned ViewSet inherits this. Never write `Model.objects.all()`
 in an app viewset — tenant filtering and business force-set happen here.
 """
+
 from rest_framework import viewsets
 
 from common.permissions import IsSameBusiness

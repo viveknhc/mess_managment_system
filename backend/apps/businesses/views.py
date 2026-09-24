@@ -1,8 +1,8 @@
 """Business profile API (Module 2 flesh-out; minimal self-service viewset for Module 0)."""
+
 from rest_framework import serializers, viewsets
 
 from apps.businesses.models import Business
-from common.constants import Role
 
 
 class BusinessSerializer(serializers.ModelSerializer):

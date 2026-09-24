@@ -1,4 +1,5 @@
 """Celery application (arch. §12). Run as: celery -A config worker / -A config beat."""
+
 import os
 
 from celery import Celery

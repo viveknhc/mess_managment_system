@@ -1,4 +1,5 @@
 """Abstract base models (arch. §5, system_design.md §6)."""
+
 import uuid
 
 from django.db import models

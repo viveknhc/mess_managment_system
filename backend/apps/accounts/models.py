@@ -1,4 +1,5 @@
 """User model (poc.md §7.2) — identity + role. Auth endpoints land in Module 1."""
+
 import uuid
 
 from django.contrib.auth.models import AbstractUser

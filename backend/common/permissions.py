@@ -1,4 +1,5 @@
 """Permission classes (arch. §5, §10)."""
+
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from common.constants import Role

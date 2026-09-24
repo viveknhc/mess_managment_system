@@ -1,4 +1,5 @@
 """DRF pagination — the one envelope used everywhere (arch. §8.1)."""
+
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 

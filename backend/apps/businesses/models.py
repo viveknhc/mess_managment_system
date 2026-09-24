@@ -1,4 +1,5 @@
 """Business = the tenant (poc.md §7.1). One row per mess business."""
+
 import uuid
 
 from django.db import models

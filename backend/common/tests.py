@@ -3,6 +3,7 @@
 Tenant-scoped create/query behaviors get full route-based coverage in Module 1
 once auth URLs and factories exist; here we test the pieces that stand alone.
 """
+
 import pytest
 from rest_framework.test import APIClient
 

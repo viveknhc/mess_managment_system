@@ -4,6 +4,7 @@ Django settings for the Mess Management System.
 Base settings shared by all environments (arch. §6.5). Environment-specific
 modules (local.py, production.py) import * from here and override.
 """
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -74,9 +75,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database — DATABASE_URL decides (postgres in docker/CI; sqlite fallback bare-local)
 DATABASES = {
-    "default": env.db_url_config(
-        env.str("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-    )
+    "default": env.db_url_config(env.str("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"))
 }
 
 # Custom user (poc.md §7.2) — must be set before the first migration
@@ -104,9 +103,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- DRF (arch. §8) ---
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardPagination",
     "PAGE_SIZE": 20,

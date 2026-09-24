@@ -1,7 +1,8 @@
 """Unified error envelope (arch. §8.1):
 
-    { "error": { "code": "...", "message": "...", "fields": {...} } }
+{ "error": { "code": "...", "message": "...", "fields": {...} } }
 """
+
 import logging
 
 from rest_framework.views import exception_handler as drf_exception_handler

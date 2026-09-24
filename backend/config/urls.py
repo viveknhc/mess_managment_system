@@ -1,4 +1,5 @@
 """Root URL configuration. All API routes live under /api/v1/ (arch. §8.1)."""
+
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path

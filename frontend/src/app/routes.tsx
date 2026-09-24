@@ -2,12 +2,16 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '../layouts/AdminLayout'
 import { CustomerLayout } from '../layouts/CustomerLayout'
 import { StaffLayout } from '../layouts/StaffLayout'
+import { ProgressPage } from './ProgressPage'
 
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Progress tracker — index page until dashboard is built */}
+      <Route path="/" element={<ProgressPage />} />
+
       {/* Admin routes */}
-      <Route path="/" element={<AdminLayout />}>
+      <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<div className="p-6 text-gray-500">Dashboard coming soon</div>} />
       </Route>
 

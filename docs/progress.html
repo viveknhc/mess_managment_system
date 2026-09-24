@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mess Management — Development Progress</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 16px; }
+
+    /* Header */
+    .header { margin-bottom: 32px; }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    /* Overall stats card */
+    .stats-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    .stats-top { display: flex; justify-content: space-between; align-items: flex-end; }
+    .stats-label { font-size: 13px; color: #64748b; font-weight: 500; }
+    .stats-pct { font-size: 36px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+    .stats-count { font-size: 13px; color: #64748b; }
+
+    /* Overall progress bar */
+    .progress-overall { height: 12px; background: #e2e8f0; border-radius: 8px; margin-top: 16px; overflow: hidden; }
+    .progress-overall-fill { height: 100%; border-radius: 8px; transition: width .7s; }
+
+    /* Summary chips */
+    .chips { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .chip-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .chip-completed { background: #ecfdf5; color: #047857; }
+    .chip-completed .chip-dot { background: #10b981; }
+    .chip-progress { background: #fffbeb; color: #b45309; }
+    .chip-progress .chip-dot { background: #f59e0b; }
+    .chip-notstarted { background: #f1f5f9; color: #475569; }
+    .chip-notstarted .chip-dot { background: #94a3b8; }
+
+    /* Module card */
+    .module { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.03); transition: box-shadow .2s; }
+    .module:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .module.completed { border-color: #a7f3d0; }
+    .module.in_progress { border-color: #fde68a; }
+
+    .module-header { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; cursor: pointer; user-select: none; }
+
+    /* Module number circle */
+    .module-num { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+    .module.completed .module-num { background: #d1fae5; color: #047857; }
+    .module.in_progress .module-num { background: #fef3c7; color: #b45309; }
+    .module.not_started .module-num { background: #f1f5f9; color: #94a3b8; }
+
+    .module-body { flex: 1; min-width: 0; }
+    .module-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .module-name { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .module-desc { font-size: 12px; color: #64748b; margin-top: 3px; }
+
+    /* Status badge */
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-completed { background: #ecfdf5; color: #047857; }
+    .badge-completed .badge-dot { background: #10b981; }
+    .badge-progress { background: #fffbeb; color: #b45309; }
+    .badge-progress .badge-dot { background: #f59e0b; }
+    .badge-notstarted { background: #f1f5f9; color: #64748b; }
+    .badge-notstarted .badge-dot { background: #94a3b8; }
+
+    /* Module progress bar */
+    .module-progress { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .progress-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; }
+    .progress-fill.green { background: #10b981; }
+    .progress-fill.amber { background: #f59e0b; }
+    .progress-fill.gray { background: #cbd5e1; }
+    .module-pct { font-size: 12px; font-weight: 500; color: #64748b; white-space: nowrap; }
+
+    /* Expand arrow */
+    .arrow { width: 18px; height: 18px; color: #94a3b8; transition: transform .2s; flex-shrink: 0; margin-top: 4px; }
+    .module.expanded .arrow { transform: rotate(180deg); }
+
+    /* Task list */
+    .tasks { border-top: 1px solid #f1f5f9; padding: 12px 20px 16px; display: none; }
+    .module.expanded .tasks { display: block; }
+    .task { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+    .task-check { width: 18px; height: 18px; flex-shrink: 0; }
+    .task-check.done { color: #10b981; }
+    .task-circle { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; }
+    .task-id { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: #94a3b8; }
+    .task-title { color: #334155; }
+    .task-title.done { color: #94a3b8; text-decoration: line-through; }
+
+    /* Milestone bar */
+    .milestones { margin-bottom: 28px; }
+    .milestones h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #475569; }
+    .milestone-track { display: flex; gap: 2px; }
+    .milestone-seg { flex: 1; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; position: relative; }
+    .milestone-seg.done { background: #10b981; }
+    .milestone-seg.current { background: #f59e0b; }
+    .milestone-seg.pending { background: #e2e8f0; color: #94a3b8; }
+    .milestone-label { position: absolute; top: 36px; font-size: 9px; color: #64748b; white-space: nowrap; font-weight: 500; }
+
+    .footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 40px; padding-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app"></div>
+
+  <script>
+    const modules = [
+      { id: 0, name: "Foundation", status: "completed", total: 12, done: 12, desc: "Repo scaffold, Django + React setup, Docker, common utilities, CI/CD", tasks: [
+        { id: "F-01", title: "Repo scaffold: monorepo structure", done: true },
+        { id: "F-02", title: "Django project with split settings", done: true },
+        { id: "F-03", title: "/api/v1/ router + health endpoint", done: true },
+        { id: "F-04", title: "Requirements files (base/local/production)", done: true },
+        { id: "F-05", title: "React/Vite + TypeScript scaffold", done: true },
+        { id: "F-06", title: "API client with Axios + interceptors", done: true },
+        { id: "F-07", title: "Docker Compose setup", done: true },
+        { id: "F-08", title: "CORS + JWT configuration", done: true },
+        { id: "F-09", title: "Common base models (TimeStamped, TenantScoped)", done: true },
+        { id: "F-10", title: "TenantScopedViewSet + permissions", done: true },
+        { id: "F-11", title: "Pagination, error handler, constants", done: true },
+        { id: "F-12", title: "CI/CD pipeline (lint + tests + coverage)", done: true },
+      ]},
+      { id: 1, name: "Authentication", status: "in_progress", total: 10, done: 2, desc: "JWT login/logout, user model, role-based routing, protected routes", tasks: [
+        { id: "A-01", title: "Custom User model with roles", done: true },
+        { id: "A-02", title: "Migration + Django admin", done: true },
+        { id: "A-03", title: "POST /auth/login/ endpoint", done: false },
+        { id: "A-04", title: "Refresh, logout, me endpoints", done: false },
+        { id: "A-05", title: "DRF throttling on login", done: false },
+        { id: "A-06", title: "Bootstrap business management command", done: false },
+        { id: "A-07", title: "Backend auth tests", done: false },
+        { id: "A-08", title: "Frontend authStore (Zustand)", done: false },
+        { id: "A-09", title: "API client interceptors", done: false },
+        { id: "A-10", title: "LoginPage + protected routes", done: false },
+      ]},
+      { id: 2, name: "Business / Tenant", status: "in_progress", total: 6, done: 1, desc: "Business profile, tenant isolation, multi-tenancy foundation", tasks: [
+        { id: "B-01", title: "Business model + migration", done: true },
+        { id: "B-02", title: "Serializers + tenant-scoped viewset", done: false },
+        { id: "B-03", title: "Tenant isolation tests", done: false },
+        { id: "B-04", title: "Logo upload placeholder", done: false },
+        { id: "B-05", title: "Business profile page + edit form", done: false },
+        { id: "B-06", title: "Business store (Zustand)", done: false },
+      ]},
+      { id: 3, name: "Users & Staff", status: "not_started", total: 6, done: 0, desc: "Staff CRUD, role permission matrix, staff management UI", tasks: [
+        { id: "U-01", title: "Staff CRUD endpoints", done: false },
+        { id: "U-02", title: "Role permission matrix", done: false },
+        { id: "U-03", title: "Permission tests", done: false },
+        { id: "U-04", title: "Invite/onboard flow", done: false },
+        { id: "U-05", title: "Staff management page", done: false },
+        { id: "U-06", title: "Login-as-staff smoke check", done: false },
+      ]},
+      { id: 4, name: "Customers", status: "not_started", total: 14, done: 0, desc: "Customer CRUD, search, filters, detail page with history tabs", tasks: [
+        { id: "C-01", title: "Customer model", done: false },
+        { id: "C-02", title: "Indexes + migration", done: false },
+        { id: "C-03", title: "Serializers + validation", done: false },
+        { id: "C-04", title: "CRUD viewset", done: false },
+        { id: "C-05", title: "Search + filters + pagination", done: false },
+        { id: "C-06", title: "Backend tests", done: false },
+        { id: "C-07", title: "Customer detail aggregate endpoint", done: false },
+        { id: "C-08", title: "Soft-delete semantics", done: false },
+        { id: "C-09", title: "Frontend API + types", done: false },
+        { id: "C-10", title: "Customers list page", done: false },
+        { id: "C-11", title: "Customer form", done: false },
+        { id: "C-12", title: "Customer details page", done: false },
+        { id: "C-13", title: "Empty states + skeleton loaders", done: false },
+        { id: "C-14", title: "Module DoD check", done: false },
+      ]},
+      { id: 5, name: "Meals", status: "not_started", total: 5, done: 0, desc: "Meal types CRUD (Breakfast, Lunch, Dinner, Snacks)", tasks: [
+        { id: "M-01", title: "Meal model", done: false },
+        { id: "M-02", title: "CRUD endpoints + tests", done: false },
+        { id: "M-03", title: "Frontend API + types", done: false },
+        { id: "M-04", title: "Meals list page + form", done: false },
+        { id: "M-05", title: "Seed defaults", done: false },
+      ]},
+      { id: 6, name: "Plans", status: "not_started", total: 6, done: 0, desc: "Subscription plans — duration, price, meal type, skip/pause config", tasks: [
+        { id: "P-01", title: "Plan model", done: false },
+        { id: "P-02", title: "Validation rules", done: false },
+        { id: "P-03", title: "CRUD endpoints + tests", done: false },
+        { id: "P-04", title: "Frontend API + types", done: false },
+        { id: "P-05", title: "Plans list + form pages", done: false },
+        { id: "P-06", title: "Plan card UI", done: false },
+      ]},
+      { id: 7, name: "Subscriptions", status: "not_started", total: 16, done: 0, desc: "Core logic — state machine, create/pause/resume/cancel/renew", tasks: [
+        { id: "S-01", title: "Subscription model", done: false },
+        { id: "S-02", title: "Indexes + migration", done: false },
+        { id: "S-03", title: "State machine transitions map", done: false },
+        { id: "S-04", title: "Create subscription service", done: false },
+        { id: "S-05", title: "API endpoints + filters", done: false },
+        { id: "S-06", title: "Pause/resume/cancel actions", done: false },
+        { id: "S-07", title: "Renew action", done: false },
+        { id: "S-08", title: "Expiring subscriptions selector", done: false },
+        { id: "S-09", title: "Remaining days/meals calculators", done: false },
+        { id: "S-10", title: "Full transition tests", done: false },
+        { id: "S-11", title: "Frontend API + types", done: false },
+        { id: "S-12", title: "Subscriptions list page", done: false },
+        { id: "S-13", title: "Subscription card UI", done: false },
+        { id: "S-14", title: "Subscription form", done: false },
+        { id: "S-15", title: "Action dialogs", done: false },
+        { id: "S-16", title: "Renewal dialog", done: false },
+      ]},
+      { id: 8, name: "Payments", status: "not_started", total: 12, done: 0, desc: "Payment recording, activation chain, golden workflow e2e", tasks: [
+        { id: "PAY-01", title: "Payment model", done: false },
+        { id: "PAY-02", title: "Indexes + migration", done: false },
+        { id: "PAY-03", title: "Record payment service", done: false },
+        { id: "PAY-04", title: "Activation chain", done: false },
+        { id: "PAY-05", title: "API endpoints", done: false },
+        { id: "PAY-06", title: "Payment summary selector", done: false },
+        { id: "PAY-07", title: "Payment math tests", done: false },
+        { id: "PAY-08", title: "Frontend API + types", done: false },
+        { id: "PAY-09", title: "Record payment flow UI", done: false },
+        { id: "PAY-10", title: "Payments history page", done: false },
+        { id: "PAY-11", title: "Payment summary cards", done: false },
+        { id: "PAY-12", title: "Golden workflow e2e test", done: false },
+      ]},
+      { id: 9, name: "Deliveries + Skip/Pause", status: "not_started", total: 16, done: 0, desc: "Daily delivery tracking, skip meals, pause subscriptions, Celery jobs", tasks: [
+        { id: "D-01", title: "Delivery model", done: false },
+        { id: "D-02", title: "Indexes + migration", done: false },
+        { id: "D-03", title: "Generate delivery schedule", done: false },
+        { id: "D-04", title: "Today's deliveries endpoint", done: false },
+        { id: "D-05", title: "Delivery status update (staff)", done: false },
+        { id: "D-06", title: "Delivery history endpoint", done: false },
+        { id: "D-07", title: "MealSkip + SubscriptionPause models", done: false },
+        { id: "D-08", title: "Skip flow", done: false },
+        { id: "D-09", title: "Configurable skip/pause rules", done: false },
+        { id: "D-10", title: "Pause flow", done: false },
+        { id: "D-11", title: "Kitchen meal counts", done: false },
+        { id: "D-12", title: "Full delivery tests", done: false },
+        { id: "D-13", title: "Celery + Redis wiring", done: false },
+        { id: "D-14", title: "Nightly Celery Beat jobs", done: false },
+        { id: "D-15", title: "Today's deliveries page", done: false },
+        { id: "D-16", title: "Delivery history + kitchen views", done: false },
+      ]},
+      { id: 10, name: "Dashboard", status: "not_started", total: 8, done: 0, desc: "KPI cards, expiry widget, delivery/payment/meal widgets", tasks: [
+        { id: "DB-01", title: "Dashboard aggregator endpoint", done: false },
+        { id: "DB-02", title: "Tests vs seeded data", done: false },
+        { id: "DB-03", title: "Frontend API + types", done: false },
+        { id: "DB-04", title: "Dashboard page + StatCards", done: false },
+        { id: "DB-05", title: "Expiry widget", done: false },
+        { id: "DB-06", title: "Delivery widget", done: false },
+        { id: "DB-07", title: "Payment + meal summary widgets", done: false },
+        { id: "DB-08", title: "Quick actions", done: false },
+      ]},
+      { id: 11, name: "Notifications", status: "not_started", total: 8, done: 0, desc: "In-app notifications — payment, subscription, delivery events", tasks: [
+        { id: "N-01", title: "Notification model", done: false },
+        { id: "N-02", title: "NotificationService.emit()", done: false },
+        { id: "N-03", title: "Wire emitters from services", done: false },
+        { id: "N-04", title: "Nightly expiring/expired job", done: false },
+        { id: "N-05", title: "List + mark-read endpoints", done: false },
+        { id: "N-06", title: "Notification tests", done: false },
+        { id: "N-07", title: "Frontend bell + dropdown", done: false },
+        { id: "N-08", title: "Notification preferences stub", done: false },
+      ]},
+      { id: 12, name: "Reports", status: "not_started", total: 9, done: 0, desc: "Customer, subscription, revenue, meal reports with charts", tasks: [
+        { id: "R-01", title: "Customer report", done: false },
+        { id: "R-02", title: "Subscription report", done: false },
+        { id: "R-03", title: "Revenue report", done: false },
+        { id: "R-04", title: "Meal report", done: false },
+        { id: "R-05", title: "Payment report + date filters", done: false },
+        { id: "R-06", title: "Report accuracy tests", done: false },
+        { id: "R-07", title: "Reports pages with Recharts", done: false },
+        { id: "R-08", title: "Charts + date-range filters", done: false },
+        { id: "R-09", title: "CSV export", done: false },
+      ]},
+      { id: 13, name: "Settings", status: "not_started", total: 5, done: 0, desc: "Business configuration — skip rules, pause rules, delivery window", tasks: [
+        { id: "ST-01", title: "BusinessSettings model", done: false },
+        { id: "ST-02", title: "Settings endpoints + tests", done: false },
+        { id: "ST-03", title: "Settings admin UI", done: false },
+        { id: "ST-04", title: "Business profile + logo upload", done: false },
+        { id: "ST-05", title: "Validation UX for rule changes", done: false },
+      ]},
+      { id: 14, name: "Audit Trail", status: "not_started", total: 3, done: 0, desc: "Log important admin actions", tasks: [
+        { id: "AU-01", title: "AuditLog model", done: false },
+        { id: "AU-02", title: "Write hooks from services", done: false },
+        { id: "AU-03", title: "Django admin view", done: false },
+      ]},
+      { id: 15, name: "Customer Portal", status: "not_started", total: 11, done: 0, desc: "Customer self-service — subscription, skip meal, pause, renew", tasks: [
+        { id: "PT-01", title: "Customer-role API scoping", done: false },
+        { id: "PT-02", title: "Permission tests", done: false },
+        { id: "PT-03", title: "Customer portal dashboard", done: false },
+        { id: "PT-04", title: "My Subscription page", done: false },
+        { id: "PT-05", title: "Payments + delivery history", done: false },
+        { id: "PT-06", title: "Profile view/edit", done: false },
+        { id: "PT-07", title: "Staff layouts (delivery + kitchen)", done: false },
+        { id: "PT-08", title: "Route guards for all roles", done: false },
+        { id: "PT-09", title: "DRF throttling", done: false },
+        { id: "PT-10", title: "Mobile-responsive pass", done: false },
+        { id: "PT-11", title: "Error/toast polish", done: false },
+      ]},
+      { id: 16, name: "Seed Data & Demo", status: "not_started", total: 6, done: 0, desc: "Demo data, Rahul scenario dry-run, DoD checklist, MVP tag", tasks: [
+        { id: "SD-01", title: "Seed command (20 customers, 5 plans, etc.)", done: false },
+        { id: "SD-02", title: "Reset command", done: false },
+        { id: "SD-03", title: "Rahul demo dry-run (12 steps)", done: false },
+        { id: "SD-04", title: "Definition of Done checklist", done: false },
+        { id: "SD-05", title: "DB backup + restore rehearsal", done: false },
+        { id: "SD-06", title: "Final polish + tag v0.1.0-mvp", done: false },
+      ]},
+    ];
+
+    // Render
+    const totalTasks = modules.reduce((s, m) => s + m.total, 0);
+    const totalDone = modules.reduce((s, m) => s + m.done, 0);
+    const overallPct = Math.round((totalDone / totalTasks) * 100);
+    const completedCount = modules.filter(m => m.status === "completed").length;
+    const inProgressCount = modules.filter(m => m.status === "in_progress").length;
+    const notStartedCount = modules.filter(m => m.status === "not_started").length;
+
+    const checkSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>`;
+    const tickSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`;
+    const arrowSvg = `<svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"/></svg>`;
+
+    function badgeClass(s) {
+      return s === "completed" ? "badge-completed" : s === "in_progress" ? "badge-progress" : "badge-notstarted";
+    }
+    function badgeLabel(s) {
+      return s === "completed" ? "Completed" : s === "in_progress" ? "In Progress" : "Not Started";
+    }
+    function fillClass(s) {
+      return s === "completed" ? "green" : s === "in_progress" ? "amber" : "gray";
+    }
+
+    let html = `
+      <div class="header">
+        <h1>Mess Management System</h1>
+        <p>MVP Development Progress — Evaluation Dashboard</p>
+      </div>
+
+      <div class="stats-card">
+        <div class="stats-top">
+          <div>
+            <div class="stats-label">Overall Progress</div>
+            <div class="stats-pct">${overallPct}%</div>
+          </div>
+          <div class="stats-count">${totalDone} of ${totalTasks} tasks completed</div>
+        </div>
+        <div class="progress-overall">
+          <div class="progress-overall-fill" style="width:${overallPct}%;background:${overallPct===100?'#10b981':'#3b82f6'}"></div>
+        </div>
+        <div class="chips">
+          <div class="chip chip-completed"><span class="chip-dot"></span>${completedCount} Completed</div>
+          <div class="chip chip-progress"><span class="chip-dot"></span>${inProgressCount} In Progress</div>
+          <div class="chip chip-notstarted"><span class="chip-dot"></span>${notStartedCount} Not Started</div>
+        </div>
+      </div>
+
+      <div class="milestones">
+        <h2>Sprint Milestones</h2>
+        <div class="milestone-track">
+          <div class="milestone-seg done" title="Foundation">FND<span class="milestone-label">Foundation</span></div>
+          <div class="milestone-seg current" title="Auth + Business + Staff">AUTH<span class="milestone-label">Auth+Biz</span></div>
+          <div class="milestone-seg pending" title="Customers + Meals + Plans">CMP<span class="milestone-label">Cust+Plans</span></div>
+          <div class="milestone-seg pending" title="Subscriptions + Payments">S+P<span class="milestone-label">Subs+Pay</span></div>
+          <div class="milestone-seg pending" title="Deliveries + Skip/Pause">DEL<span class="milestone-label">Delivery</span></div>
+          <div class="milestone-seg pending" title="Dashboard + Notifications + Reports">DNR<span class="milestone-label">Dash+Rpt</span></div>
+          <div class="milestone-seg pending" title="Portal + Settings + Demo">MVP<span class="milestone-label">MVP Done</span></div>
+        </div>
+      </div>
+    `;
+
+    modules.forEach(m => {
+      const pct = m.total > 0 ? Math.round((m.done / m.total) * 100) : 0;
+      const numContent = m.status === "completed" ? tickSvg : m.id;
+      const tasksHtml = m.tasks.map(t => `
+        <div class="task">
+          ${t.done ? `<span class="task-check done">${checkSvg}</span>` : `<span class="task-circle"></span>`}
+          <span class="task-id">${t.id}</span>
+          <span class="task-title ${t.done ? 'done' : ''}">${t.title}</span>
+        </div>
+      `).join('');
+
+      html += `
+        <div class="module ${m.status}" id="mod-${m.id}">
+          <div class="module-header" onclick="toggle(${m.id})">
+            <div class="module-num">${numContent}</div>
+            <div class="module-body">
+              <div class="module-title-row">
+                <span class="module-name">${m.name}</span>
+                <span class="badge ${badgeClass(m.status)}"><span class="badge-dot"></span>${badgeLabel(m.status)}</span>
+              </div>
+              <div class="module-desc">${m.desc}</div>
+              <div class="module-progress">
+                <div class="progress-bar"><div class="progress-fill ${fillClass(m.status)}" style="width:${pct}%"></div></div>
+                <span class="module-pct">${m.done}/${m.total} (${pct}%)</span>
+              </div>
+            </div>
+            ${arrowSvg}
+          </div>
+          <div class="tasks">${tasksHtml}</div>
+        </div>
+      `;
+    });
+
+    html += `<div class="footer">Source: docs/tasks.md &middot; ${totalTasks} tasks across ${modules.length} modules &middot; Last updated: ${new Date().toLocaleDateString()}</div>`;
+
+    document.getElementById('app').innerHTML = html;
+
+    function toggle(id) {
+      const el = document.getElementById('mod-' + id);
+      el.classList.toggle('expanded');
+    }
+  </script>
+</body>
+</html>

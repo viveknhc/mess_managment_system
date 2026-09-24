@@ -15,7 +15,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | Module | Tasks | Done | P0 | P1 | P2 |
 |---|---|---|---|---|---|
 | 0 Foundation | 12 | 12 | 12 | – | – |
-| 1 Auth | 10 | 2 | 8 | 2 | – |
+| 1 Auth | 10 | 10 | 8 | 2 | – |
 | 2 Business | 6 | 1 | 5 | 1 | – |
 | 3 Users & Staff | 6 | 0 | 4 | 2 | – |
 | 4 Customers | 14 | 0 | 11 | 3 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **15** | | | |
+| **Total** | **153** | **23** | | | |
 
 ---
 
@@ -58,14 +58,14 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 - [x] `A-01` **P0·M** Custom `User` model: business FK (nullable for super admin), role enum (SUPER_ADMIN/OWNER/MANAGER/DELIVERY_STAFF/KITCHEN_STAFF/CUSTOMER), is_active, phone
 - [x] `A-02` **P0·S** Migration + Django admin registration
-- [ ] `A-03` **P0·M** `POST /auth/login/` — returns access, refresh, user, business
-- [ ] `A-04` **P0·S** `POST /auth/refresh/`, `POST /auth/logout/` (blacklist), `GET /auth/me/`
-- [ ] `A-05` **P0·S** DRF throttling on login endpoint
-- [ ] `A-06` **P0·M** First-owner bootstrap: management command `bootstrap_business` (business + owner in one tx)
-- [ ] `A-07` **P0·M** Backend tests: login ok/bad creds/inactive user, refresh rotation, logout blacklists, /me roles
-- [ ] `A-08` **P0·M** Frontend `authStore` (Zustand): access in memory, refresh in secure storage
-- [ ] `A-09` **P0·M** apiClient interceptors: attach Bearer; 401 → refresh once → retry → clear store → `/login`
-- [ ] `A-10` **P0·M** LoginPage, protected-route wrapper, role-based `routes.tsx` trees + AdminLayout/CustomerLayout/StaffLayout shells
+- [x] `A-03` **P0·M** `POST /auth/login/` — returns access, refresh, user, business
+- [x] `A-04` **P0·S** `POST /auth/refresh/`, `POST /auth/logout/` (blacklist), `GET /auth/me/`
+- [x] `A-05` **P0·S** DRF throttling on login endpoint
+- [x] `A-06` **P0·M** First-owner bootstrap: management command `bootstrap_business` (business + owner in one tx)
+- [x] `A-07` **P0·M** Backend tests: login ok/bad creds/inactive user, refresh rotation, logout blacklists, /me roles
+- [x] `A-08` **P0·M** Frontend `authStore` (Zustand): access in memory, refresh in secure storage
+- [x] `A-09` **P0·M** apiClient interceptors: attach Bearer; 401 → refresh once → retry → clear store → `/login`
+- [x] `A-10` **P0·M** LoginPage, protected-route wrapper, role-based `routes.tsx` trees + AdminLayout/CustomerLayout/StaffLayout shells
 
 **Decision needed before A-08:** refresh token in httpOnly cookie (preferred) vs memory — see development_plan.md §Open Decisions.
 

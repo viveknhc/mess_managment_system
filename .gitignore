@@ -29,5 +29,10 @@ frontend/dist/
 *.swo
 .DS_Store
 
+# Coverage
+coverage.xml
+htmlcov/
+.coverage
+
 # Docker
 postgres_data/

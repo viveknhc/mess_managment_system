@@ -40,6 +40,10 @@ class RoleBasedPermission(BasePermission):
 
         action = getattr(view, "action", None)
         allowed = role_map.get(action)
-        if allowed is None and request.method in SAFE_METHODS:
-            allowed = getattr(view, "read_roles", None) or role_map.get("list", [])
+        if request.method in SAFE_METHODS:
+            read_roles = getattr(view, "read_roles", None)
+            if read_roles and role in read_roles:
+                return True
+            if allowed is None:
+                allowed = role_map.get("list", [])
         return role in (allowed or [])

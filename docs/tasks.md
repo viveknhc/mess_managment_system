@@ -17,7 +17,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 0 Foundation | 12 | 12 | 12 | – | – |
 | 1 Auth | 10 | 10 | 8 | 2 | – |
 | 2 Business | 6 | 6 | 5 | 1 | – |
-| 3 Users & Staff | 6 | 0 | 4 | 2 | – |
+| 3 Users & Staff | 6 | 6 | 4 | 2 | – |
 | 4 Customers | 14 | 0 | 11 | 3 | – |
 | 5 Meals | 5 | 0 | 4 | 1 | – |
 | 6 Plans | 6 | 0 | 5 | 1 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **28** | | | |
+| **Total** | **153** | **34** | | | |
 
 ---
 
@@ -84,12 +84,12 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 3 — Users & Staff
 
-- [ ] `U-01` **P0·M** Staff CRUD endpoints in `accounts`: list/create/update/activate/deactivate, role assign
-- [ ] `U-02` **P0·M** Role permission matrix enforced per poc §3 (map roles → viewset actions)
-- [ ] `U-03` **P0·M** Tests: owner can manage staff; manager scoping; staff cannot access staff mgmt; isolation
-- [ ] `U-04` **P1·S** Invite/onboard flow placeholder (create user + temp password for POC)
-- [ ] `U-05` **P0·M** Frontend staff page: table, add/edit modal, role select, active toggle
-- [ ] `U-06` **P1·S** Login-as-staff smoke check: each role lands on correct layout
+- [x] `U-01` **P0·M** Staff CRUD endpoints in `accounts`: list/create/update/activate/deactivate, role assign
+- [x] `U-02` **P0·M** Role permission matrix enforced per poc §3 (map roles → viewset actions)
+- [x] `U-03` **P0·M** Tests: owner can manage staff; manager scoping; staff cannot access staff mgmt; isolation
+- [x] `U-04` **P1·S** Invite/onboard flow placeholder (create user + temp password for POC)
+- [x] `U-05` **P0·M** Frontend staff page: table, add/edit modal, role select, active toggle
+- [x] `U-06` **P1·S** Login-as-staff smoke check: each role lands on correct layout
 
 ---
 

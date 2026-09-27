@@ -1,6 +1,7 @@
-"""Auth views (Module 1)."""
+"""Auth views (Module 1) + Staff management (Module 3)."""
 
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -9,7 +10,17 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.accounts.serializers import CustomTokenObtainPairSerializer, UserSerializer
+from apps.accounts.models import User
+from apps.accounts.serializers import (
+    CustomTokenObtainPairSerializer,
+    StaffCreateSerializer,
+    StaffListSerializer,
+    StaffUpdateSerializer,
+    UserSerializer,
+)
+from common.constants import BUSINESS_STAFF_ROLES, Role
+from common.permissions import RoleBasedPermission
+from common.viewsets import TenantScopedViewSet
 
 
 class LoginThrottle(AnonRateThrottle):
@@ -67,3 +78,83 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+# ── Staff management (Module 3) ─────────────────────────────────────────
+
+
+class StaffViewSet(TenantScopedViewSet):
+    """CRUD for business staff members.
+
+    - OWNER can list/create/update/activate/deactivate staff.
+    - MANAGER can list/retrieve staff (read-only).
+    - Other roles cannot access staff management.
+    - Business isolation enforced via TenantScopedViewSet.
+    """
+
+    queryset = User.objects.all()
+    serializer_class = StaffListSerializer
+    permission_classes = [IsAuthenticated, RoleBasedPermission]
+
+    role_map = {
+        "list": [Role.OWNER, Role.MANAGER],
+        "retrieve": [Role.OWNER, Role.MANAGER],
+        "create": [Role.OWNER],
+        "update": [Role.OWNER],
+        "partial_update": [Role.OWNER],
+        "destroy": [Role.OWNER],
+        "activate": [Role.OWNER],
+        "deactivate": [Role.OWNER],
+    }
+
+    def get_queryset(self):
+        return (
+            User.objects.filter(business_id=self.request.user.business_id, role__in=BUSINESS_STAFF_ROLES)
+            .exclude(id=self.request.user.id)
+            .order_by("name")
+        )
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return StaffCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return StaffUpdateSerializer
+        return StaffListSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(business_id=self.request.user.business_id)
+
+    def perform_destroy(self, instance):
+        """Soft-delete: deactivate rather than hard-delete."""
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        staff = self.get_object()
+        staff.is_active = True
+        staff.save(update_fields=["is_active"])
+        return Response(StaffListSerializer(staff).data)
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        staff = self.get_object()
+        if staff.role == Role.OWNER:
+            # Prevent deactivating the last owner
+            other_owners = User.objects.filter(
+                business_id=staff.business_id, role=Role.OWNER, is_active=True
+            ).exclude(id=staff.id)
+            if not other_owners.exists():
+                return Response(
+                    {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "Cannot deactivate the last active owner.",
+                            "fields": {},
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        staff.is_active = False
+        staff.save(update_fields=["is_active"])
+        return Response(StaffListSerializer(staff).data)

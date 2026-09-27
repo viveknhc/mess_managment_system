@@ -5,6 +5,7 @@ import { StaffLayout } from '../layouts/StaffLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
+import { StaffPage } from '../features/staff/StaffPage'
 
 export function AppRoutes() {
   return (
@@ -17,6 +18,7 @@ export function AppRoutes() {
         <Route path="/" element={<AdminLayout />}>
           <Route index element={<div className="p-6 text-gray-500">Dashboard coming soon</div>} />
           <Route path="business" element={<BusinessProfilePage />} />
+          <Route path="staff" element={<StaffPage />} />
         </Route>
       </Route>
 

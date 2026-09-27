@@ -16,7 +16,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 |---|---|---|---|---|---|
 | 0 Foundation | 12 | 12 | 12 | – | – |
 | 1 Auth | 10 | 10 | 8 | 2 | – |
-| 2 Business | 6 | 2 | 5 | 1 | – |
+| 2 Business | 6 | 3 | 5 | 1 | – |
 | 3 Users & Staff | 6 | 0 | 4 | 2 | – |
 | 4 Customers | 14 | 0 | 11 | 3 | – |
 | 5 Meals | 5 | 0 | 4 | 1 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **24** | | | |
+| **Total** | **153** | **25** | | | |
 
 ---
 
@@ -75,7 +75,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 - [x] `B-01` **P0·S** `Business` model: name, phone, email, address, logo, status (ACTIVE/INACTIVE/SUSPENDED), timestamps
 - [x] `B-02` **P0·S** Serializers + tenant-scoped viewset (owner-only write)
-- [ ] `B-03` **P0·M** **Isolation tests:** user of Business B gets 404 on Business A objects — must cover TenantScopedViewSet + IsSameBusiness paths
+- [x] `B-03` **P0·M** **Isolation tests:** user of Business B gets 404 on Business A objects — must cover TenantScopedViewSet + IsSameBusiness paths
 - [ ] `B-04` **P1·S** Logo upload placeholder (local media now, S3-ready interface)
 - [ ] `B-05` **P0·S** Frontend business profile page + edit form
 - [ ] `B-06` **P0·S** businessStore (current business context in Zustand)

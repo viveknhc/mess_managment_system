@@ -15,7 +15,10 @@ from django.db import transaction
 
 from apps.accounts.models import User
 from apps.businesses.models import Business
+from apps.meals.models import Meal
 from common.constants import Role
+
+DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
 
 class Command(BaseCommand):
@@ -48,6 +51,10 @@ class Command(BaseCommand):
                 business=business,
                 is_active=True,
             )
+            # Seed default meal types (M-05)
+            for meal_name in DEFAULT_MEALS:
+                Meal.objects.create(business=business, name=meal_name)
 
         self.stdout.write(self.style.SUCCESS(f"Business '{business.name}' (id={business.id}) created."))
         self.stdout.write(self.style.SUCCESS(f"Owner '{user.username}' (id={user.id}) created."))
+        self.stdout.write(self.style.SUCCESS(f"Default meals created: {', '.join(DEFAULT_MEALS)}"))

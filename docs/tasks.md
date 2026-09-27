@@ -19,7 +19,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 2 Business | 6 | 6 | 5 | 1 | – |
 | 3 Users & Staff | 6 | 6 | 4 | 2 | – |
 | 4 Customers | 14 | 14 | 11 | 3 | – |
-| 5 Meals | 5 | 0 | 4 | 1 | – |
+| 5 Meals | 5 | 5 | 4 | 1 | – |
 | 6 Plans | 6 | 0 | 5 | 1 | – |
 | 7 Subscriptions ⭐ | 16 | 0 | 14 | 2 | – |
 | 8 Payments | 12 | 0 | 10 | 2 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **48** | | | |
+| **Total** | **153** | **53** | | | |
 
 ---
 
@@ -114,11 +114,11 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 5 — Meals
 
-- [ ] `M-01` **P0·S** `Meal` model: business FK, name, description, price (nullable), is_active
-- [ ] `M-02` **P0·S** CRUD endpoints + tests (incl. is_active filtering)
-- [ ] `M-03` **P0·S** mealsApi + types
-- [ ] `M-04` **P0·S** Meals list page + form + active/inactive toggle
-- [ ] `M-05` **P1·S** Seed defaults (Breakfast/Lunch/Dinner/Snacks) in bootstrap command
+- [x] `M-01` **P0·S** `Meal` model: business FK, name, description, price (nullable), is_active
+- [x] `M-02` **P0·S** CRUD endpoints + tests (incl. is_active filtering)
+- [x] `M-03` **P0·S** mealsApi + types
+- [x] `M-04` **P0·S** Meals list page + form + active/inactive toggle
+- [x] `M-05` **P1·S** Seed defaults (Breakfast/Lunch/Dinner/Snacks) in bootstrap command
 
 ---
 

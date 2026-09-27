@@ -7,6 +7,7 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 import { CustomersPage } from '../features/customers/CustomersPage'
 import { CustomerDetailsPage } from '../features/customers/CustomerDetailsPage'
+import { MealsPage } from '../features/meals/MealsPage'
 import { StaffPage } from '../features/staff/StaffPage'
 
 export function AppRoutes() {
@@ -21,6 +22,7 @@ export function AppRoutes() {
           <Route index element={<div className="p-6 text-gray-500">Dashboard coming soon</div>} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailsPage />} />
+          <Route path="meals" element={<MealsPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
         </Route>

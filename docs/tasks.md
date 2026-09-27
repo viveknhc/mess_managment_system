@@ -20,7 +20,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 3 Users & Staff | 6 | 6 | 4 | 2 | – |
 | 4 Customers | 14 | 14 | 11 | 3 | – |
 | 5 Meals | 5 | 5 | 4 | 1 | – |
-| 6 Plans | 6 | 0 | 5 | 1 | – |
+| 6 Plans | 6 | 6 | 5 | 1 | – |
 | 7 Subscriptions ⭐ | 16 | 0 | 14 | 2 | – |
 | 8 Payments | 12 | 0 | 10 | 2 | – |
 | 9 Deliveries/Skip-Pause | 16 | 0 | 13 | 3 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **53** | | | |
+| **Total** | **153** | **59** | | | |
 
 ---
 
@@ -124,12 +124,12 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 6 — Plans
 
-- [ ] `P-01` **P0·M** `Plan` model: business FK, name, description, duration_days, price, meal FK, total_meals, skip_allowed, pause_allowed, is_active
-- [ ] `P-02` **P0·S** Validation: total_meals vs duration consistency, price ≥ 0
-- [ ] `P-03` **P0·S** CRUD endpoints + tests (isolation, deactivate does not break existing subs)
-- [ ] `P-04` **P0·S** plansApi + types + validation
-- [ ] `P-05` **P0·M** Plans list + form pages ("Monthly Lunch ₹2500" creatable)
-- [ ] `P-06` **P1·S** Plan card UI with skip/pause badges
+- [x] `P-01` **P0·M** `Plan` model: business FK, name, description, duration_days, price, meal FK, total_meals, skip_allowed, pause_allowed, is_active
+- [x] `P-02` **P0·S** Validation: total_meals vs duration consistency, price ≥ 0
+- [x] `P-03` **P0·S** CRUD endpoints + tests (isolation, deactivate does not break existing subs)
+- [x] `P-04` **P0·S** plansApi + types + validation
+- [x] `P-05` **P0·M** Plans list + form pages ("Monthly Lunch ₹2500" creatable)
+- [x] `P-06` **P1·S** Plan card UI with skip/pause badges
 
 ---
 

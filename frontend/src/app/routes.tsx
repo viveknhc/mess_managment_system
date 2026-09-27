@@ -8,6 +8,7 @@ import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 import { CustomersPage } from '../features/customers/CustomersPage'
 import { CustomerDetailsPage } from '../features/customers/CustomerDetailsPage'
 import { MealsPage } from '../features/meals/MealsPage'
+import { PlansPage } from '../features/plans/PlansPage'
 import { StaffPage } from '../features/staff/StaffPage'
 
 export function AppRoutes() {
@@ -23,6 +24,7 @@ export function AppRoutes() {
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailsPage />} />
           <Route path="meals" element={<MealsPage />} />
+          <Route path="plans" element={<PlansPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
         </Route>

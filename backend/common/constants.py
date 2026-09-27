@@ -29,3 +29,30 @@ Status = SimpleNamespace(
     SUSPENDED="SUSPENDED",
     BLOCKED="BLOCKED",
 )
+
+# ── Subscription state machine (S-03) ────────────────────────────────────
+
+SubStatus = SimpleNamespace(
+    PENDING="PENDING",
+    ACTIVE="ACTIVE",
+    PAUSED="PAUSED",
+    EXPIRED="EXPIRED",
+    CANCELLED="CANCELLED",
+)
+
+SUB_STATUS_CHOICES = [
+    (SubStatus.PENDING, "Pending"),
+    (SubStatus.ACTIVE, "Active"),
+    (SubStatus.PAUSED, "Paused"),
+    (SubStatus.EXPIRED, "Expired"),
+    (SubStatus.CANCELLED, "Cancelled"),
+]
+
+# Legal transitions: {from_status: [to_statuses]}
+SUB_TRANSITIONS = {
+    SubStatus.PENDING: [SubStatus.ACTIVE, SubStatus.CANCELLED],
+    SubStatus.ACTIVE: [SubStatus.PAUSED, SubStatus.CANCELLED, SubStatus.EXPIRED],
+    SubStatus.PAUSED: [SubStatus.ACTIVE],
+    SubStatus.EXPIRED: [],  # terminal — renew creates a new row
+    SubStatus.CANCELLED: [],  # terminal
+}

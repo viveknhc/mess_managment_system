@@ -18,7 +18,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 1 Auth | 10 | 10 | 8 | 2 | – |
 | 2 Business | 6 | 6 | 5 | 1 | – |
 | 3 Users & Staff | 6 | 6 | 4 | 2 | – |
-| 4 Customers | 14 | 0 | 11 | 3 | – |
+| 4 Customers | 14 | 14 | 11 | 3 | – |
 | 5 Meals | 5 | 0 | 4 | 1 | – |
 | 6 Plans | 6 | 0 | 5 | 1 | – |
 | 7 Subscriptions ⭐ | 16 | 0 | 14 | 2 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **34** | | | |
+| **Total** | **153** | **48** | | | |
 
 ---
 
@@ -95,20 +95,20 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 4 — Customers
 
-- [ ] `C-01` **P0·M** `Customer` model: customer_code (auto), business FK, user FK (nullable, portal link), name, phone, email, address, location, lat/lng, notes, status (ACTIVE/INACTIVE/BLOCKED)
-- [ ] `C-02` **P0·S** Indexes: `(business_id, name)`, `(business_id, phone)`; migration
-- [ ] `C-03` **P0·S** Serializers (create/update/list/detail) + Zod-equivalent validation rules
-- [ ] `C-04` **P0·S** CRUD viewset on TenantScopedViewSet + status transitions
-- [ ] `C-05` **P0·M** Search (name/phone/code/address) + filters (status, has-active-subscription, meal) + sort + pagination via django-filter + `CustomerSelector`
-- [ ] `C-06` **P0·M** Tests: CRUD, search hit/miss, filters, pagination, isolation, customer_code uniqueness per business
-- [ ] `C-07` **P0·M** Customer detail aggregate endpoint: profile + current subscription + payment/delivery/skip/pause histories — via other apps' **selectors** (read-only)
-- [ ] `C-08` **P1·S** Soft-delete or deactivate semantics decided & implemented
-- [ ] `C-09` **P0·M** Frontend `customersApi.ts` + types + validation
-- [ ] `C-10` **P0·M** CustomersPage: search-first table, filter chips (status/subscription/meal), pagination
-- [ ] `C-11` **P0·M** CustomerForm (modal/page) with loading/error states
-- [ ] `C-12` **P0·M** CustomerDetailsPage: info card + tabbed history (subscriptions/payments/deliveries/skips/pauses)
-- [ ] `C-13` **P1·S** Empty states + skeleton loaders
-- [ ] `C-14` **P0·S** Module DoD check + commit
+- [x] `C-01` **P0·M** `Customer` model: customer_code (auto), business FK, user FK (nullable, portal link), name, phone, email, address, location, lat/lng, notes, status (ACTIVE/INACTIVE/BLOCKED)
+- [x] `C-02` **P0·S** Indexes: `(business_id, name)`, `(business_id, phone)`; migration
+- [x] `C-03` **P0·S** Serializers (create/update/list/detail) + Zod-equivalent validation rules
+- [x] `C-04` **P0·S** CRUD viewset on TenantScopedViewSet + status transitions
+- [x] `C-05` **P0·M** Search (name/phone/code/address) + filters (status, has-active-subscription, meal) + sort + pagination via django-filter + `CustomerSelector`
+- [x] `C-06` **P0·M** Tests: CRUD, search hit/miss, filters, pagination, isolation, customer_code uniqueness per business
+- [x] `C-07` **P0·M** Customer detail aggregate endpoint: profile + current subscription + payment/delivery/skip/pause histories — via other apps' **selectors** (read-only)
+- [x] `C-08` **P1·S** Soft-delete or deactivate semantics decided & implemented
+- [x] `C-09` **P0·M** Frontend `customersApi.ts` + types + validation
+- [x] `C-10` **P0·M** CustomersPage: search-first table, filter chips (status/subscription/meal), pagination
+- [x] `C-11` **P0·M** CustomerForm (modal/page) with loading/error states
+- [x] `C-12` **P0·M** CustomerDetailsPage: info card + tabbed history (subscriptions/payments/deliveries/skips/pauses)
+- [x] `C-13` **P1·S** Empty states + skeleton loaders
+- [x] `C-14` **P0·S** Module DoD check + commit
 
 ---
 

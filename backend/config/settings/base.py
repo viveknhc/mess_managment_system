@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # local apps (mod. plan §20)
     "apps.accounts",
     "apps.businesses",
+    "apps.customers",
 ]
 
 MIDDLEWARE = [

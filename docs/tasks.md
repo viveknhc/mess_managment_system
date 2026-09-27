@@ -21,7 +21,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 4 Customers | 14 | 14 | 11 | 3 | – |
 | 5 Meals | 5 | 5 | 4 | 1 | – |
 | 6 Plans | 6 | 6 | 5 | 1 | – |
-| 7 Subscriptions ⭐ | 16 | 0 | 14 | 2 | – |
+| 7 Subscriptions ⭐ | 16 | 16 | 14 | 2 | – |
 | 8 Payments | 12 | 0 | 10 | 2 | – |
 | 9 Deliveries/Skip-Pause | 16 | 0 | 13 | 3 | – |
 | 10 Dashboard | 8 | 0 | 6 | 2 | – |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **59** | | | |
+| **Total** | **153** | **75** | | | |
 
 ---
 
@@ -135,22 +135,22 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 7 — Subscriptions ⭐
 
-- [ ] `S-01` **P0·M** `Subscription` model: business/customer/plan FKs, start_date, end_date, status (PENDING/ACTIVE/PAUSED/EXPIRED/CANCELLED), total_amount, paid_amount, pending_amount, remaining_meals
-- [ ] `S-02` **P0·S** Index `(business_id, status, end_date)`; migration
-- [ ] `S-03` **P0·S** State-machine constant map: legal transitions table (arch §6.4) in `constants.py`
-- [ ] `S-04` **P0·M** `SubscriptionService.create_subscription()`: validate customer & plan same business → PENDING; transaction
-- [ ] `S-05` **P0·S** `POST /subscriptions/` + list/detail viewset with filters (status, customer, plan)
-- [ ] `S-06` **P0·M** Action endpoints `pause/` `resume/` `cancel/` — validate transition legality, wrap in tx, return updated resource
-- [ ] `S-07` **P0·M** `renew/` action: new period dates, counter resets, link to previous period
-- [ ] `S-08` **P0·M** `SubscriptionSelector.get_expiring_subscriptions()`: `status=ACTIVE AND end_date <= today+3` — EXPIRING computed, never stored
-- [ ] `S-09` **P0·S** Remaining-days / remaining-meals calculators (service or model helpers, single source)
-- [ ] `S-10` **P0·L** Tests: every legal transition, every illegal transition rejected, renewal math, expiry query windows, isolation, concurrent pause race
-- [ ] `S-11` **P0·M** subscriptionsApi + types + validation
-- [ ] `S-12` **P0·M** SubscriptionsPage: list + status filter tabs (incl. computed "Expiring")
-- [ ] `S-13` **P0·M** SubscriptionCard per poc §20: dates, days remaining, status badge, amount paid/pending
-- [ ] `S-14` **P0·M** SubscriptionForm: customer + plan pickers (same-business only), dates, amount preview
-- [ ] `S-15` **P0·M** Action dialogs: pause/resume/cancel/renew with confirm + reason input
-- [ ] `S-16` **P1·S** RenewalDialog with new-period preview
+- [x] `S-01` **P0·M** `Subscription` model: business/customer/plan FKs, start_date, end_date, status (PENDING/ACTIVE/PAUSED/EXPIRED/CANCELLED), total_amount, paid_amount, pending_amount, remaining_meals
+- [x] `S-02` **P0·S** Index `(business_id, status, end_date)`; migration
+- [x] `S-03` **P0·S** State-machine constant map: legal transitions table (arch §6.4) in `constants.py`
+- [x] `S-04` **P0·M** `SubscriptionService.create_subscription()`: validate customer & plan same business → PENDING; transaction
+- [x] `S-05` **P0·S** `POST /subscriptions/` + list/detail viewset with filters (status, customer, plan)
+- [x] `S-06` **P0·M** Action endpoints `pause/` `resume/` `cancel/` — validate transition legality, wrap in tx, return updated resource
+- [x] `S-07` **P0·M** `renew/` action: new period dates, counter resets, link to previous period
+- [x] `S-08` **P0·M** `SubscriptionSelector.get_expiring_subscriptions()`: `status=ACTIVE AND end_date <= today+3` — EXPIRING computed, never stored
+- [x] `S-09` **P0·S** Remaining-days / remaining-meals calculators (service or model helpers, single source)
+- [x] `S-10` **P0·L** Tests: every legal transition, every illegal transition rejected, renewal math, expiry query windows, isolation, concurrent pause race
+- [x] `S-11` **P0·M** subscriptionsApi + types + validation
+- [x] `S-12` **P0·M** SubscriptionsPage: list + status filter tabs (incl. computed "Expiring")
+- [x] `S-13` **P0·M** SubscriptionCard per poc §20: dates, days remaining, status badge, amount paid/pending
+- [x] `S-14` **P0·M** SubscriptionForm: customer + plan pickers (same-business only), dates, amount preview
+- [x] `S-15` **P0·M** Action dialogs: pause/resume/cancel/renew with confirm + reason input
+- [x] `S-16` **P1·S** RenewalDialog with new-period preview
 
 ---
 

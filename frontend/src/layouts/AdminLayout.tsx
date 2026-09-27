@@ -1,5 +1,10 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+
+const navItems = [
+  { to: '/', label: 'Dashboard', end: true },
+  { to: '/business', label: 'Business Profile', end: false },
+]
 
 export function AdminLayout() {
   const { user, logout } = useAuthStore()
@@ -17,15 +22,32 @@ export function AdminLayout() {
         <div className="flex h-16 items-center border-b border-gray-200 px-6">
           <h1 className="text-lg font-bold text-blue-600">Mess Manager</h1>
         </div>
-        <nav className="p-4">
-          <p className="text-sm text-gray-400">Navigation coming soon</p>
+        <nav className="space-y-1 p-4">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `block rounded-lg px-3 py-2 text-sm font-medium ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
       {/* Main content */}
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-          <h2 className="text-lg font-semibold text-gray-800">Dashboard</h2>
+          <h2 className="text-lg font-semibold text-gray-800">
+            {user?.business_name || 'Dashboard'}
+          </h2>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
               {user?.name || user?.username}

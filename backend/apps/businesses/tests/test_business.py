@@ -1,4 +1,4 @@
-"""Business API + tenant isolation tests (B-02, B-03).
+"""Business API + tenant isolation tests (B-02, B-03, B-04).
 
 Covers:
 - Owner can read and update their own business
@@ -6,9 +6,13 @@ Covers:
 - User of Business B gets 404 on Business A (TenantScopedViewSet isolation)
 - IsSameBusiness object-level check
 - Unauthenticated access is rejected
+- Logo upload (B-04)
 """
 
+from io import BytesIO
+
 import pytest
+from PIL import Image
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
@@ -243,3 +247,42 @@ class TestTenantIsolation:
         assert len(results_b) == 1
         assert results_a[0]["id"] == str(biz_a.id)
         assert results_b[0]["id"] == str(biz_b.id)
+
+
+# ── Logo upload (B-04) ───────────────────────────────────────────────────
+
+
+def _make_image():
+    """Create a small in-memory PNG for upload tests."""
+    buf = BytesIO()
+    Image.new("RGB", (100, 100), color="red").save(buf, format="PNG")
+    buf.seek(0)
+    buf.name = "logo.png"
+    return buf
+
+
+@pytest.mark.django_db
+class TestLogoUpload:
+    def test_owner_can_upload_logo(self, owner_a, biz_a):
+        client = auth_client(owner_a)
+        resp = client.patch(
+            f"/api/v1/business/{biz_a.id}/",
+            {"logo": _make_image()},
+            format="multipart",
+        )
+        assert resp.status_code == 200
+        assert resp.json()["logo"] is not None
+        assert "business_logos/" in resp.json()["logo"]
+
+    def test_logo_field_nullable(self, owner_a, biz_a):
+        """Business without a logo returns null."""
+        resp = auth_client(owner_a).get(f"/api/v1/business/{biz_a.id}/")
+        assert resp.json()["logo"] is None
+
+    def test_non_owner_cannot_upload_logo(self, manager_a, biz_a):
+        resp = auth_client(manager_a).patch(
+            f"/api/v1/business/{biz_a.id}/",
+            {"logo": _make_image()},
+            format="multipart",
+        )
+        assert resp.status_code == 403

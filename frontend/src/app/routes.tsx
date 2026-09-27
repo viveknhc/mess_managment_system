@@ -4,6 +4,7 @@ import { CustomerLayout } from '../layouts/CustomerLayout'
 import { StaffLayout } from '../layouts/StaffLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
+import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 
 export function AppRoutes() {
   return (
@@ -15,6 +16,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'SUPER_ADMIN']} />}>
         <Route path="/" element={<AdminLayout />}>
           <Route index element={<div className="p-6 text-gray-500">Dashboard coming soon</div>} />
+          <Route path="business" element={<BusinessProfilePage />} />
         </Route>
       </Route>
 

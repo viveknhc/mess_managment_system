@@ -21,5 +21,9 @@ class Business(UUIDModel, TimeStampedModel):
         default=Status.ACTIVE,
     )
 
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "businesses"
+
     def __str__(self):
         return self.name

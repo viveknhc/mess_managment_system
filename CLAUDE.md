@@ -12,7 +12,7 @@ SaaS-ready web application for mess/subscription-based food businesses. Replaces
 
 ## Current Progress
 
-**119 / 153 tasks complete (78%)**
+**128 / 153 tasks complete (84%)**
 
 | Module | Status | Tasks |
 |--------|--------|-------|
@@ -28,7 +28,8 @@ SaaS-ready web application for mess/subscription-based food businesses. Replaces
 | 9 Deliveries/Skip-Pause | DONE | 16/16 |
 | 10 Dashboard | DONE | 8/8 |
 | 11 Notifications | DONE | 8/8 |
-| 12–16 (remaining) | Not Started | 0/34 |
+| 12 Reports | DONE | 9/9 |
+| 13–16 (remaining) | Not Started | 0/25 |
 
 **Progress tracker:** `docs/progress.html` (standalone HTML) and `docs/tasks.md` (checkbox tracker)
 
@@ -250,7 +251,7 @@ GitHub Actions on push to `main`/`develop` and PRs:
 
 ## What's Next
 
-Current: **Module 12 — Reports** (R-01 to R-09)
-Then: Module 13 (Settings) → Module 14 (Audit)
+Current: **Module 13 — Settings** (ST-01 to ST-05)
+Then: Module 14 (Audit) → Module 15 (Customer Portal) → Module 16 (Seed & Demo)
 
 Sprint 1 goal: Auth + Business + Customers + Meals + Plans all working end-to-end.

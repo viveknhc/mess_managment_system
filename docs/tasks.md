@@ -26,12 +26,12 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 9 Deliveries/Skip-Pause | 16 | 16 | 13 | 3 | – |
 | 10 Dashboard | 8 | 8 | 6 | 2 | – |
 | 11 Notifications | 8 | 8 | 5 | 3 | – |
-| 12 Reports | 9 | 0 | 4 | 3 | 2 |
+| 12 Reports | 9 | 9 | 4 | 3 | 2 |
 | 13 Settings | 5 | 0 | 3 | 2 | – |
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **119** | | | |
+| **Total** | **153** | **128** | | | |
 
 ---
 
@@ -220,15 +220,15 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 12 — Reports
 
-- [ ] `R-01` **P0·M** Customer report selector + endpoint (total/active/inactive/new/cancelled/paused)
-- [ ] `R-02` **P0·M** Subscription report (active/expiring/expired/renewed/cancelled)
-- [ ] `R-03` **P0·M** Revenue report: daily/weekly/monthly series + pending (live tables via selectors — **no** reporting store)
-- [ ] `R-04` **P0·M** Meal report (per type: delivered/skipped/not delivered)
-- [ ] `R-05` **P1·M** Payment report detail + date-range params on all reports
-- [ ] `R-06` **P0·M** Tests: aggregates reconcile against seeded data exactly
-- [ ] `R-07` **P0·M** Reports pages with Recharts: revenue trend
-- [ ] `R-08` **P1·M** Charts: meal distribution + subscription status breakdown; date-range filters
-- [ ] `R-09` **P2·S** CSV export
+- [x] `R-01` **P0·M** Customer report selector + endpoint (total/active/inactive/new/cancelled/paused)
+- [x] `R-02` **P0·M** Subscription report (active/expiring/expired/renewed/cancelled)
+- [x] `R-03` **P0·M** Revenue report: daily/weekly/monthly series + pending (live tables via selectors — **no** reporting store)
+- [x] `R-04` **P0·M** Meal report (per type: delivered/skipped/not delivered)
+- [x] `R-05` **P1·M** Payment report detail + date-range params on all reports
+- [x] `R-06` **P0·M** Tests: aggregates reconcile against seeded data exactly
+- [x] `R-07` **P0·M** Reports pages with Recharts: revenue trend
+- [x] `R-08` **P1·M** Charts: meal distribution + subscription status breakdown; date-range filters
+- [x] `R-09` **P2·S** CSV export
 
 ---
 

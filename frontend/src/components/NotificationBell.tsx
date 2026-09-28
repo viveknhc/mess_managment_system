@@ -93,7 +93,7 @@ export function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {!n.is_read && <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />}
+                    {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900">{n.title}</p>
                       <p className="mt-0.5 truncate text-xs text-gray-500">{n.message}</p>

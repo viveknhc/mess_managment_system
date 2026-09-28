@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/v1/", include("apps.deliveries.urls")),
     path("api/v1/", include("apps.dashboard.urls")),
     path("api/v1/", include("apps.notifications.urls")),
+    path("api/v1/", include("apps.reports.urls")),
 ]
 
 # Serve media files in development (production uses nginx/S3)

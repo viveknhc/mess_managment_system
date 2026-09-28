@@ -10,6 +10,8 @@ import { CustomerDetailsPage } from '../features/customers/CustomerDetailsPage'
 import { MealsPage } from '../features/meals/MealsPage'
 import { PlansPage } from '../features/plans/PlansPage'
 import { StaffPage } from '../features/staff/StaffPage'
+import { TodayDeliveriesPage } from '../features/deliveries/TodayDeliveriesPage'
+import { PaymentsPage } from '../features/payments/PaymentsPage'
 import { SubscriptionsPage } from '../features/subscriptions/SubscriptionsPage'
 
 export function AppRoutes() {
@@ -27,6 +29,8 @@ export function AppRoutes() {
           <Route path="meals" element={<MealsPage />} />
           <Route path="plans" element={<PlansPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
+          <Route path="payments" element={<PaymentsPage />} />
+          <Route path="deliveries" element={<TodayDeliveriesPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
         </Route>

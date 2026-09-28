@@ -22,8 +22,8 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 5 Meals | 5 | 5 | 4 | 1 | – |
 | 6 Plans | 6 | 6 | 5 | 1 | – |
 | 7 Subscriptions ⭐ | 16 | 16 | 14 | 2 | – |
-| 8 Payments | 12 | 0 | 10 | 2 | – |
-| 9 Deliveries/Skip-Pause | 16 | 0 | 13 | 3 | – |
+| 8 Payments | 12 | 12 | 10 | 2 | – |
+| 9 Deliveries/Skip-Pause | 16 | 16 | 13 | 3 | – |
 | 10 Dashboard | 8 | 0 | 6 | 2 | – |
 | 11 Notifications | 8 | 0 | 5 | 3 | – |
 | 12 Reports | 9 | 0 | 4 | 3 | 2 |
@@ -31,7 +31,7 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **75** | | | |
+| **Total** | **153** | **103** | | | |
 
 ---
 
@@ -156,39 +156,39 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 8 — Payments
 
-- [ ] `PAY-01` **P0·M** `Payment` model: business/customer/subscription FKs, amount, method (CASH/UPI/BANK_TRANSFER/CARD/ONLINE/OTHER), transaction_reference, payment_date, status (PENDING/PAID/FAILED/REFUNDED/PARTIAL), notes
-- [ ] `PAY-02` **P0·S** Index `(subscription_id)`; migration
-- [ ] `PAY-03` **P0·M** `PaymentService.record_payment()`: insert → recalc paid/pending → subscription status per poc §26 (PAID / PARTIAL / PENDING) — single tx
-- [ ] `PAY-04` **P0·L** Activation chain: full payment → subscription ACTIVE → call `DeliveryService.generate_delivery_schedule()` → call `NotificationService.emit()` (stub) — services-to-services, no cross-model writes
-- [ ] `PAY-05` **P0·M** Endpoints: `GET/POST /payments/`, `GET /payments/{id}/` (read-only after create; corrections = new payment)
-- [ ] `PAY-06` **P0·M** Payment summary selector: today's collection, month, pending, partial, failed, refunded (poc §24)
-- [ ] `PAY-07` **P0·L** Tests: amount math incl. overpay guard, partial flows, status flips, activation chain ordering, rollback on failure, isolation
-- [ ] `PAY-08` **P0·M** paymentsApi + types + validation
-- [ ] `PAY-09` **P0·M** Record-payment flow on PENDING subscription (form: amount, method, reference)
-- [ ] `PAY-10` **P0·M** PaymentsPage: history table + status badges + per-customer filter
-- [ ] `PAY-11` **P1·S** Payment summary cards (Today/Month/Pending)
-- [ ] `PAY-12` **P0·M** **Golden workflow e2e** (poc §34): Add Customer → Plan → Payment → ACTIVE — manual + automated test
+- [x] `PAY-01` **P0·M** `Payment` model: business/customer/subscription FKs, amount, method (CASH/UPI/BANK_TRANSFER/CARD/ONLINE/OTHER), transaction_reference, payment_date, status (PENDING/PAID/FAILED/REFUNDED/PARTIAL), notes
+- [x] `PAY-02` **P0·S** Index `(subscription_id)`; migration
+- [x] `PAY-03` **P0·M** `PaymentService.record_payment()`: insert → recalc paid/pending → subscription status per poc §26 (PAID / PARTIAL / PENDING) — single tx
+- [x] `PAY-04` **P0·L** Activation chain: full payment → subscription ACTIVE → call `DeliveryService.generate_delivery_schedule()` → call `NotificationService.emit()` (stub) — services-to-services, no cross-model writes
+- [x] `PAY-05` **P0·M** Endpoints: `GET/POST /payments/`, `GET /payments/{id}/` (read-only after create; corrections = new payment)
+- [x] `PAY-06` **P0·M** Payment summary selector: today's collection, month, pending, partial, failed, refunded (poc §24)
+- [x] `PAY-07` **P0·L** Tests: amount math incl. overpay guard, partial flows, status flips, activation chain ordering, rollback on failure, isolation
+- [x] `PAY-08` **P0·M** paymentsApi + types + validation
+- [x] `PAY-09` **P0·M** Record-payment flow on PENDING subscription (form: amount, method, reference)
+- [x] `PAY-10` **P0·M** PaymentsPage: history table + status badges + per-customer filter
+- [x] `PAY-11` **P1·S** Payment summary cards (Today/Month/Pending)
+- [x] `PAY-12` **P0·M** **Golden workflow e2e** (poc §34): Add Customer → Plan → Payment → ACTIVE — manual + automated test
 
 ---
 
 ## Module 9 — Deliveries + Skip/Pause
 
-- [ ] `D-01` **P0·M** `Delivery` model: business/customer/subscription FKs, delivery_date, meal_type, status (PENDING/OUT_FOR_DELIVERY/DELIVERED/NOT_DELIVERED/SKIPPED/CANCELLED), assigned_staff FK, delivered_at, notes
-- [ ] `D-02` **P0·S** Index `(business_id, delivery_date, status)`; migration
-- [ ] `D-03` **P0·M** `DeliveryService.generate_delivery_schedule()`: bulk insert PENDING rows for subscription period (idempotent — safe to re-run)
-- [ ] `D-04` **P0·M** `DeliverySelector.get_today_deliveries()` + `GET /deliveries/today/`
-- [ ] `D-05` **P0·M** `PATCH /deliveries/{id}/status/`: delivery staff restricted to assigned rows + status/notes only; transition validation
-- [ ] `D-06` **P0·M** Delivery history endpoint with filters (date range, staff, status, customer)
-- [ ] `D-07` **P0·M** `MealSkip` + `SubscriptionPause` models + migrations
-- [ ] `D-08` **P0·M** Skip flow: skip request → that day's delivery → SKIPPED → rule applied
-- [ ] `D-09` **P0·M** Configurable skip/pause rule per business (extend / meal credit / none) — read from settings app, no hard-coded branch per business
-- [ ] `D-10` **P0·M** Pause flow: date-range pause → deliveries in range CANCELLED/SKIPPED → resume restores PENDING or extends end_date per rule
-- [ ] `D-11` **P0·M** Kitchen counts endpoint: today's meal totals per meal type (poc §23)
-- [ ] `D-12` **P0·L** Tests: schedule generation counts, staff scoping (cannot touch unassigned), status transitions, skip→rule paths ×3, pause/resume date math
-- [ ] `D-13` **P0·M** Celery + Redis wired in settings; celery_app.py; worker + beat services in docker-compose
-- [ ] `D-14` **P0·M** Celery Beat jobs: nightly next-day delivery generation; nightly expiry sweep (mark EXPIRED where end_date < today)
-- [ ] `D-15` **P0·M** Frontend TodayDeliveriesPage: customer, phone, address, meal, status + big Mark Delivered / Not Delivered / Skip buttons + note input
-- [ ] `D-16` **P1·M** DeliveryHistoryPage + filters; kitchen meal-counts view (StaffLayout); admin skip/pause UI
+- [x] `D-01` **P0·M** `Delivery` model: business/customer/subscription FKs, delivery_date, meal_type, status (PENDING/OUT_FOR_DELIVERY/DELIVERED/NOT_DELIVERED/SKIPPED/CANCELLED), assigned_staff FK, delivered_at, notes
+- [x] `D-02` **P0·S** Index `(business_id, delivery_date, status)`; migration
+- [x] `D-03` **P0·M** `DeliveryService.generate_delivery_schedule()`: bulk insert PENDING rows for subscription period (idempotent — safe to re-run)
+- [x] `D-04` **P0·M** `DeliverySelector.get_today_deliveries()` + `GET /deliveries/today/`
+- [x] `D-05` **P0·M** `PATCH /deliveries/{id}/status/`: delivery staff restricted to assigned rows + status/notes only; transition validation
+- [x] `D-06` **P0·M** Delivery history endpoint with filters (date range, staff, status, customer)
+- [x] `D-07` **P0·M** `MealSkip` + `SubscriptionPause` models + migrations
+- [x] `D-08` **P0·M** Skip flow: skip request → that day's delivery → SKIPPED → rule applied
+- [x] `D-09` **P0·M** Configurable skip/pause rule per business (extend / meal credit / none) — read from settings app, no hard-coded branch per business
+- [x] `D-10` **P0·M** Pause flow: date-range pause → deliveries in range CANCELLED/SKIPPED → resume restores PENDING or extends end_date per rule
+- [x] `D-11` **P0·M** Kitchen counts endpoint: today's meal totals per meal type (poc §23)
+- [x] `D-12` **P0·L** Tests: schedule generation counts, staff scoping (cannot touch unassigned), status transitions, skip→rule paths ×3, pause/resume date math
+- [x] `D-13` **P0·M** Celery + Redis wired in settings; celery_app.py; worker + beat services in docker-compose
+- [x] `D-14` **P0·M** Celery Beat jobs: nightly next-day delivery generation; nightly expiry sweep (mark EXPIRED where end_date < today)
+- [x] `D-15` **P0·M** Frontend TodayDeliveriesPage: customer, phone, address, meal, status + big Mark Delivered / Not Delivered / Skip buttons + note input
+- [x] `D-16` **P1·M** DeliveryHistoryPage + filters; kitchen meal-counts view (StaffLayout); admin skip/pause UI
 
 ---
 

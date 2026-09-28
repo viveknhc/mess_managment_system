@@ -7,6 +7,8 @@ const navItems = [
   { to: '/meals', label: 'Meals', end: false },
   { to: '/plans', label: 'Plans', end: false },
   { to: '/subscriptions', label: 'Subscriptions', end: false },
+  { to: '/payments', label: 'Payments', end: false },
+  { to: '/deliveries', label: 'Deliveries', end: false },
   { to: '/staff', label: 'Staff', end: false },
   { to: '/business', label: 'Business Profile', end: false },
 ]

@@ -24,14 +24,14 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 7 Subscriptions ⭐ | 16 | 16 | 14 | 2 | – |
 | 8 Payments | 12 | 12 | 10 | 2 | – |
 | 9 Deliveries/Skip-Pause | 16 | 16 | 13 | 3 | – |
-| 10 Dashboard | 8 | 0 | 6 | 2 | – |
+| 10 Dashboard | 8 | 8 | 6 | 2 | – |
 | 11 Notifications | 8 | 0 | 5 | 3 | – |
 | 12 Reports | 9 | 0 | 4 | 3 | 2 |
 | 13 Settings | 5 | 0 | 3 | 2 | – |
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **103** | | | |
+| **Total** | **153** | **111** | | | |
 
 ---
 
@@ -194,14 +194,14 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 10 — Dashboard
 
-- [ ] `DB-01` **P0·M** Aggregator endpoint (poc §18): active customers, new customers, today's meals, today's deliveries, expiring today, expiring this week, pending payments, today's revenue — via other apps' selectors, owns **no** data
-- [ ] `DB-02` **P0·M** Tests vs seeded fixtures (exact numbers)
-- [ ] `DB-03` **P0·S** dashboardApi + types
-- [ ] `DB-04` **P0·M** DashboardPage + StatCard row
-- [ ] `DB-05` **P0·M** ExpiryWidget: Today / Tomorrow / 3 Days / This Week / Expired
-- [ ] `DB-06` **P0·M** DeliveryWidget (today's list preview + counts)
-- [ ] `DB-07` **P1·M** PaymentWidget (pending/partial) + MealSummaryWidget
-- [ ] `DB-08` **P1·S** Quick actions on dashboard: add customer, record payment (deep-links into forms)
+- [x] `DB-01` **P0·M** Aggregator endpoint (poc §18): active customers, new customers, today's meals, today's deliveries, expiring today, expiring this week, pending payments, today's revenue — via other apps' selectors, owns **no** data
+- [x] `DB-02` **P0·M** Tests vs seeded fixtures (exact numbers)
+- [x] `DB-03` **P0·S** dashboardApi + types
+- [x] `DB-04` **P0·M** DashboardPage + StatCard row
+- [x] `DB-05` **P0·M** ExpiryWidget: Today / Tomorrow / 3 Days / This Week / Expired
+- [x] `DB-06` **P0·M** DeliveryWidget (today's list preview + counts)
+- [x] `DB-07` **P1·M** PaymentWidget (pending/partial) + MealSummaryWidget
+- [x] `DB-08` **P1·S** Quick actions on dashboard: add customer, record payment (deep-links into forms)
 
 ---
 

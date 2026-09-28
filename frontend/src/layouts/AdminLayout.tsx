@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { NotificationBell } from '../components/NotificationBell'
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true },
@@ -56,6 +57,7 @@ export function AdminLayout() {
             {user?.business_name || 'Dashboard'}
           </h2>
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <span className="text-sm text-gray-600">
               {user?.name || user?.username}
               <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">

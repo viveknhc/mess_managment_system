@@ -25,13 +25,13 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 8 Payments | 12 | 12 | 10 | 2 | – |
 | 9 Deliveries/Skip-Pause | 16 | 16 | 13 | 3 | – |
 | 10 Dashboard | 8 | 8 | 6 | 2 | – |
-| 11 Notifications | 8 | 0 | 5 | 3 | – |
+| 11 Notifications | 8 | 8 | 5 | 3 | – |
 | 12 Reports | 9 | 0 | 4 | 3 | 2 |
 | 13 Settings | 5 | 0 | 3 | 2 | – |
 | 14 Audit | 3 | 0 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **111** | | | |
+| **Total** | **153** | **119** | | | |
 
 ---
 
@@ -207,14 +207,14 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 11 — Notifications
 
-- [ ] `N-01` **P0·M** `Notification` model: business/user FKs, type, title, message, is_read, sent_at
-- [ ] `N-02` **P0·M** `NotificationService.emit()`: IN_APP channel now; channel interface abstracted for future WhatsApp/SMS/Email (mod. plan §14)
-- [ ] `N-03` **P0·M** Wire emitters from services: PAYMENT_RECEIVED, SUBSCRIPTION_RENEWED, DELIVERY_UPDATE
-- [ ] `N-04` **P0·M** Nightly Celery job: SUBSCRIPTION_EXPIRING (≤3d) + SUBSCRIPTION_EXPIRED
-- [ ] `N-05` **P0·M** Endpoints: list mine, unread count, mark read (single + all)
-- [ ] `N-06` **P0·M** Tests: events fire on correct triggers, no dupes, scoping
-- [ ] `N-07` **P0·M** Frontend bell + dropdown + unread badge
-- [ ] `N-08` **P1·S** Notification preferences stub in settings (per-type mute)
+- [x] `N-01` **P0·M** `Notification` model: business/user FKs, type, title, message, is_read, sent_at
+- [x] `N-02` **P0·M** `NotificationService.emit()`: IN_APP channel now; channel interface abstracted for future WhatsApp/SMS/Email (mod. plan §14)
+- [x] `N-03` **P0·M** Wire emitters from services: PAYMENT_RECEIVED, SUBSCRIPTION_RENEWED, DELIVERY_UPDATE
+- [x] `N-04` **P0·M** Nightly Celery job: SUBSCRIPTION_EXPIRING (≤3d) + SUBSCRIPTION_EXPIRED
+- [x] `N-05` **P0·M** Endpoints: list mine, unread count, mark read (single + all)
+- [x] `N-06` **P0·M** Tests: events fire on correct triggers, no dupes, scoping
+- [x] `N-07` **P0·M** Frontend bell + dropdown + unread badge
+- [x] `N-08` **P1·S** Notification preferences stub in settings (per-type mute)
 
 ---
 

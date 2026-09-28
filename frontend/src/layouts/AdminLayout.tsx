@@ -12,6 +12,7 @@ const navItems = [
   { to: '/deliveries', label: 'Deliveries', end: false },
   { to: '/reports', label: 'Reports', end: false },
   { to: '/staff', label: 'Staff', end: false },
+  { to: '/settings', label: 'Settings', end: false },
   { to: '/business', label: 'Business Profile', end: false },
 ]
 

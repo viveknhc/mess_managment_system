@@ -4,6 +4,7 @@ import { CustomerLayout } from '../layouts/CustomerLayout'
 import { StaffLayout } from '../layouts/StaffLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
+import { PortalDashboard } from '../features/portal/PortalDashboard'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 import { CustomersPage } from '../features/customers/CustomersPage'
@@ -11,6 +12,7 @@ import { CustomerDetailsPage } from '../features/customers/CustomerDetailsPage'
 import { MealsPage } from '../features/meals/MealsPage'
 import { PlansPage } from '../features/plans/PlansPage'
 import { ReportsPage } from '../features/reports/ReportsPage'
+import { SettingsPage } from '../features/settings/SettingsPage'
 import { StaffPage } from '../features/staff/StaffPage'
 import { TodayDeliveriesPage } from '../features/deliveries/TodayDeliveriesPage'
 import { PaymentsPage } from '../features/payments/PaymentsPage'
@@ -35,6 +37,7 @@ export function AppRoutes() {
           <Route path="deliveries" element={<TodayDeliveriesPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="staff" element={<StaffPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
         </Route>
       </Route>
@@ -42,14 +45,14 @@ export function AppRoutes() {
       {/* Customer portal */}
       <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
         <Route path="/portal" element={<CustomerLayout />}>
-          <Route index element={<div className="p-6 text-gray-500">Customer portal coming soon</div>} />
+          <Route index element={<PortalDashboard />} />
         </Route>
       </Route>
 
       {/* Staff routes — Delivery + Kitchen */}
       <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF', 'KITCHEN_STAFF']} />}>
         <Route path="/staff" element={<StaffLayout />}>
-          <Route index element={<div className="p-6 text-gray-500">Staff view coming soon</div>} />
+          <Route index element={<TodayDeliveriesPage />} />
         </Route>
       </Route>
 

@@ -27,11 +27,11 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 10 Dashboard | 8 | 8 | 6 | 2 | – |
 | 11 Notifications | 8 | 8 | 5 | 3 | – |
 | 12 Reports | 9 | 9 | 4 | 3 | 2 |
-| 13 Settings | 5 | 0 | 3 | 2 | – |
-| 14 Audit | 3 | 0 | 2 | – | 1 |
+| 13 Settings | 5 | 5 | 3 | 2 | – |
+| 14 Audit | 3 | 3 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
 | 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **128** | | | |
+| **Total** | **153** | **136** | | | |
 
 ---
 
@@ -234,35 +234,35 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 13 — Settings
 
-- [ ] `ST-01` **P0·M** BusinessSettings model: max skip days, min pause duration, skip rule (extend/credit/none), notification prefs, delivery time window
-- [ ] `ST-02` **P0·M** Endpoints (owner-only write) + tests; consumed by D-09 logic
-- [ ] `ST-03` **P0·S** Settings admin UI (grouped form)
-- [ ] `ST-04` **P1·S** Business profile link + logo upload UI
-- [ ] `ST-05` **P1·S** Validation UX: warn on rule changes affecting active subscriptions
+- [x] `ST-01` **P0·M** BusinessSettings model: max skip days, min pause duration, skip rule (extend/credit/none), notification prefs, delivery time window
+- [x] `ST-02` **P0·M** Endpoints (owner-only write) + tests; consumed by D-09 logic
+- [x] `ST-03` **P0·S** Settings admin UI (grouped form)
+- [x] `ST-04` **P1·S** Business profile link + logo upload UI
+- [x] `ST-05` **P1·S** Validation UX: warn on rule changes affecting active subscriptions
 
 ---
 
 ## Module 14 — Audit Trail
 
-- [ ] `AU-01` **P0·S** `AuditLog` model: business/user, action, entity_type, entity_id, description, created_at (poc §29)
-- [ ] `AU-02` **P0·M** Write hooks from services on state-changing actions (subscription transitions, payments, delivery status, staff changes)
-- [ ] `AU-03` **P2·S** Django admin view + simple filter; (frontend UI deferred)
+- [x] `AU-01` **P0·S** `AuditLog` model: business/user, action, entity_type, entity_id, description, created_at (poc §29)
+- [x] `AU-02` **P0·M** Write hooks from services on state-changing actions (subscription transitions, payments, delivery status, staff changes)
+- [x] `AU-03` **P2·S** Django admin view + simple filter; (frontend UI deferred)
 
 ---
 
 ## Module 15 — Customer Portal
 
-- [ ] `PT-01` **P0·L** Customer-role API scoping: self-only reads (subscription/payments/deliveries), skip + pause-request + renew actions; **no admin APIs reachable** (mod. plan §38)
-- [ ] `PT-02` **P0·M** Permission tests: customer token cannot list other customers, other subscriptions, staff pages
-- [ ] `PT-03` **P0·M** CustomerLayout + portal dashboard (poc §25): greeting, current plan, days remaining, today's meal status
-- [ ] `PT-04` **P0·M** My Subscription page + Skip Meal / Pause / Renew wired to portal-scoped endpoints
-- [ ] `PT-05` **P0·M** Portal payments + delivery history pages
-- [ ] `PT-06` **P1·M** Profile view/edit (limited fields)
-- [ ] `PT-07` **P0·M** Staff layouts finalized: Delivery (Today's Deliveries, Completed) + Kitchen (Today's Meals, Summary) per poc §32
-- [ ] `PT-08` **P0·S** Route guards re-verified for all 4 roles
-- [ ] `PT-09` **P0·M** DRF throttling: auth + write-heavy + portal endpoints
-- [ ] `PT-10` **P1·S** Mobile-responsive pass on portal + staff screens (primary use: phone)
-- [ ] `PT-11` **P1·S** Error/toast polish across portal actions
+- [x] `PT-01` **P0·L** Customer-role API scoping: self-only reads (subscription/payments/deliveries), skip + pause-request + renew actions; **no admin APIs reachable** (mod. plan §38)
+- [x] `PT-02` **P0·M** Permission tests: customer token cannot list other customers, other subscriptions, staff pages
+- [x] `PT-03` **P0·M** CustomerLayout + portal dashboard (poc §25): greeting, current plan, days remaining, today's meal status
+- [x] `PT-04` **P0·M** My Subscription page + Skip Meal / Pause / Renew wired to portal-scoped endpoints
+- [x] `PT-05` **P0·M** Portal payments + delivery history pages
+- [x] `PT-06` **P1·M** Profile view/edit (limited fields)
+- [x] `PT-07` **P0·M** Staff layouts finalized: Delivery (Today's Deliveries, Completed) + Kitchen (Today's Meals, Summary) per poc §32
+- [x] `PT-08` **P0·S** Route guards re-verified for all 4 roles
+- [x] `PT-09` **P0·M** DRF throttling: auth + write-heavy + portal endpoints
+- [x] `PT-10` **P1·S** Mobile-responsive pass on portal + staff screens (primary use: phone)
+- [x] `PT-11` **P1·S** Error/toast polish across portal actions
 
 ---
 

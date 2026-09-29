@@ -5,6 +5,12 @@ import { StaffLayout } from '../layouts/StaffLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
 import { PortalDashboard } from '../features/portal/PortalDashboard'
+import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
+import { PortalPaymentsPage } from '../features/portal/PortalPaymentsPage'
+import { PortalProfilePage } from '../features/portal/PortalProfilePage'
+import { PortalSubscriptionPage } from '../features/portal/PortalSubscriptionPage'
+import { CompletedDeliveriesPage } from '../features/deliveries/CompletedDeliveriesPage'
+import { KitchenCountsPage } from '../features/deliveries/KitchenCountsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 import { CustomersPage } from '../features/customers/CustomersPage'
@@ -42,17 +48,28 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Customer portal */}
+      {/* Customer portal (PT-03–PT-06) */}
       <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
         <Route path="/portal" element={<CustomerLayout />}>
           <Route index element={<PortalDashboard />} />
+          <Route path="subscription" element={<PortalSubscriptionPage />} />
+          <Route path="meals" element={<PortalDeliveriesPage />} />
+          <Route path="payments" element={<PortalPaymentsPage />} />
+          <Route path="profile" element={<PortalProfilePage />} />
         </Route>
       </Route>
 
-      {/* Staff routes — Delivery + Kitchen */}
-      <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF', 'KITCHEN_STAFF']} />}>
+      {/* Staff routes — Delivery + Kitchen, role-aware nav (PT-07) */}
+      <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF']} />}>
         <Route path="/staff" element={<StaffLayout />}>
           <Route index element={<TodayDeliveriesPage />} />
+          <Route path="completed" element={<CompletedDeliveriesPage />} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute allowedRoles={['KITCHEN_STAFF']} />}>
+        <Route path="/staff" element={<StaffLayout />}>
+          <Route index element={<KitchenCountsPage />} />
+          <Route path="kitchen/summary" element={<KitchenCountsPage showSummary />} />
         </Route>
       </Route>
 

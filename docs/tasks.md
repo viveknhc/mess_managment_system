@@ -30,8 +30,8 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 | 13 Settings | 5 | 5 | 3 | 2 | – |
 | 14 Audit | 3 | 3 | 2 | – | 1 |
 | 15 Customer Portal | 11 | 0 | 8 | 3 | – |
-| 16 Seed & Demo | 6 | 0 | 4 | 2 | – |
-| **Total** | **153** | **136** | | | |
+| 16 Seed & Demo | 6 | 3 | 4 | 2 | – |
+| **Total** | **153** | **150** | | | |
 
 ---
 
@@ -268,9 +268,9 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ## Module 16 — Seed Data & Demo
 
-- [ ] `SD-01` **P0·L** Seed command (poc §30): 1 business, 3 staff, 20 customers, 5 plans, 20+ subscriptions, 50+ payments, 100+ deliveries — covering every status (active/expiring/expired/paused/pending/partial/skipped/not delivered)
-- [ ] `SD-02` **P0·S** Reset command (flush + reseed) for demo runs
-- [ ] `SD-03` **P0·M** **Rahul demo dry-run** (poc §39): all 12 steps pass; fix gaps found
+- [x] `SD-01` **P0·L** Seed command (poc §30): 1 business, 3 staff, 20 customers, 5 plans, 20+ subscriptions, 50+ payments, 100+ deliveries — covering every status (active/expiring/expired/paused/pending/partial/skipped/not delivered)
+- [x] `SD-02` **P0·S** Reset command (flush + reseed) for demo runs
+- [x] `SD-03` **P0·M** **Rahul demo dry-run** (poc §39): all 12 steps pass; fix gaps found
 - [ ] `SD-04` **P0·M** poc §38 Definition-of-DoD checklist verified (admin 14 items + customer 5 items)
 - [ ] `SD-05` **P1·M** DB backup + restore rehearsal; document runbook
 - [ ] `SD-06` **P2·S** Final responsive/docs pass; tag `v0.1.0-mvp`

@@ -10,7 +10,7 @@ from django.db import models, transaction
 
 from apps.payments.models import Payment, PaymentStatus
 from apps.subscriptions.models import Subscription
-from common.constants import SubStatus
+from common.constants import Role, SubStatus
 
 
 class PaymentService:
@@ -21,7 +21,8 @@ class PaymentService:
     ):
         """Record a payment and recalculate subscription amounts.
 
-        If fully paid and subscription is PENDING → transition to ACTIVE.
+        If fully paid and subscription is PENDING → transition to ACTIVE,
+        then generate delivery schedule and notify owners.
         """
         if subscription.business_id != business_id:
             raise ValueError("Subscription does not belong to this business.")
@@ -53,12 +54,28 @@ class PaymentService:
         sub.pending_amount = max(sub.total_amount - sub.paid_amount, Decimal("0.00"))
 
         # Activation chain: fully paid PENDING → ACTIVE
-        if sub.paid_amount >= sub.total_amount and sub.status == SubStatus.PENDING:
+        was_pending = sub.status == SubStatus.PENDING
+        if sub.paid_amount >= sub.total_amount and was_pending:
             sub.status = SubStatus.ACTIVE
-            # TODO (Module 9): DeliveryService.generate_delivery_schedule(sub)
-            # TODO (Module 11): NotificationService.emit("SUBSCRIPTION_ACTIVATED", sub)
 
         sub.save(update_fields=["paid_amount", "pending_amount", "status", "updated_at"])
+
+        # Post-activation: generate deliveries + notify owners
+        if was_pending and sub.status == SubStatus.ACTIVE:
+            from apps.accounts.models import User
+            from apps.deliveries.services import DeliveryService
+            from apps.notifications.services import NotificationService
+
+            DeliveryService.generate_delivery_schedule(sub)
+
+            owners = User.objects.filter(business_id=business_id, role=Role.OWNER, is_active=True)
+            for owner_user in owners:
+                NotificationService.emit_subscription_activated(
+                    business_id=business_id,
+                    user=owner_user,
+                    customer_name=sub.customer.name,
+                    plan_name=sub.plan.name,
+                )
 
         # Refresh the original object
         subscription.refresh_from_db()

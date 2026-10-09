@@ -40,11 +40,17 @@ class PaymentViewSet(TenantScopedViewSet):
     http_method_names = ["get", "post", "head", "options"]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
         "create": [Role.OWNER, Role.MANAGER],
         "summary": [Role.OWNER, Role.MANAGER],
     }
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == Role.CUSTOMER:
+            qs = qs.filter(customer__user=self.request.user)
+        return qs
 
     def get_serializer_class(self):
         if self.action == "create":

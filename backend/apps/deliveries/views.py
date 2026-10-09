@@ -17,6 +17,7 @@ from common.viewsets import TenantScopedViewSet
 class DeliveryFilter(django_filters.FilterSet):
     date_from = django_filters.DateFilter(field_name="delivery_date", lookup_expr="gte")
     date_to = django_filters.DateFilter(field_name="delivery_date", lookup_expr="lte")
+    delivery_date = django_filters.DateFilter(field_name="delivery_date")
     status = django_filters.CharFilter(field_name="status")
     customer = django_filters.UUIDFilter(field_name="customer_id")
     subscription = django_filters.UUIDFilter(field_name="subscription_id")
@@ -24,7 +25,7 @@ class DeliveryFilter(django_filters.FilterSet):
 
     class Meta:
         model = Delivery
-        fields = ["status", "customer", "subscription", "assigned_staff"]
+        fields = ["status", "customer", "subscription", "assigned_staff", "delivery_date"]
 
 
 class DeliveryViewSet(TenantScopedViewSet):
@@ -43,13 +44,19 @@ class DeliveryViewSet(TenantScopedViewSet):
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
         "today": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "update_status": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
-        "skip": [Role.OWNER, Role.MANAGER],
+        "skip": [Role.OWNER, Role.MANAGER, Role.CUSTOMER],
         "kitchen_counts": [Role.OWNER, Role.MANAGER, Role.KITCHEN_STAFF],
     }
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == Role.CUSTOMER:
+            qs = qs.filter(customer__user=self.request.user)
+        return qs
 
     @action(detail=False, methods=["get"])
     def today(self, request):

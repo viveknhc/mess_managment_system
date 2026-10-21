@@ -55,6 +55,18 @@ class SubscriptionViewSet(TenantScopedViewSet):
     serializer_class = SubscriptionListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = SubscriptionFilter
+    ordering_fields = [
+        "customer__name",
+        "plan__name",
+        "start_date",
+        "end_date",
+        "status",
+        "total_amount",
+        "paid_amount",
+        "pending_amount",
+        "remaining_meals",
+        "created_at",
+    ]
     http_method_names = ["get", "post", "head", "options"]
 
     role_map = {

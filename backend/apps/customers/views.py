@@ -49,6 +49,7 @@ class CustomerViewSet(TenantScopedViewSet):
     serializer_class = CustomerListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = CustomerFilter
+    ordering_fields = ["customer_code", "name", "phone", "status", "location", "created_at"]
 
     role_map = {
         "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],

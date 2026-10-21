@@ -3,17 +3,18 @@ import { useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/customers', label: 'Customers', end: false },
-  { to: '/meals', label: 'Meals', end: false },
-  { to: '/plans', label: 'Plans', end: false },
-  { to: '/subscriptions', label: 'Subscriptions', end: false },
-  { to: '/payments', label: 'Payments', end: false },
-  { to: '/deliveries', label: 'Deliveries', end: false },
-  { to: '/reports', label: 'Reports', end: false },
-  { to: '/staff', label: 'Staff', end: false },
-  { to: '/settings', label: 'Settings', end: false },
-  { to: '/business', label: 'Business Profile', end: false },
+  { to: '/app', label: 'Dashboard', end: true },
+  { to: '/app/customers', label: 'Customers', end: false },
+  { to: '/app/meals', label: 'Meals', end: false },
+  { to: '/app/plans', label: 'Plans', end: false },
+  { to: '/app/subscriptions', label: 'Subscriptions', end: false },
+  { to: '/app/payments', label: 'Payments', end: false },
+  { to: '/app/deliveries', label: 'Deliveries', end: false },
+  { to: '/app/reports', label: 'Reports', end: false },
+  { to: '/app/staff', label: 'Staff', end: false },
+  { to: '/app/settings', label: 'Settings', end: false },
+  { to: '/app/business', label: 'Business Profile', end: false },
+  { to: '/app/billing', label: 'Billing', end: false },
 ]
 
 export function AdminLayout() {
@@ -75,6 +76,15 @@ export function AdminLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto bg-gray-50">
+          {user?.business_status === 'SUSPENDED' && (
+            <div className="border-b border-red-200 bg-red-50 px-6 py-3 text-center text-sm font-medium text-red-700">
+              Your business account is suspended. Please{' '}
+              <a href="/app/billing" className="underline">
+                update your billing
+              </a>{' '}
+              or contact support to reactivate.
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

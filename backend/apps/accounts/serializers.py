@@ -19,6 +19,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source="business.name", read_only=True, default=None)
+    business_status = serializers.CharField(source="business.status", read_only=True, default=None)
 
     class Meta:
         model = User
@@ -32,6 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "business_id",
             "business_name",
+            "business_status",
         ]
         read_only_fields = fields
 

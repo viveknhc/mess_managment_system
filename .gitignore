@@ -36,3 +36,6 @@ htmlcov/
 
 # Docker
 postgres_data/
+
+# Local-only demo logins (never push — repo is public)
+docs/login-credentials.html

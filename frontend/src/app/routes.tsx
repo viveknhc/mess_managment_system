@@ -1,9 +1,13 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
 import { AdminLayout } from '../layouts/AdminLayout'
 import { CustomerLayout } from '../layouts/CustomerLayout'
 import { StaffLayout } from '../layouts/StaffLayout'
+import { PlatformLayout } from '../layouts/PlatformLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
+import { LandingPage } from '../features/landing/LandingPage'
+import { SignupPage } from '../features/platform/SignupPage'
 import { PortalDashboard } from '../features/portal/PortalDashboard'
 import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
 import { PortalPaymentsPage } from '../features/portal/PortalPaymentsPage'
@@ -23,16 +27,41 @@ import { StaffPage } from '../features/staff/StaffPage'
 import { TodayDeliveriesPage } from '../features/deliveries/TodayDeliveriesPage'
 import { PaymentsPage } from '../features/payments/PaymentsPage'
 import { SubscriptionsPage } from '../features/subscriptions/SubscriptionsPage'
+import { BillingPage } from '../features/platform/BillingPage'
+import { PlatformDashboardPage } from '../features/platform/PlatformDashboardPage'
+import { BusinessesListPage } from '../features/platform/BusinessesListPage'
+import { PlatformPlansPage } from '../features/platform/PlatformPlansPage'
+import { PlatformPaymentsPage } from '../features/platform/PlatformPaymentsPage'
+
+function roleHome(role?: string) {
+  if (role === 'SUPER_ADMIN') return '/platform'
+  if (role === 'CUSTOMER') return '/portal'
+  if (role === 'DELIVERY_STAFF' || role === 'KITCHEN_STAFF') return '/staff'
+  return '/app'
+}
+
+function RoleRedirect() {
+  const user = useAuthStore((s) => s.user)
+  return <Navigate to={roleHome(user?.role)} replace />
+}
+
+function LandingOrDashboard() {
+  const { isAuthenticated, user } = useAuthStore()
+  if (isAuthenticated) return <Navigate to={roleHome(user?.role)} replace />
+  return <LandingPage />
+}
 
 export function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
+      <Route path="/" element={<LandingOrDashboard />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
 
-      {/* Admin routes — Owner + Manager */}
-      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'SUPER_ADMIN']} />}>
-        <Route path="/" element={<AdminLayout />}>
+      {/* Admin routes — Owner + Manager (not SUPER_ADMIN — they use /platform) */}
+      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER']} />}>
+        <Route path="/app" element={<AdminLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailsPage />} />
@@ -45,6 +74,17 @@ export function AppRoutes() {
           <Route path="staff" element={<StaffPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
+          <Route path="billing" element={<BillingPage />} />
+        </Route>
+      </Route>
+
+      {/* Platform admin — SUPER_ADMIN only */}
+      <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+        <Route path="/platform" element={<PlatformLayout />}>
+          <Route index element={<PlatformDashboardPage />} />
+          <Route path="businesses" element={<BusinessesListPage />} />
+          <Route path="plans" element={<PlatformPlansPage />} />
+          <Route path="payments" element={<PlatformPaymentsPage />} />
         </Route>
       </Route>
 
@@ -73,8 +113,8 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch all — role-aware redirect */}
+      <Route path="*" element={<RoleRedirect />} />
     </Routes>
   )
 }

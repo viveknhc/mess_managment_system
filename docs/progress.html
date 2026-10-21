@@ -379,6 +379,23 @@
           { id: "SD-05", title: "DB backup + restore rehearsal", done: false, pri: "P1" },
           { id: "SD-06", title: "Final polish + tag v0.1.0-mvp", done: false, pri: "P2" },
         ]},
+      { id: 17, name: "SaaS Billing", status: "completed", total: 13, done: 13,
+        desc: "Monthly billing — 30-day trial, Razorpay payments, platform admin, auto-suspension",
+        tasks: [
+          { id: "SB-01", title: "Platform app + models (SaasPlan, SaasSubscription, SaasPayment)", done: true, pri: "P0" },
+          { id: "SB-02", title: "IsSuperAdmin permission class", done: true, pri: "P0" },
+          { id: "SB-03", title: "PlatformService (trial, activate, suspend, reactivate)", done: true, pri: "P0" },
+          { id: "SB-04", title: "Bootstrap command calls start_trial()", done: true, pri: "P0" },
+          { id: "SB-05", title: "Quota enforcement in TenantScopedViewSet", done: true, pri: "P0" },
+          { id: "SB-06", title: "Suspension check in TenantScopedViewSet", done: true, pri: "P0" },
+          { id: "SB-07", title: "RazorpayClient wrapper + webhook handler", done: true, pri: "P0" },
+          { id: "SB-08", title: "Celery tasks (trial expiry, past-due check)", done: true, pri: "P0" },
+          { id: "SB-09", title: "Views + serializers + URLs (signup, billing, platform admin)", done: true, pri: "P0" },
+          { id: "SB-10", title: "Backend tests (29 tests — trial, quota, suspension, webhook)", done: true, pri: "P0" },
+          { id: "SB-11", title: "Frontend: SignupPage + BillingPage", done: true, pri: "P0" },
+          { id: "SB-12", title: "Frontend: PlatformLayout + admin pages (dashboard, businesses, plans, payments)", done: true, pri: "P0" },
+          { id: "SB-13", title: "Frontend: Suspended banner + auth store + routes", done: true, pri: "P0" },
+        ]},
     ];
 
     const techStack = [
@@ -394,6 +411,7 @@
       { name: "Zustand", cat: "Auth State" },
       { name: "TanStack Query", cat: "Data Fetching" },
       { name: "Recharts", cat: "Charts" },
+      { name: "Razorpay", cat: "Payments" },
     ];
 
     // ── Compute stats ──
@@ -456,7 +474,7 @@
     // Group modules by status
     const backendModules = modules.filter(m => m.id <= 9);
     const frontendHeavy = modules.filter(m => m.id >= 10 && m.id <= 15);
-    const finalModule = modules.filter(m => m.id === 16);
+    const finalModule = modules.filter(m => m.id >= 16);
     const backendDone = backendModules.reduce((s,m) => s + m.done, 0);
     const backendTotal = backendModules.reduce((s,m) => s + m.total, 0);
     const featureDone = frontendHeavy.reduce((s,m) => s + m.done, 0);
@@ -502,7 +520,7 @@
           </div>
           <div class="legend-row">
             <span class="legend-dot" style="background:#f59e0b"></span>
-            <span class="legend-label">Finalization (16)</span>
+            <span class="legend-label">Finalization + Billing (16-17)</span>
             <span class="legend-count">${finalDone}/${finalTotal}</span>
             <div class="legend-bar"><div class="legend-bar-fill" style="width:${finalTotal > 0 ? Math.round(finalDone/finalTotal*100) : 0}%;background:#f59e0b"></div></div>
           </div>
@@ -519,7 +537,7 @@
     const timelineLabels = [
       "Foundation", "Auth", "Business", "Staff", "Customers", "Meals", "Plans",
       "Subs", "Payments", "Delivery", "Dash", "Notif", "Reports", "Settings",
-      "Audit", "Portal", "Demo"
+      "Audit", "Portal", "Demo", "Billing"
     ];
     modules.forEach((m, i) => {
       const cls = m.status === "completed" ? "done" : m.status === "in_progress" ? "current" : "pending";
@@ -535,13 +553,12 @@
     // What's next
     html += `
       <div class="next-section">
-        <h2>Up Next — Module 16: Seed Data & Demo</h2>
+        <h2>Up Next — Finalize MVP</h2>
         <div class="next-items">
-          <div class="next-item"><span class="next-num">1</span> Create seed command: 1 business, 3 staff, 20 customers, 5 plans, 20+ subscriptions, 50+ payments, 100+ deliveries</div>
-          <div class="next-item"><span class="next-num">2</span> Build reset command (flush + reseed) for quick demo resets</div>
-          <div class="next-item"><span class="next-num">3</span> Rahul demo dry-run — walk through all 12 demo steps end-to-end</div>
-          <div class="next-item"><span class="next-num">4</span> Verify Definition-of-Done checklist (14 admin items + 5 customer items)</div>
-          <div class="next-item"><span class="next-num">5</span> DB backup/restore rehearsal + final polish + tag v0.1.0-mvp</div>
+          <div class="next-item"><span class="next-num">1</span> Module 16: DB backup/restore rehearsal (SD-05)</div>
+          <div class="next-item"><span class="next-num">2</span> Module 16: Final polish + tag v0.1.0-mvp (SD-06)</div>
+          <div class="next-item"><span class="next-num">3</span> Configure Razorpay production keys + webhook endpoint</div>
+          <div class="next-item"><span class="next-num">4</span> Deploy to production — trial → paid flow end-to-end test</div>
         </div>
       </div>
     `;

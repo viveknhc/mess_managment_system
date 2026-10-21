@@ -31,6 +31,7 @@ class PlanViewSet(TenantScopedViewSet):
     serializer_class = PlanListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = PlanFilter
+    ordering_fields = ["name", "meal__name", "duration_days", "total_meals", "price", "is_active", "created_at"]
 
     role_map = {
         "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],

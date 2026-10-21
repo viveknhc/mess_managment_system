@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 
 export function LoginPage() {
@@ -16,7 +16,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate('/')
+      navigate('/app')
     } catch {
       setError('Invalid username or password')
     } finally {
@@ -76,6 +76,13 @@ export function LoginPage() {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-gray-500">
+          New to Mess Manager?{' '}
+          <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            Start free trial
+          </Link>
+        </p>
       </div>
     </div>
   )

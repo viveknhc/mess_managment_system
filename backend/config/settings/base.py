@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.settings_app",
     "apps.audit",
+    "apps.platform",
 ]
 
 MIDDLEWARE = [
@@ -116,7 +117,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardPagination",
     "PAGE_SIZE": 20,
-    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "common.filters.StableOrderingFilter",
+    ),
     "EXCEPTION_HANDLER": "common.exceptions.api_exception_handler",
     "DEFAULT_THROTTLE_RATES": {
         "auth": "5/min",
@@ -138,3 +142,18 @@ SIMPLE_JWT = {
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
 CELERY_TASK_ACKS_LATE = True
+CELERY_BEAT_SCHEDULE = {
+    "check-trial-expirations": {
+        "task": "apps.platform.tasks.check_trial_expirations",
+        "schedule": 86400,  # daily
+    },
+    "check-past-due-subscriptions": {
+        "task": "apps.platform.tasks.check_past_due_subscriptions",
+        "schedule": 86400,  # daily
+    },
+}
+
+# --- Razorpay (SaaS billing) ---
+RAZORPAY_KEY_ID = env.str("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = env.str("RAZORPAY_KEY_SECRET", default="")
+RAZORPAY_WEBHOOK_SECRET = env.str("RAZORPAY_WEBHOOK_SECRET", default="")

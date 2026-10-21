@@ -29,6 +29,7 @@ class MealViewSet(TenantScopedViewSet):
     serializer_class = MealSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = MealFilter
+    ordering_fields = ["name", "price", "is_active", "created_at"]
 
     role_map = {
         "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],

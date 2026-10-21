@@ -10,6 +10,7 @@ from apps.deliveries.models import Delivery
 from apps.deliveries.serializers import DeliveryListSerializer, DeliveryStatusUpdateSerializer
 from apps.deliveries.services import DeliverySelector, DeliveryService
 from common.constants import Role
+from common.filters import StableOrderingFilter
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
 
@@ -41,6 +42,15 @@ class DeliveryViewSet(TenantScopedViewSet):
     serializer_class = DeliveryListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = DeliveryFilter
+    ordering_fields = [
+        "delivery_date",
+        "customer__name",
+        "customer__address",
+        "meal__name",
+        "status",
+        "assigned_staff__name",
+        "delivered_at",
+    ]
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     role_map = {
@@ -62,6 +72,7 @@ class DeliveryViewSet(TenantScopedViewSet):
     def today(self, request):
         """GET /deliveries/today/ — today's deliveries."""
         qs = DeliverySelector.get_today(request.user.business_id)
+        qs = StableOrderingFilter().filter_queryset(request, qs, self)
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = DeliveryListSerializer(page, many=True)

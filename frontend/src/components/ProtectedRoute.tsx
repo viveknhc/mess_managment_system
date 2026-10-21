@@ -28,7 +28,11 @@ export function ProtectedRoute({ allowedRoles }: Props) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />
+    // Role-aware redirect
+    if (user.role === 'SUPER_ADMIN') return <Navigate to="/platform" replace />
+    if (user.role === 'CUSTOMER') return <Navigate to="/portal" replace />
+    if (user.role === 'DELIVERY_STAFF' || user.role === 'KITCHEN_STAFF') return <Navigate to="/staff" replace />
+    return <Navigate to="/app" replace />
   }
 
   return <Outlet />

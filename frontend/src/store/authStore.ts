@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiClient } from '../services/apiClient'
+import { tokenStorage } from '../services/tokenStorage'
 
 export interface User {
   id: string
@@ -11,6 +12,7 @@ export interface User {
   is_active: boolean
   business_id: string | null
   business_name: string | null
+  business_status: string | null
 }
 
 interface AuthState {
@@ -25,18 +27,17 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  isAuthenticated: !!tokenStorage.getAccess(),
   isLoading: false,
 
   login: async (username, password) => {
     const { data } = await apiClient.post('/auth/login/', { username, password })
-    localStorage.setItem('access_token', data.access)
-    localStorage.setItem('refresh_token', data.refresh)
+    tokenStorage.setTokens(data.access, data.refresh)
     set({ user: data.user, isAuthenticated: true })
   },
 
   logout: async () => {
-    const refresh = localStorage.getItem('refresh_token')
+    const refresh = tokenStorage.getRefresh()
     try {
       if (refresh) {
         await apiClient.post('/auth/logout/', { refresh })
@@ -44,8 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // Ignore errors during logout
     }
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    tokenStorage.clear()
     set({ user: null, isAuthenticated: false })
   },
 
@@ -55,15 +55,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data } = await apiClient.get('/auth/me/')
       set({ user: data, isAuthenticated: true, isLoading: false })
     } catch {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
+      tokenStorage.clear()
       set({ user: null, isAuthenticated: false, isLoading: false })
     }
   },
 
   reset: () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    tokenStorage.clear()
     set({ user: null, isAuthenticated: false, isLoading: false })
   },
 }))

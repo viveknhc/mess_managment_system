@@ -37,6 +37,15 @@ class PaymentViewSet(TenantScopedViewSet):
     serializer_class = PaymentListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = PaymentFilter
+    ordering_fields = [
+        "payment_date",
+        "customer__name",
+        "subscription__plan__name",
+        "method",
+        "amount",
+        "status",
+        "created_at",
+    ]
     http_method_names = ["get", "post", "head", "options"]
 
     role_map = {

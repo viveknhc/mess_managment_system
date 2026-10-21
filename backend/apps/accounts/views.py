@@ -95,6 +95,7 @@ class StaffViewSet(TenantScopedViewSet):
     queryset = User.objects.all()
     serializer_class = StaffListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
+    ordering_fields = ["name", "username", "email", "phone", "role", "is_active", "date_joined"]
 
     role_map = {
         "list": [Role.OWNER, Role.MANAGER],

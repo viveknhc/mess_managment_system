@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 _STATUS_TO_CODE = {
     400: "VALIDATION_ERROR",
     401: "AUTH_INVALID",
+    402: "QUOTA_EXCEEDED",
     403: "PERMISSION_DENIED",
     404: "NOT_FOUND",
     429: "RATE_LIMITED",

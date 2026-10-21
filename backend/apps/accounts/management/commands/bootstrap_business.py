@@ -55,6 +55,12 @@ class Command(BaseCommand):
             for meal_name in DEFAULT_MEALS:
                 Meal.objects.create(business=business, name=meal_name)
 
+            # Start 30-day free trial
+            from apps.platform.services import PlatformService
+
+            sub = PlatformService.start_trial(business)
+
         self.stdout.write(self.style.SUCCESS(f"Business '{business.name}' (id={business.id}) created."))
         self.stdout.write(self.style.SUCCESS(f"Owner '{user.username}' (id={user.id}) created."))
         self.stdout.write(self.style.SUCCESS(f"Default meals created: {', '.join(DEFAULT_MEALS)}"))
+        self.stdout.write(self.style.SUCCESS(f"Trial started — expires {sub.trial_end_date}"))

@@ -1,10 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { nextSort, type SortDir, type SortState } from './tableSort'
 
-export type SortDir = 'asc' | 'desc'
-export interface SortState {
-  key: string
-  dir: SortDir
-}
+export type { SortDir, SortState }
 
 type SortPrimitive = string | number | boolean | null | undefined
 
@@ -52,18 +49,6 @@ interface Props<T> {
 const PAGE_SIZES = [10, 20, 50, 100]
 const ALIGN = { left: 'text-left', right: 'text-right', center: 'text-center' } as const
 const JUSTIFY = { left: 'justify-start', right: 'justify-end', center: 'justify-center' } as const
-
-/** asc → desc → off */
-export function nextSort(current: SortState | null | undefined, key: string): SortState | null {
-  if (!current || current.key !== key) return { key, dir: 'asc' }
-  if (current.dir === 'asc') return { key, dir: 'desc' }
-  return null
-}
-
-export function toOrdering(sort: SortState | null | undefined): string | undefined {
-  if (!sort) return undefined
-  return sort.dir === 'desc' ? `-${sort.key}` : sort.key
-}
 
 function compare(a: SortPrimitive, b: SortPrimitive): number {
   const aEmpty = a === null || a === undefined || a === ''

@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { platformApi, type SaasPlan } from './platformApi'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { useServerTable } from '../../hooks/useServerTable'
 
 type PlanWithAdmin = SaasPlan & { razorpay_plan_id: string; is_active: boolean }
 
@@ -15,24 +17,28 @@ const emptyPlan: Partial<PlanWithAdmin> = {
 
 export function PlatformPlansPage() {
   const [plans, setPlans] = useState<PlanWithAdmin[]>([])
+  const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingPlan, setEditingPlan] = useState<Partial<PlanWithAdmin>>(emptyPlan)
   const [editId, setEditId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [featuresText, setFeaturesText] = useState('')
+  const table = useServerTable()
+  const { params: tableParams } = table
 
   const fetchPlans = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await platformApi.getPlans()
+      const data = await platformApi.getPlans(tableParams)
       setPlans(data.results)
+      setCount(data.count)
     } catch {
       // ignore
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [tableParams])
 
   useEffect(() => {
     fetchPlans()
@@ -42,13 +48,6 @@ export function PlatformPlansPage() {
     setEditId(null)
     setEditingPlan(emptyPlan)
     setFeaturesText('')
-    setShowForm(true)
-  }
-
-  function openEdit(plan: PlanWithAdmin) {
-    setEditId(plan.id)
-    setEditingPlan(plan)
-    setFeaturesText(plan.features.join('\n'))
     setShowForm(true)
   }
 
@@ -73,11 +72,101 @@ export function PlatformPlansPage() {
     fetchPlans()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this plan?')) return
-    await platformApi.deletePlan(id)
-    fetchPlans()
-  }
+  const columns = useMemo<Column<PlanWithAdmin>[]>(() => {
+    function openEdit(plan: PlanWithAdmin) {
+      setEditId(plan.id)
+      setEditingPlan(plan)
+      setFeaturesText(plan.features.join('\n'))
+      setShowForm(true)
+    }
+
+    async function handleDelete(id: string) {
+      if (!confirm('Delete this plan?')) return
+      await platformApi.deletePlan(id)
+      fetchPlans()
+    }
+
+    return [
+      {
+        key: 'name',
+        header: 'Name',
+        sortable: true,
+        className: 'font-medium text-gray-900',
+        render: (plan) => plan.name,
+      },
+      {
+        key: 'price_monthly',
+        header: 'Price / month',
+        sortable: true,
+        align: 'right',
+        className: 'whitespace-nowrap font-medium text-gray-900',
+        render: (plan) => <>&#8377;{plan.price_monthly}</>,
+      },
+      {
+        key: 'max_customers',
+        header: 'Max Customers',
+        sortable: true,
+        align: 'right',
+        className: 'text-gray-700',
+        render: (plan) => (plan.max_customers === 0 ? 'Unlimited' : plan.max_customers),
+      },
+      {
+        key: 'max_staff',
+        header: 'Max Staff',
+        sortable: true,
+        align: 'right',
+        className: 'text-gray-700',
+        render: (plan) => (plan.max_staff === 0 ? 'Unlimited' : plan.max_staff),
+      },
+      {
+        key: 'features',
+        header: 'Features',
+        className: 'max-w-xs text-xs text-gray-600',
+        render: (plan) =>
+          plan.features.length === 0 ? (
+            <span className="text-gray-400">—</span>
+          ) : (
+            <span className="line-clamp-2" title={plan.features.join('\n')}>
+              {plan.features.join(', ')}
+            </span>
+          ),
+      },
+      {
+        key: 'is_active',
+        header: 'Status',
+        sortable: true,
+        render: (plan) => (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              plan.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {plan.is_active ? 'Active' : 'Inactive'}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        render: (plan) => (
+          <div className="flex gap-2">
+            <button
+              onClick={() => openEdit(plan)}
+              className="rounded bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => handleDelete(plan.id)}
+              className="rounded bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
+            >
+              Delete
+            </button>
+          </div>
+        ),
+      },
+    ]
+  }, [fetchPlans])
 
   return (
     <div className="p-6">
@@ -91,60 +180,22 @@ export function PlatformPlansPage() {
         </button>
       </div>
 
-      {/* Plan Cards */}
-      {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <div key={plan.id} className="rounded-xl border border-gray-200 bg-white p-6">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    plan.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  {plan.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                &#8377;{plan.price_monthly}
-                <span className="text-sm font-normal text-gray-500">/mo</span>
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                {plan.max_customers === 0 ? 'Unlimited' : plan.max_customers} customers |{' '}
-                {plan.max_staff === 0 ? 'Unlimited' : plan.max_staff} staff
-              </p>
-              {plan.features.length > 0 && (
-                <ul className="mt-3 space-y-1">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="text-xs text-gray-600">
-                      &#10003; {f}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => openEdit(plan)}
-                  className="rounded bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(plan.id)}
-                  className="rounded bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        rows={plans}
+        rowKey={(plan) => plan.id}
+        loading={loading}
+        emptyMessage="No plans yet."
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pagination={{
+          page: table.page,
+          pageSize: table.pageSize,
+          count,
+          onPageChange: table.setPage,
+          onPageSizeChange: table.setPageSize,
+        }}
+      />
 
       {/* Form Modal */}
       {showForm && (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { toOrdering, type SortState } from '../components/ui/DataTable'
+import { toOrdering, type SortState } from '../components/ui/tableSort'
 
 /**
  * Page / page-size / sort state for a server-paginated DataTable.

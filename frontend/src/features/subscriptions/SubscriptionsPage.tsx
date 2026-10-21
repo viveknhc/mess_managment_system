@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { SubscriptionForm } from './SubscriptionForm'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { useServerTable } from '../../hooks/useServerTable'
 
 interface Subscription {
   id: string
@@ -44,16 +46,17 @@ export function SubscriptionsPage() {
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
   const [actionError, setActionError] = useState('')
+  const table = useServerTable()
+  const { params: tableParams, setPage } = table
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
 
   const fetchSubs = useCallback(async () => {
     setLoading(true)
     try {
-      const params: Record<string, string> = { page: String(page) }
+      const params: Record<string, string> = { ...tableParams }
       if (statusFilter) params.status = statusFilter
       const { data } = await apiClient.get('/subscriptions/', { params })
       setSubs(data.results)
@@ -63,10 +66,10 @@ export function SubscriptionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, statusFilter])
+  }, [tableParams, statusFilter])
 
   useEffect(() => { fetchSubs() }, [fetchSubs])
-  useEffect(() => { setPage(1) }, [statusFilter])
+  useEffect(() => { setPage(1) }, [statusFilter, setPage])
 
   async function handleAction(subId: string, action: string) {
     setActionError('')
@@ -81,14 +84,95 @@ export function SubscriptionsPage() {
     }
   }
 
-  const totalPages = Math.ceil(count / 20)
+  const inr = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
+  const actionBtn = 'rounded px-2 py-1 text-xs font-medium'
 
-  if (loading && subs.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
-    )
+  const columns: Column<Subscription>[] = [
+    {
+      key: 'customer__name',
+      header: 'Customer',
+      sortable: true,
+      render: (s) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-900">{s.customer_name}</span>
+          {s.is_expiring && (
+            <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">Expiring</span>
+          )}
+        </div>
+      ),
+    },
+    { key: 'plan__name', header: 'Plan', sortable: true, className: 'text-gray-600', render: (s) => s.plan_name },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (s) => (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[s.status] || ''}`}>{s.status}</span>
+      ),
+    },
+    { key: 'start_date', header: 'Start', sortable: true, className: 'whitespace-nowrap text-gray-600', render: (s) => s.start_date },
+    {
+      key: 'end_date',
+      header: 'End',
+      sortable: true,
+      className: 'whitespace-nowrap',
+      render: (s) => (
+        <>
+          <div className="text-gray-600">{s.end_date}</div>
+          <div className="text-xs text-gray-400">{s.remaining_days} days left</div>
+        </>
+      ),
+    },
+    { key: 'remaining_meals', header: 'Meals left', sortable: true, align: 'right', className: 'text-gray-600', render: (s) => s.remaining_meals },
+    {
+      key: 'paid_amount',
+      header: 'Paid',
+      sortable: true,
+      align: 'right',
+      className: 'whitespace-nowrap',
+      render: (s) => (
+        <>
+          <div className="font-semibold text-gray-900">{inr(s.paid_amount)}</div>
+          <div className="text-xs text-gray-500">of {inr(s.total_amount)}</div>
+        </>
+      ),
+    },
+    {
+      key: 'pending_amount',
+      header: 'Pending',
+      sortable: true,
+      align: 'right',
+      className: 'whitespace-nowrap',
+      render: (s) =>
+        Number(s.pending_amount) > 0 ? <span className="font-medium text-red-600">{inr(s.pending_amount)}</span> : <span className="text-gray-400">—</span>,
+    },
+  ]
+
+  if (canWrite) {
+    columns.push({
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (s) => (
+        <div className="flex justify-end gap-1">
+          {s.status === 'ACTIVE' && (
+            <>
+              <button onClick={() => handleAction(s.id, 'pause')} className={`${actionBtn} text-blue-600 hover:bg-blue-50`}>Pause</button>
+              <button onClick={() => handleAction(s.id, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+            </>
+          )}
+          {s.status === 'PAUSED' && (
+            <button onClick={() => handleAction(s.id, 'resume')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Resume</button>
+          )}
+          {s.status === 'PENDING' && (
+            <button onClick={() => handleAction(s.id, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+          )}
+          {(s.status === 'EXPIRED' || s.status === 'CANCELLED') && (
+            <button onClick={() => handleAction(s.id, 'renew')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Renew</button>
+          )}
+        </div>
+      ),
+    })
   }
 
   return (
@@ -129,88 +213,22 @@ export function SubscriptionsPage() {
         ))}
       </div>
 
-      {subs.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <p className="text-gray-500">
-            {statusFilter ? `No ${STATUS_LABELS[statusFilter].toLowerCase()} subscriptions` : 'No subscriptions yet'}
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-3">
-            {subs.map((sub) => (
-              <div key={sub.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">{sub.customer_name}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[sub.status] || ''}`}>
-                        {sub.status}
-                      </span>
-                      {sub.is_expiring && (
-                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                          Expiring
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-gray-500">{sub.plan_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-gray-900">₹{Number(sub.paid_amount).toLocaleString('en-IN')}</div>
-                    <div className="text-xs text-gray-500">of ₹{Number(sub.total_amount).toLocaleString('en-IN')}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex gap-6 text-xs text-gray-600">
-                  <span>{sub.start_date} → {sub.end_date}</span>
-                  <span>{sub.remaining_days} days left</span>
-                  <span>{sub.remaining_meals} meals left</span>
-                  {Number(sub.pending_amount) > 0 && (
-                    <span className="font-medium text-red-600">₹{Number(sub.pending_amount).toLocaleString('en-IN')} pending</span>
-                  )}
-                </div>
-
-                {canWrite && (
-                  <div className="mt-3 flex gap-2 border-t border-gray-100 pt-3">
-                    {sub.status === 'ACTIVE' && (
-                      <>
-                        <button onClick={() => handleAction(sub.id, 'pause')}
-                          className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50">Pause</button>
-                        <button onClick={() => handleAction(sub.id, 'cancel')}
-                          className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Cancel</button>
-                      </>
-                    )}
-                    {sub.status === 'PAUSED' && (
-                      <button onClick={() => handleAction(sub.id, 'resume')}
-                        className="rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50">Resume</button>
-                    )}
-                    {sub.status === 'PENDING' && (
-                      <button onClick={() => handleAction(sub.id, 'cancel')}
-                        className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Cancel</button>
-                    )}
-                    {(sub.status === 'EXPIRED' || sub.status === 'CANCELLED') && (
-                      <button onClick={() => handleAction(sub.id, 'renew')}
-                        className="rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50">Renew</button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-gray-500">Page {page} of {totalPages}</p>
-              <div className="flex gap-2">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">Previous</button>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">Next</button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      <DataTable
+        columns={columns}
+        rows={subs}
+        rowKey={(s) => s.id}
+        loading={loading}
+        emptyMessage={statusFilter ? `No ${STATUS_LABELS[statusFilter].toLowerCase()} subscriptions` : 'No subscriptions yet'}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pagination={{
+          page: table.page,
+          pageSize: table.pageSize,
+          count,
+          onPageChange: table.setPage,
+          onPageSizeChange: table.setPageSize,
+        }}
+      />
 
       {showForm && (
         <SubscriptionForm

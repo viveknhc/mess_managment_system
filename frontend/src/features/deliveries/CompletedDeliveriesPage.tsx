@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { DataTable, type Column } from '../../components/ui/DataTable'
 
 interface DeliveryItem {
   id: string
@@ -7,6 +8,7 @@ interface DeliveryItem {
   meal_name: string
   delivery_date: string
   status: string
+  delivered_at: string | null
   notes: string
 }
 
@@ -17,13 +19,56 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-gray-100 text-gray-400',
 }
 
+const columns: Column<DeliveryItem>[] = [
+  {
+    key: 'customer_name',
+    header: 'Customer',
+    sortable: true,
+    className: 'font-medium text-gray-900',
+    render: (d) => d.customer_name,
+  },
+  { key: 'meal_name', header: 'Meal', sortable: true, className: 'text-gray-500', render: (d) => d.meal_name },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    render: (d) => (
+      <span
+        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${
+          STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        {d.status.replace(/_/g, ' ')}
+      </span>
+    ),
+  },
+  {
+    key: 'delivered_at',
+    header: 'Time',
+    sortable: true,
+    className: 'whitespace-nowrap text-gray-500',
+    sortValue: (d) => (d.delivered_at ? new Date(d.delivered_at).getTime() : null),
+    render: (d) =>
+      d.delivered_at ? new Date(d.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+  },
+  {
+    key: 'delivery_date',
+    header: 'Date',
+    sortable: true,
+    className: 'whitespace-nowrap text-gray-500',
+    render: (d) => d.delivery_date,
+  },
+]
+
 export function CompletedDeliveriesPage() {
   const [items, setItems] = useState<DeliveryItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // /deliveries/today/ is paginated (20 by default); request the max page size (100)
+    // so the client-side filter below sees all of today's deliveries, not just page 1.
     apiClient
-      .get('/deliveries/today/')
+      .get('/deliveries/today/', { params: { page_size: '100' } })
       .then((res) => {
         const all: DeliveryItem[] = res.data.results ?? res.data
         setItems(all.filter((d) => d.status !== 'PENDING' && d.status !== 'OUT_FOR_DELIVERY'))
@@ -49,28 +94,7 @@ export function CompletedDeliveriesPage() {
           <p className="text-gray-500">Nothing completed yet today</p>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((d) => (
-            <li
-              key={d.id}
-              className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
-            >
-              <div>
-                <p className="text-sm font-medium text-gray-900">{d.customer_name}</p>
-                <p className="text-xs text-gray-500">
-                  {d.meal_name} · {d.delivery_date}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {d.status.replace(/_/g, ' ')}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <DataTable columns={columns} rows={items} rowKey={(d) => d.id} emptyMessage="Nothing completed yet today" />
       )}
     </div>
   )

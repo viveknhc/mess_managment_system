@@ -135,10 +135,8 @@ export const billingApi = {
 // ── Platform Admin API (SUPER_ADMIN) ─────────────────────────────────────
 
 export const platformApi = {
-  async getBusinesses(page = 1) {
-    const { data } = await apiClient.get<PaginatedResponse<PlatformBusiness>>(
-      `/platform/businesses/?page=${page}`,
-    )
+  async getBusinesses(params: Record<string, string> = {}) {
+    const { data } = await apiClient.get<PaginatedResponse<PlatformBusiness>>('/platform/businesses/', { params })
     return data
   },
 
@@ -162,9 +160,10 @@ export const platformApi = {
     }
   },
 
-  async getPlans() {
+  async getPlans(params: Record<string, string> = {}) {
     const { data } = await apiClient.get<PaginatedResponse<SaasPlan & { razorpay_plan_id: string; is_active: boolean }>>(
       '/platform/plans/',
+      { params },
     )
     return data
   },
@@ -196,10 +195,8 @@ export const platformApi = {
     }
   },
 
-  async getPayments(page = 1) {
-    const { data } = await apiClient.get<PaginatedResponse<SaasPayment>>(
-      `/platform/payments/?page=${page}`,
-    )
+  async getPayments(params: Record<string, string> = {}) {
+    const { data } = await apiClient.get<PaginatedResponse<SaasPayment>>('/platform/payments/', { params })
     return data
   },
 

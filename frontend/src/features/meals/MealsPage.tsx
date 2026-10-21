@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { useServerTable } from '../../hooks/useServerTable'
 
 interface Meal {
   id: string
@@ -12,28 +14,32 @@ interface Meal {
 
 export function MealsPage() {
   const [meals, setMeals] = useState<Meal[]>([])
+  const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Meal | null>(null)
   const [error, setError] = useState('')
+  const table = useServerTable()
+  const { params: tableParams } = table
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
 
-  async function fetchMeals() {
+  const fetchMeals = useCallback(async () => {
     setLoading(true)
     try {
-      const { data } = await apiClient.get('/meals/')
+      const { data } = await apiClient.get('/meals/', { params: tableParams })
       setMeals(data.results)
+      setCount(data.count)
     } catch {
       setError('Failed to load meals')
     } finally {
       setLoading(false)
     }
-  }
+  }, [tableParams])
 
   useEffect(() => {
     fetchMeals()
-  }, [])
+  }, [fetchMeals])
 
   async function handleToggleActive(meal: Meal) {
     try {
@@ -44,12 +50,69 @@ export function MealsPage() {
     }
   }
 
-  if (loading && meals.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
-    )
+  const columns: Column<Meal>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      render: (meal) => (
+        <>
+          <div className="font-medium text-gray-900">{meal.name}</div>
+          {meal.description && <div className="text-xs text-gray-500">{meal.description}</div>}
+        </>
+      ),
+    },
+    {
+      key: 'price',
+      header: 'Price',
+      sortable: true,
+      align: 'right',
+      className: 'font-medium text-gray-700',
+      render: (meal) => (meal.price ? `₹${Number(meal.price).toFixed(2)}` : '—'),
+    },
+    {
+      key: 'is_active',
+      header: 'Status',
+      sortable: true,
+      render: (meal) => (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            meal.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {meal.is_active ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+  ]
+
+  if (canWrite) {
+    columns.push({
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (meal) => (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditing(meal)
+              setShowForm(true)
+            }}
+            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleToggleActive(meal)}
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              meal.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            {meal.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+        </div>
+      ),
+    })
   }
 
   return (
@@ -76,7 +139,7 @@ export function MealsPage() {
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {meals.length === 0 ? (
+      {!loading && count === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <p className="text-gray-500">No meals yet</p>
           {canWrite && (
@@ -89,58 +152,22 @@ export function MealsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {meals.map((meal) => (
-            <div
-              key={meal.id}
-              className={`flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm ${
-                meal.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'
-              }`}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-gray-900">{meal.name}</h3>
-                  {!meal.is_active && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                {meal.description && (
-                  <p className="mt-1 text-xs text-gray-500">{meal.description}</p>
-                )}
-                {meal.price && (
-                  <p className="mt-1 text-sm font-medium text-gray-700">
-                    ₹{Number(meal.price).toFixed(2)}
-                  </p>
-                )}
-              </div>
-              {canWrite && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setEditing(meal)
-                      setShowForm(true)
-                    }}
-                    className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(meal)}
-                    className={`rounded px-2 py-1 text-xs font-medium ${
-                      meal.is_active
-                        ? 'text-red-600 hover:bg-red-50'
-                        : 'text-green-600 hover:bg-green-50'
-                    }`}
-                  >
-                    {meal.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <DataTable
+          columns={columns}
+          rows={meals}
+          rowKey={(meal) => meal.id}
+          loading={loading}
+          rowClassName={(meal) => (meal.is_active ? '' : 'opacity-60')}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          pagination={{
+            page: table.page,
+            pageSize: table.pageSize,
+            count,
+            onPageChange: table.setPage,
+            onPageSizeChange: table.setPageSize,
+          }}
+        />
       )}
 
       {showForm && (

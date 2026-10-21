@@ -74,7 +74,9 @@ def test_ordering_on_related_field(api, biz, plans):
     cust_a = Customer.objects.create(business=biz, name="Amy")
     today = datetime.date.today()
     for cust in (cust_z, cust_a):
-        SubscriptionService.create_subscription(business_id=biz.id, customer=cust, plan=plans[0], start_date=today)
+        SubscriptionService.create_subscription(
+            business_id=biz.id, customer=cust, plan=plans[0], start_date=today
+        )
 
     resp = api.get("/api/v1/subscriptions/?ordering=customer__name")
     assert names(resp, "customer_name") == ["Amy", "Zed"]

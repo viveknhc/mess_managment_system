@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { DataTable, type Column } from '../../components/ui/DataTable'
 import type { PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
 
@@ -11,6 +12,57 @@ const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-blue-50 text-blue-700',
   CANCELLED: 'bg-red-50 text-red-700',
 }
+
+const formatINR = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
+
+const historyColumns: Column<PortalSubscription>[] = [
+  {
+    key: 'plan_name',
+    header: 'Plan',
+    sortable: true,
+    render: (s) => <span className="font-medium text-gray-900">{s.plan_name}</span>,
+  },
+  {
+    key: 'start_date',
+    header: 'Start',
+    sortable: true,
+    render: (s) => <span className="whitespace-nowrap text-gray-700">{s.start_date}</span>,
+  },
+  {
+    key: 'end_date',
+    header: 'End',
+    sortable: true,
+    render: (s) => <span className="whitespace-nowrap text-gray-700">{s.end_date}</span>,
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    render: (s) => (
+      <span
+        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        {s.status}
+      </span>
+    ),
+  },
+  {
+    key: 'total_amount',
+    header: 'Amount',
+    sortable: true,
+    align: 'right',
+    render: (s) => <span className="whitespace-nowrap text-gray-900">{formatINR(s.total_amount)}</span>,
+  },
+  {
+    key: 'paid_amount',
+    header: 'Paid',
+    sortable: true,
+    align: 'right',
+    render: (s) => <span className="whitespace-nowrap text-gray-700">{formatINR(s.paid_amount)}</span>,
+  },
+]
 
 export function PortalSubscriptionPage() {
   const [subs, setSubs] = useState<PortalSubscription[]>([])
@@ -188,27 +240,15 @@ export function PortalSubscriptionPage() {
           </div>
 
           {subs.length > 1 && (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-              <p className="border-b border-gray-100 px-5 py-3 text-sm font-medium text-gray-700">History</p>
-              <ul className="divide-y divide-gray-100">
-                {subs.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between px-5 py-3 text-sm">
-                    <div>
-                      <p className="font-medium text-gray-900">{s.plan_name}</p>
-                      <p className="text-xs text-gray-500">
-                        {s.start_date} → {s.end_date}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-700">History</p>
+              <DataTable
+                columns={historyColumns}
+                rows={subs}
+                rowKey={(s) => s.id}
+                defaultSort={{ key: 'start_date', dir: 'desc' }}
+                emptyMessage="No subscriptions yet"
+              />
             </div>
           )}
         </>

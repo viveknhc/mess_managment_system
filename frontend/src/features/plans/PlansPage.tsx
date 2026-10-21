@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { useServerTable } from '../../hooks/useServerTable'
 
 interface Meal {
   id: string
@@ -23,33 +25,37 @@ interface Plan {
 
 export function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([])
+  const [count, setCount] = useState(0)
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Plan | null>(null)
   const [error, setError] = useState('')
+  const table = useServerTable()
+  const { params: tableParams } = table
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const [plansRes, mealsRes] = await Promise.all([
-        apiClient.get('/plans/'),
-        apiClient.get('/meals/', { params: { is_active: 'true' } }),
+        apiClient.get('/plans/', { params: tableParams }),
+        apiClient.get('/meals/', { params: { is_active: 'true', page_size: '100' } }),
       ])
       setPlans(plansRes.data.results)
+      setCount(plansRes.data.count)
       setMeals(mealsRes.data.results)
     } catch {
       setError('Failed to load data')
     } finally {
       setLoading(false)
     }
-  }
+  }, [tableParams])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   async function handleToggleActive(plan: Plan) {
     try {
@@ -60,12 +66,84 @@ export function PlansPage() {
     }
   }
 
-  if (loading && plans.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
-    )
+  const columns: Column<Plan>[] = [
+    {
+      key: 'name',
+      header: 'Plan',
+      sortable: true,
+      render: (plan) => (
+        <>
+          <div className="font-medium text-gray-900">{plan.name}</div>
+          {plan.description && <div className="max-w-xs truncate text-xs text-gray-500" title={plan.description}>{plan.description}</div>}
+        </>
+      ),
+    },
+    { key: 'meal__name', header: 'Meal', sortable: true, className: 'text-gray-600', render: (plan) => plan.meal_name },
+    { key: 'duration_days', header: 'Days', sortable: true, align: 'right', className: 'text-gray-600', render: (plan) => plan.duration_days },
+    { key: 'total_meals', header: 'Meals', sortable: true, align: 'right', className: 'text-gray-600', render: (plan) => plan.total_meals },
+    {
+      key: 'price',
+      header: 'Price',
+      sortable: true,
+      align: 'right',
+      className: 'font-semibold text-gray-900',
+      render: (plan) => `₹${Number(plan.price).toLocaleString('en-IN')}`,
+    },
+    {
+      key: 'rules',
+      header: 'Rules',
+      render: (plan) => (
+        <div className="flex gap-1.5">
+          {plan.skip_allowed && (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-blue-700">Skip</span>
+          )}
+          {plan.pause_allowed && (
+            <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-purple-700">Pause</span>
+          )}
+          {!plan.skip_allowed && !plan.pause_allowed && <span className="text-gray-400">—</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'is_active',
+      header: 'Status',
+      sortable: true,
+      render: (plan) => (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            plan.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {plan.is_active ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+  ]
+
+  if (canWrite) {
+    columns.push({
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (plan) => (
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => { setEditing(plan); setShowForm(true) }}
+            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleToggleActive(plan)}
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              plan.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            {plan.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+        </div>
+      ),
+    })
   }
 
   return (
@@ -89,7 +167,7 @@ export function PlansPage() {
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {plans.length === 0 ? (
+      {!loading && count === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <p className="text-gray-500">No plans yet</p>
           {canWrite && (
@@ -102,73 +180,22 @@ export function PlansPage() {
           )}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`rounded-xl border bg-white p-5 shadow-sm ${
-                plan.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'
-              }`}
-            >
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{plan.name}</h3>
-                  <p className="mt-0.5 text-xs text-gray-500">{plan.meal_name}</p>
-                </div>
-                <span className="text-lg font-bold text-gray-900">
-                  ₹{Number(plan.price).toLocaleString('en-IN')}
-                </span>
-              </div>
-
-              {plan.description && (
-                <p className="mb-3 text-xs text-gray-500">{plan.description}</p>
-              )}
-
-              <div className="mb-3 flex gap-4 text-xs text-gray-600">
-                <span>{plan.duration_days} days</span>
-                <span>{plan.total_meals} meals</span>
-              </div>
-
-              {/* Skip/pause badges (P-06) */}
-              <div className="mb-3 flex gap-2">
-                {plan.skip_allowed && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    Skip allowed
-                  </span>
-                )}
-                {plan.pause_allowed && (
-                  <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
-                    Pause allowed
-                  </span>
-                )}
-                {!plan.is_active && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                    Inactive
-                  </span>
-                )}
-              </div>
-
-              {canWrite && (
-                <div className="flex gap-2 border-t border-gray-100 pt-3">
-                  <button
-                    onClick={() => { setEditing(plan); setShowForm(true) }}
-                    className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(plan)}
-                    className={`rounded px-2 py-1 text-xs font-medium ${
-                      plan.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
-                    }`}
-                  >
-                    {plan.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <DataTable
+          columns={columns}
+          rows={plans}
+          rowKey={(plan) => plan.id}
+          loading={loading}
+          rowClassName={(plan) => (plan.is_active ? '' : 'opacity-60')}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          pagination={{
+            page: table.page,
+            pageSize: table.pageSize,
+            count,
+            onPageChange: table.setPage,
+            onPageSizeChange: table.setPageSize,
+          }}
+        />
       )}
 
       {showForm && (

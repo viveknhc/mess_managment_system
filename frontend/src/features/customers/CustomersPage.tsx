@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { CustomerForm } from './CustomerForm'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { useServerTable } from '../../hooks/useServerTable'
 
 interface Customer {
   id: string
@@ -17,14 +19,63 @@ interface Customer {
 
 const STATUS_OPTIONS = ['', 'ACTIVE', 'INACTIVE', 'BLOCKED'] as const
 
+const columns: Column<Customer>[] = [
+  {
+    key: 'customer_code',
+    header: 'Code',
+    sortable: true,
+    className: 'font-mono text-xs text-gray-500',
+    render: (c) => c.customer_code,
+  },
+  { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-900', render: (c) => c.name },
+  {
+    key: 'phone',
+    header: 'Contact',
+    sortable: true,
+    render: (c) => (
+      <>
+        <div className="text-gray-900">{c.phone || '—'}</div>
+        <div className="text-xs text-gray-500">{c.email || ''}</div>
+      </>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    render: (c) => (
+      <span
+        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          c.status === 'ACTIVE'
+            ? 'bg-green-50 text-green-700'
+            : c.status === 'BLOCKED'
+              ? 'bg-red-50 text-red-700'
+              : 'bg-gray-100 text-gray-500'
+        }`}
+      >
+        {c.status}
+      </span>
+    ),
+  },
+  { key: 'location', header: 'Location', sortable: true, className: 'text-gray-500', render: (c) => c.location || '—' },
+  {
+    key: 'created_at',
+    header: 'Joined',
+    sortable: true,
+    className: 'whitespace-nowrap text-gray-500',
+    render: (c) => c.created_at.slice(0, 10),
+  },
+]
+
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
+  const table = useServerTable()
+  const { params: tableParams, setPage } = table
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
@@ -32,7 +83,7 @@ export function CustomersPage() {
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
     try {
-      const params: Record<string, string> = { page: String(page) }
+      const params: Record<string, string> = { ...tableParams }
       if (search) params.search = search
       if (statusFilter) params.status = statusFilter
       const { data } = await apiClient.get('/customers/', { params })
@@ -43,7 +94,7 @@ export function CustomersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter])
+  }, [tableParams, search, statusFilter])
 
   useEffect(() => {
     fetchCustomers()
@@ -51,9 +102,7 @@ export function CustomersPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, statusFilter])
-
-  const totalPages = Math.ceil(count / 20)
+  }, [search, statusFilter, setPage])
 
   return (
     <div className="mx-auto max-w-5xl p-6">
@@ -94,14 +143,10 @@ export function CustomersPage() {
         </select>
       </div>
 
-      {loading && customers.length === 0 ? (
-        <div className="flex items-center justify-center p-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        </div>
-      ) : customers.length === 0 ? (
+      {!loading && count === 0 && !search && !statusFilter ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <p className="text-gray-500">{search || statusFilter ? 'No customers match your search' : 'No customers yet'}</p>
-          {canWrite && !search && !statusFilter && (
+          <p className="text-gray-500">No customers yet</p>
+          {canWrite && (
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -111,76 +156,23 @@ export function CustomersPage() {
           )}
         </div>
       ) : (
-        <>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">Location</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {customers.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => navigate(`/customers/${c.id}`)}
-                    className="cursor-pointer hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 text-xs font-mono text-gray-500">{c.customer_code}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{c.name}</td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900">{c.phone || '—'}</div>
-                      <div className="text-xs text-gray-500">{c.email || ''}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          c.status === 'ACTIVE'
-                            ? 'bg-green-50 text-green-700'
-                            : c.status === 'BLOCKED'
-                              ? 'bg-red-50 text-red-700'
-                              : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{c.location || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Page {page} of {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        <DataTable
+          columns={columns}
+          rows={customers}
+          rowKey={(c) => c.id}
+          loading={loading}
+          emptyMessage="No customers match your search"
+          onRowClick={(c) => navigate(`/customers/${c.id}`)}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          pagination={{
+            page: table.page,
+            pageSize: table.pageSize,
+            count,
+            onPageChange: table.setPage,
+            onPageSizeChange: table.setPageSize,
+          }}
+        />
       )}
 
       {showForm && (

@@ -1,0 +1,8 @@
+# Install everything needed to run and test the backend locally:
+#   pip install -r requirements.txt
+#
+# Dependencies live in requirements/:
+#   base.txt        runtime (Django, DRF, Celery, ...)
+#   local.txt       base + test/lint tools (pytest, ruff)  ← used here
+#   production.txt  base + gunicorn
+-r requirements/local.txt

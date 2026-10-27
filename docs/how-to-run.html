@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mess Manager — How to Run</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f1f1ee; --border: #e3e3de;
+    --text: #1d1d1b; --muted: #6b6b66; --faint: #9a9a94;
+    --accent: #2457d6; --accent-soft: #e8eefc;
+    --ok: #1f7a4d; --ok-soft: #e4f4ec; --warn: #9a5b00; --warn-soft: #fdf1dc;
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --surface: #1d1d1b; --surface-2: #262624; --border: #34342f;
+      --text: #ecece8; --muted: #a3a39c; --faint: #75756f;
+      --accent: #7aa2ff; --accent-soft: #1f2a44;
+      --ok: #5cc995; --ok-soft: #173326; --warn: #f0b955; --warn-soft: #3a2a10;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.01em; }
+  h2 { font-size: 21px; margin: 52px 0 8px; letter-spacing: -.01em; scroll-margin-top: 64px; }
+  h3 { font-size: 16px; margin: 0 0 4px; }
+  .lede { color: var(--muted); max-width: 68ch; margin-top: 0; }
+  .muted { color: var(--muted); }
+
+  header.top { padding: 40px 0 4px; }
+  nav.toc { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); margin: 18px -20px 0; padding: 10px 20px; display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; align-items: center; }
+  nav.toc a { text-decoration: none; color: var(--muted); font-size: 13px; padding: 5px 10px; border-radius: 999px; }
+  nav.toc a:hover { background: var(--surface-2); color: var(--text); }
+  .os { margin-left: auto; display: flex; gap: 4px; padding-left: 12px; }
+  .os button { font: inherit; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .os button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .req b { display: block; font-size: 15px; }
+  .req span { color: var(--muted); font-size: 13.5px; }
+  .req .check { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 6px; display: block; }
+
+  /* Steps */
+  ol.steps { list-style: none; counter-reset: s; margin: 16px 0 0; padding: 0; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 0 0 26px 52px; border-left: 2px solid var(--border); margin-left: 15px; }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: -16px; top: -2px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+  ol.steps > li > h3 { padding-top: 2px; }
+  .where { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-left: 6px; }
+
+  /* Code */
+  .code { position: relative; margin: 10px 0; }
+  .code pre { margin: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; padding-right: 64px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.55; }
+  .code pre .c { color: var(--faint); }
+  .copy { position: absolute; top: 8px; right: 8px; font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+  .copy.done { color: var(--ok); border-color: var(--ok); }
+  [data-os] { display: none; }
+  body.os-unix [data-os="unix"], body.os-win [data-os="win"] { display: block; }
+
+  .out { font-size: 13.5px; color: var(--muted); margin: 4px 0 0; }
+  .out::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+
+  .callout { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 14px; margin: 14px 0; }
+  .callout.info { border-color: var(--accent); background: var(--accent-soft); }
+  .callout.ok { border-color: var(--ok); background: var(--ok-soft); }
+
+  /* Diagram */
+  .arch { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 8px; margin: 14px 0 0; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; font-size: 13px; }
+  .box b { display: block; font-size: 14px; }
+  .box code { font-size: 12px; }
+  .link { color: var(--faint); font-size: 12px; text-align: center; line-height: 1.3; }
+  .link::after { content: "⟶"; display: block; font-size: 20px; }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+  tr:last-child td { border-bottom: 0; }
+
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 8px 0; }
+  summary { cursor: pointer; padding: 11px 14px; font-weight: 600; font-size: 14.5px; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸"; display: inline-block; width: 16px; color: var(--muted); transition: transform .15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details > div { padding: 0 14px 12px 30px; font-size: 14px; }
+  details > div p { margin: 6px 0; }
+
+  footer { margin-top: 60px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--border); padding-top: 16px; }
+
+  @media (max-width: 640px) {
+    .arch { grid-template-columns: 1fr; }
+    .link::after { content: "↓"; }
+    ol.steps > li { padding-left: 34px; }
+    h1 { font-size: 25px; }
+    .os { margin-left: 8px; }
+  }
+</style>
+</head>
+<body class="os-unix">
+<div class="wrap">
+
+<header class="top">
+  <h1>How to run Mess Manager</h1>
+  <p class="lede">Clone the repo and get the app running on your own computer in about 10 minutes. You don't need a database server, Redis, Docker or any config files; everything runs locally.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#need">What you need</a>
+    <a href="#quick">Quick start</a>
+    <a href="#steps">Step by step</a>
+    <a href="#login">Log in</a>
+    <a href="#daily">Next time</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#extra">Optional</a>
+    <div class="os" role="group" aria-label="Your operating system">
+      <button data-set-os="unix" aria-pressed="true">macOS / Linux</button>
+      <button data-set-os="win" aria-pressed="false">Windows</button>
+    </div>
+  </nav>
+</header>
+
+<div class="card" style="margin-top:22px">
+  <h3>What you'll be running</h3>
+  <div class="arch">
+    <div class="box"><b>Your browser</b><code>localhost:5173</code></div>
+    <div class="link">pages</div>
+    <div class="box"><b>Frontend</b>React + Vite<br><code>npm run dev</code></div>
+    <div class="link">/api calls</div>
+    <div class="box"><b>Backend</b>Django REST API<br><code>localhost:8000</code> · SQLite file</div>
+  </div>
+  <p class="muted" style="font-size:13.5px;margin:12px 0 0">You'll keep <b>two terminal windows</b> open: one for the backend, one for the frontend.</p>
+</div>
+
+<!-- ═══════════ WHAT YOU NEED ═══════════ -->
+<h2 id="need">1 · What you need installed</h2>
+<p class="lede">Check each one in a terminal. If a command isn't found, install that tool first.</p>
+<div class="grid">
+  <div class="card req"><b>Git</b><span>to clone the repo</span><span class="check">git --version</span></div>
+  <div class="card req"><b>Python 3.12 or 3.13</b><span>backend. <a href="https://www.python.org/downloads/">python.org</a></span>
+    <span class="check" data-os="unix">python3 --version</span><span class="check" data-os="win">py --version</span></div>
+  <div class="card req"><b>Node.js 20.19+ or 22 LTS</b><span>frontend (Vite 8 needs at least 20.19). <a href="https://nodejs.org/">nodejs.org</a></span><span class="check">node --version</span></div>
+</div>
+<div class="callout info" data-os="win" style="margin-top:14px">On Windows, tick <b>"Add python.exe to PATH"</b> in the Python installer. Use <b>PowerShell</b> for all the commands below.</div>
+
+<!-- ═══════════ QUICK START ═══════════ -->
+<h2 id="quick">2 · Quick start</h2>
+<p class="lede">If you've set up Django and React projects before, this is all you need. Otherwise follow the <a href="#steps">step-by-step version</a>.</p>
+
+<p style="margin:14px 0 0"><b>Terminal 1 — backend</b></p>
+<div class="code" data-os="unix"><pre>git clone https://github.com/viveknhc/mess_managment_system.git
+cd mess_managment_system/backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_data
+python manage.py runserver</pre><button class="copy">Copy</button></div>
+<div class="code" data-os="win"><pre>git clone https://github.com/viveknhc/mess_managment_system.git
+cd mess_managment_system\backend
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_data
+python manage.py runserver</pre><button class="copy">Copy</button></div>
+
+<p style="margin:14px 0 0"><b>Terminal 2 — frontend</b> <span class="muted">(from the <code>mess_managment_system</code> folder)</span></p>
+<div class="code" data-os="unix"><pre>cd frontend
+npm install
+npm run dev</pre><button class="copy">Copy</button></div>
+<div class="code" data-os="win"><pre>cd frontend
+npm install
+npm run dev</pre><button class="copy">Copy</button></div>
+<p>Then open <a href="http://localhost:5173">http://localhost:5173</a> and log in with one of the accounts <code>seed_data</code> printed (<a href="#login">details</a>).</p>
+
+<!-- ═══════════ STEP BY STEP ═══════════ -->
+<h2 id="steps">3 · Step by step</h2>
+
+<ol class="steps">
+  <li>
+    <h3>Get the code <span class="where">any terminal</span></h3>
+    <div class="code"><pre>git clone https://github.com/viveknhc/mess_managment_system.git
+cd mess_managment_system</pre><button class="copy">Copy</button></div>
+    <p class="out">You now have a <code>mess_managment_system</code> folder with <code>backend/</code>, <code>frontend/</code> and <code>docs/</code> inside.</p>
+  </li>
+
+  <li>
+    <h3>Create a Python virtual environment <span class="where">Terminal 1</span></h3>
+    <p class="muted" style="margin:0">This keeps the project's packages separate from the rest of your computer.</p>
+    <div class="code" data-os="unix"><pre>cd backend
+python3 -m venv .venv
+source .venv/bin/activate</pre><button class="copy">Copy</button></div>
+    <div class="code" data-os="win"><pre>cd backend
+py -m venv .venv
+.venv\Scripts\Activate.ps1</pre><button class="copy">Copy</button></div>
+    <p class="out">Your prompt now starts with <code>(.venv)</code>. Keep using this terminal for the backend.</p>
+  </li>
+
+  <li>
+    <h3>Install backend packages <span class="where">Terminal 1</span></h3>
+    <div class="code"><pre>pip install -r requirements.txt</pre><button class="copy">Copy</button></div>
+    <p class="out">Ends with "Successfully installed Django… djangorestframework… pytest…". Takes about a minute.</p>
+  </li>
+
+  <li>
+    <h3>Create the database <span class="where">Terminal 1</span></h3>
+    <div class="code"><pre>python manage.py migrate</pre><button class="copy">Copy</button></div>
+    <p class="out">A list of "Applying … OK" lines. This creates <code>backend/db.sqlite3</code>, a local file database. No database server is needed.</p>
+  </li>
+
+  <li>
+    <h3>Load demo data <span class="where">Terminal 1</span></h3>
+    <div class="code"><pre>python manage.py seed_data</pre><button class="copy">Copy</button></div>
+    <p class="out">Creates the demo business <b>"Annapurna Mess"</b>: 20 customers, 5 plans, subscriptions in every state, payments and deliveries. At the end it <b>prints a table of login usernames and passwords</b>. Keep it handy.</p>
+  </li>
+
+  <li>
+    <h3>Create a platform admin <span class="where">Terminal 1 · optional</span></h3>
+    <p class="muted" style="margin:0">Only needed to test the SaaS / platform admin area (<code>/platform</code>). Pick your own password in place of <code>choose-a-password</code>:</p>
+    <div class="code" data-os="unix"><pre>python manage.py shell -c "from apps.accounts.models import User; User.objects.create_user(username='superadmin', password='choose-a-password', role='SUPER_ADMIN', is_staff=True, is_superuser=True)"</pre><button class="copy">Copy</button></div>
+    <div class="code" data-os="win"><pre>python manage.py shell -c "from apps.accounts.models import User; User.objects.create_user(username='superadmin', password='choose-a-password', role='SUPER_ADMIN', is_staff=True, is_superuser=True)"</pre><button class="copy">Copy</button></div>
+    <div class="callout">Don't use <code>python manage.py createsuperuser</code> for this. It creates a user with role CUSTOMER, which lands in the customer portal instead of the platform admin area.</div>
+  </li>
+
+  <li>
+    <h3>Start the backend <span class="where">Terminal 1</span></h3>
+    <div class="code"><pre>python manage.py runserver</pre><button class="copy">Copy</button></div>
+    <p class="out">"Starting development server at http://127.0.0.1:8000/". Leave this terminal running.</p>
+  </li>
+
+  <li>
+    <h3>Install and start the frontend <span class="where">Terminal 2 (new window)</span></h3>
+    <p class="muted" style="margin:0">Open a second terminal in the <code>mess_managment_system</code> folder:</p>
+    <div class="code"><pre>cd frontend
+npm install
+npm run dev</pre><button class="copy">Copy</button></div>
+    <p class="out">"VITE … ready" and "Local: http://localhost:5173/". You may also see a yellow warning about <code>__dirname</code>; it's harmless.</p>
+  </li>
+
+  <li>
+    <h3>Open the app <span class="where">browser</span></h3>
+    <p style="margin:0">Go to <a href="http://localhost:5173">http://localhost:5173</a>. You'll see the landing page. Click <b>Login</b>, then continue below.</p>
+  </li>
+</ol>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<h2 id="login">4 · Log in</h2>
+<p class="lede">Use the usernames and passwords that <code>seed_data</code> printed. Each role opens its own part of the app:</p>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Role</th><th>Seed username</th><th>Opens</th><th>What it's for</th></tr></thead>
+  <tbody>
+    <tr><td>Owner</td><td><code>owner</code></td><td><code>/app</code></td><td>Run the business: customers, plans, subscriptions, payments, deliveries, reports, staff, settings</td></tr>
+    <tr><td>Manager</td><td><code>manager</code></td><td><code>/app</code></td><td>Same as owner, without staff management or settings</td></tr>
+    <tr><td>Delivery staff</td><td><code>delivery1</code></td><td><code>/staff</code></td><td>Today's deliveries: mark delivered / not delivered</td></tr>
+    <tr><td>Kitchen staff</td><td><code>kitchen1</code></td><td><code>/staff</code></td><td>Today's meal counts</td></tr>
+    <tr><td>Customer</td><td><code>customer1</code> … <code>customer5</code></td><td><code>/portal</code></td><td>Own plan, skip a meal, pause, renew, payments</td></tr>
+    <tr><td>Platform admin</td><td><code>superadmin</code> <span class="muted">(step 6)</span></td><td><code>/platform</code></td><td>All businesses, SaaS plans, suspend / reactivate</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout info"><b>Tip:</b> each browser tab keeps its own login, so you can be logged in as the owner in one tab and a customer in another, in the same window.</div>
+<div class="callout ok">You can also click <b>Start Free Trial</b> on the landing page to sign up a brand-new business of your own. If you're testing the app, ask Vivek for <b>tester-guide.html</b>; it walks through every feature step by step.</div>
+
+<!-- ═══════════ NEXT TIME ═══════════ -->
+<h2 id="daily">5 · Running it again later</h2>
+<p class="lede">You only install once. Next time, start the two servers:</p>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+  <div>
+    <p style="margin:0 0 4px"><b>Terminal 1 — backend</b></p>
+    <div class="code" data-os="unix"><pre>cd mess_managment_system/backend
+source .venv/bin/activate
+python manage.py runserver</pre><button class="copy">Copy</button></div>
+    <div class="code" data-os="win"><pre>cd mess_managment_system\backend
+.venv\Scripts\Activate.ps1
+python manage.py runserver</pre><button class="copy">Copy</button></div>
+  </div>
+  <div>
+    <p style="margin:0 0 4px"><b>Terminal 2 — frontend</b></p>
+    <div class="code"><pre>cd mess_managment_system/frontend
+npm run dev</pre><button class="copy">Copy</button></div>
+  </div>
+</div>
+
+<h3 style="margin-top:22px">After pulling new code</h3>
+<div class="code"><pre><span class="c"># in mess_managment_system/</span>
+git pull
+<span class="c"># Terminal 1 (venv active):</span>
+pip install -r requirements.txt
+python manage.py migrate
+<span class="c"># Terminal 2:</span>
+npm install</pre><button class="copy">Copy</button></div>
+
+<h3 style="margin-top:22px">Start over with fresh demo data</h3>
+<div class="code"><pre>python manage.py seed_data --reset</pre><button class="copy">Copy</button></div>
+<div class="callout">This <b>deletes everything</b> in your local database, including any business you signed up and the platform admin, then reloads the demo data. Re-run step 6 afterwards if you need the platform admin.</div>
+
+<!-- ═══════════ TROUBLESHOOTING ═══════════ -->
+<h2 id="trouble">6 · Troubleshooting</h2>
+
+<details><summary>"python3: command not found" or "python: command not found"</summary><div>
+  <p>macOS / Linux use <code>python3</code> until the venv is active; after that, <code>python</code> works. On Windows use <code>py</code> to create the venv, or reinstall Python with "Add python.exe to PATH" ticked.</p>
+</div></details>
+
+<details><summary>Windows: "running scripts is disabled on this system" when activating</summary><div>
+  <p>PowerShell blocks the activate script by default. Run this once, then activate again:</p>
+  <div class="code"><pre>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</pre><button class="copy">Copy</button></div>
+</div></details>
+
+<details><summary>"No module named django" (or any other module)</summary><div>
+  <p>The virtual environment isn't active in this terminal. Activate it (step 2) and try again. Your prompt should start with <code>(.venv)</code>.</p>
+</div></details>
+
+<details><summary>seed_data says: Business "Annapurna Mess" already exists</summary><div>
+  <p>The demo data is already loaded, so you can just log in. To reload it from scratch, use <code>python manage.py seed_data --reset</code> (this deletes all local data).</p>
+</div></details>
+
+<details><summary>Login says "Invalid username or password"</summary><div>
+  <p>Check that <code>seed_data</code> ran successfully and that you're using its printed usernames. Five wrong attempts within a minute temporarily blocks logins; wait a minute.</p>
+</div></details>
+
+<details><summary>The page loads but nothing works / network errors</summary><div>
+  <p>The backend isn't running. Check Terminal 1 shows "Starting development server at http://127.0.0.1:8000/". The frontend forwards all <code>/api</code> requests to port 8000.</p>
+  <p>Open the app at <b>http://localhost:5173</b>, not <code>127.0.0.1:5173</code>. The frontend dev server only listens on <code>localhost</code>.</p>
+</div></details>
+
+<details><summary>"That port is already in use" (8000 or 5173)</summary><div>
+  <p>Another copy is probably already running. Close it, or stop whatever uses the port. The frontend expects the backend on <b>8000</b>, so if you must use another backend port (e.g. 8001), start the frontend like this:</p>
+  <div class="code" data-os="unix"><pre>python manage.py runserver 8001
+<span class="c"># Terminal 2:</span>
+VITE_API_BASE_URL=http://localhost:8001/api/v1 npm run dev</pre><button class="copy">Copy</button></div>
+  <div class="code" data-os="win"><pre>python manage.py runserver 8001
+<span class="c"># Terminal 2:</span>
+$env:VITE_API_BASE_URL="http://localhost:8001/api/v1"; npm run dev</pre><button class="copy">Copy</button></div>
+</div></details>
+
+<details><summary>npm errors about the Node version, or "crypto.hash is not a function"</summary><div>
+  <p>Your Node.js is too old for Vite 8. Install Node 22 LTS (or at least 20.19) from <a href="https://nodejs.org/">nodejs.org</a>, delete <code>frontend/node_modules</code>, and run <code>npm install</code> again.</p>
+</div></details>
+
+<!-- ═══════════ OPTIONAL ═══════════ -->
+<h2 id="extra">7 · Optional extras</h2>
+
+<details><summary>Run the automated tests</summary><div>
+  <div class="code"><pre><span class="c"># backend (Terminal 1, venv active) — 300+ tests with coverage report</span>
+python -m pytest
+<span class="c"># frontend type-check + lint (Terminal 2)</span>
+npx tsc -b
+npm run lint</pre><button class="copy">Copy</button></div>
+</div></details>
+
+<details><summary>Settings and environment variables</summary><div>
+  <p>Nothing is required for local use; sensible defaults are built in. To override something, copy <code>.env.example</code> (repo root) to <b><code>backend/.env</code></b> and edit it. Useful keys:</p>
+  <ul>
+    <li><code>DATABASE_URL</code>: use PostgreSQL instead of SQLite, e.g. <code>postgres://user:pass@localhost:5432/mess_db</code>.</li>
+    <li><code>SECRET_KEY</code>, <code>DEBUG</code>, <code>ALLOWED_HOSTS</code>: needed for any real deployment.</li>
+    <li><code>CELERY_BROKER_URL</code>: Redis address for background jobs (see below).</li>
+    <li><code>RAZORPAY_KEY_ID</code> / <code>RAZORPAY_KEY_SECRET</code>: online SaaS billing. Leave empty locally; plans without a Razorpay Plan ID activate instantly.</li>
+  </ul>
+</div></details>
+
+<details><summary>Background jobs (Celery + Redis)</summary><div>
+  <p>The app works fully without these. Celery only runs scheduled jobs such as the daily trial-expiry check. To try it, install and start Redis, then in another terminal with the venv active:</p>
+  <div class="code"><pre>celery -A config worker --beat -l info</pre><button class="copy">Copy</button></div>
+  <p class="muted">Not part of the regular test flow.</p>
+</div></details>
+
+<details><summary>Docker</summary><div>
+  <p>The repo has a <code>docker-compose.yml</code> (PostgreSQL, Redis, backend, frontend), but it isn't the tested path yet. It needs a <code>.env.docker</code> file that isn't in the repo, and the frontend container's API forwarding may need adjusting. Use the steps above unless you're working on the Docker setup itself.</p>
+</div></details>
+
+<details><summary>Where things are in the code</summary><div>
+  <ul>
+    <li><code>backend/apps/</code>: one Django app per area (customers, plans, subscriptions, payments, deliveries, platform, …)</li>
+    <li><code>backend/common/</code>: shared base classes (multi-tenant filtering, permissions, errors)</li>
+    <li><code>frontend/src/features/</code>: one folder per screen area; <code>frontend/src/components/ui/</code> holds shared UI like the data table</li>
+    <li><code>docs/</code>: specs, task tracker (<code>tasks.md</code>), progress page and this guide</li>
+  </ul>
+</div></details>
+
+<footer>Mess Manager · <a href="https://github.com/viveknhc/mess_managment_system">github.com/viveknhc/mess_managment_system</a> · Tested from a fresh clone with Python 3.13 and Node 26 on macOS.</footer>
+</div>
+
+<script>
+  // OS toggle — remembers the choice; defaults from the user agent.
+  function setOS(os) {
+    document.body.classList.toggle('os-unix', os === 'unix');
+    document.body.classList.toggle('os-win', os === 'win');
+    document.querySelectorAll('[data-set-os]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setOs === os)));
+    try { localStorage.setItem('mess-run-os', os); } catch { /* ignore */ }
+  }
+  let saved = null;
+  try { saved = localStorage.getItem('mess-run-os'); } catch { /* ignore */ }
+  setOS(saved || (/Win/i.test(navigator.platform || navigator.userAgent) ? 'win' : 'unix'));
+  document.querySelectorAll('[data-set-os]').forEach((b) => b.addEventListener('click', () => setOS(b.dataset.setOs)));
+
+  // Copy buttons — copy the command text without "# comment" lines.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.copy');
+    if (!btn) return;
+    const text = btn.previousElementSibling.innerText
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n').trim();
+    const done = () => { btn.classList.add('done'); btn.textContent = 'Copied'; setTimeout(() => { btn.classList.remove('done'); btn.textContent = 'Copy'; }, 1000); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => {});
+  });
+</script>
+</body>
+</html>

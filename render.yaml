@@ -1,0 +1,30 @@
+# Render Blueprint — Django API (free web service). Postgres lives on Neon (free).
+# Setup steps: docs/deploy.md
+services:
+  - type: web
+    name: mess-manager-api
+    runtime: python
+    plan: free
+    region: singapore # keep close to the Neon database region
+    rootDir: backend
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /api/v1/pricing/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL # Neon connection string (postgresql://...?sslmode=require)
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS # your Vercel URL, e.g. https://mess-manager.vercel.app
+        sync: false
+      - key: SUPERADMIN_USERNAME
+        value: superadmin
+      - key: SUPERADMIN_PASSWORD # choose a strong password
+        sync: false
+      - key: SEED_DEMO # "1" loads the Annapurna Mess demo data once
+        value: "1"

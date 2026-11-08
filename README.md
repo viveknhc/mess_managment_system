@@ -34,3 +34,7 @@ npm run dev                     # open http://localhost:5173
 cd backend && python -m pytest          # backend tests + coverage
 cd frontend && npx tsc -b && npm run lint
 ```
+
+## Deploy (free)
+
+Frontend on Vercel, API on Render, Postgres on Neon — step-by-step in [`docs/deploy.md`](docs/deploy.md).

@@ -17,8 +17,11 @@ CORS_ALLOWED_ORIGINS = [
 
 # Disable throttling in tests/dev
 REST_FRAMEWORK_THROTTLE_OVERRIDE = {}
+import os  # noqa: E402
 import sys  # noqa: E402
 
-if "pytest" in sys.modules or "test" in sys.argv:
+# DISABLE_THROTTLING=1 is set by the Playwright E2E backend (frontend/e2e/start-backend.sh),
+# which logs in far more than the 5/min login limit allows.
+if "pytest" in sys.modules or "test" in sys.argv or os.environ.get("DISABLE_THROTTLING") == "1":
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # noqa: F405
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}  # noqa: F405

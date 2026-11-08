@@ -11,14 +11,12 @@ test.describe('Login & role routing', () => {
   }
 
   test('kitchen staff lands on /staff', async ({ page }) => {
-    test.fail(true, 'BUG: two separate "/staff" routes in app/routes.tsx — the first (DELIVERY_STAFF only) always matches, so kitchen staff are redirected in a loop and see a blank page')
     await login(page, USERS.kitchen, USERS.kitchen.home)
-    await expect(page.getByText("Today's Meals")).toBeVisible()
+    await expect(page.getByRole('heading', { name: "Today's Meals" })).toBeVisible()
     await logout(page)
   })
 
   test('wrong password shows an error and stays on login', async ({ page }) => {
-    test.fail(true, 'BUG: services/apiClient.ts treats the 401 from /auth/login/ as an expired session, attempts a refresh and hard-reloads /login, wiping the error message')
     await login(page, { username: 'owner', password: 'wrong-password' })
     await expect(page.getByText('Invalid username or password')).toBeVisible()
     await expect(page).toHaveURL(/\/login$/)

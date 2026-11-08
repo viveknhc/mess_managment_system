@@ -67,7 +67,7 @@ export function CustomerDetailsPage() {
     return (
       <div className="p-6">
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error || 'Customer not found'}</div>
-        <button onClick={() => navigate('/customers')} className="mt-4 text-sm text-blue-600 hover:underline">
+        <button onClick={() => navigate('/app/customers')} className="mt-4 text-sm text-blue-600 hover:underline">
           Back to customers
         </button>
       </div>
@@ -79,7 +79,7 @@ export function CustomerDetailsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <button onClick={() => navigate('/customers')} className="mb-2 text-sm text-blue-600 hover:underline">
+          <button onClick={() => navigate('/app/customers')} className="mb-2 text-sm text-blue-600 hover:underline">
             &larr; Customers
           </button>
           <h1 className="text-xl font-bold text-gray-900">{customer.name}</h1>

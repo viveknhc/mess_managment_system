@@ -45,6 +45,12 @@ function RoleRedirect() {
   return <Navigate to={roleHome(user?.role)} replace />
 }
 
+/** /staff home — delivery and kitchen staff share the /staff area but see different pages. */
+function StaffHome() {
+  const user = useAuthStore((s) => s.user)
+  return user?.role === 'KITCHEN_STAFF' ? <KitchenCountsPage /> : <TodayDeliveriesPage />
+}
+
 function LandingOrDashboard() {
   const { isAuthenticated, user } = useAuthStore()
   if (isAuthenticated) return <Navigate to={roleHome(user?.role)} replace />
@@ -100,16 +106,17 @@ export function AppRoutes() {
       </Route>
 
       {/* Staff routes — Delivery + Kitchen, role-aware nav (PT-07) */}
-      <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF']} />}>
+      {/* One /staff route for both roles — two sibling "/staff" routes made the first always match,
+          locking kitchen staff in a redirect loop. */}
+      <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF', 'KITCHEN_STAFF']} />}>
         <Route path="/staff" element={<StaffLayout />}>
-          <Route index element={<TodayDeliveriesPage />} />
-          <Route path="completed" element={<CompletedDeliveriesPage />} />
-        </Route>
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['KITCHEN_STAFF']} />}>
-        <Route path="/staff" element={<StaffLayout />}>
-          <Route index element={<KitchenCountsPage />} />
-          <Route path="kitchen/summary" element={<KitchenCountsPage showSummary />} />
+          <Route index element={<StaffHome />} />
+          <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF']} />}>
+            <Route path="completed" element={<CompletedDeliveriesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['KITCHEN_STAFF']} />}>
+            <Route path="kitchen/summary" element={<KitchenCountsPage showSummary />} />
+          </Route>
         </Route>
       </Route>
 

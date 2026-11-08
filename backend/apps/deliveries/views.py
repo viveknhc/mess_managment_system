@@ -60,6 +60,7 @@ class DeliveryViewSet(TenantScopedViewSet):
         "update_status": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "skip": [Role.OWNER, Role.MANAGER, Role.CUSTOMER],
         "kitchen_counts": [Role.OWNER, Role.MANAGER, Role.KITCHEN_STAFF],
+        "today_summary": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
     }
 
     def get_queryset(self):
@@ -118,3 +119,8 @@ class DeliveryViewSet(TenantScopedViewSet):
         """GET /deliveries/kitchen_counts/ — today's meal totals."""
         counts = DeliverySelector.get_kitchen_counts(request.user.business_id)
         return Response(list(counts))
+
+    @action(detail=False, methods=["get"])
+    def today_summary(self, request):
+        """GET /deliveries/today_summary/ — today's counts by status (no customer data)."""
+        return Response(DeliverySelector.get_today_summary(request.user.business_id))

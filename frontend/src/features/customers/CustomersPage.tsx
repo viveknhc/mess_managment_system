@@ -162,7 +162,7 @@ export function CustomersPage() {
           rowKey={(c) => c.id}
           loading={loading}
           emptyMessage="No customers match your search"
-          onRowClick={(c) => navigate(`/customers/${c.id}`)}
+          onRowClick={(c) => navigate(`/app/customers/${c.id}`)}
           sort={table.sort}
           onSortChange={table.setSort}
           pagination={{

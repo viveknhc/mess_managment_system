@@ -49,21 +49,20 @@ export function TodayDeliveriesPage() {
   const { params: tableParams } = table
   const user = useAuthStore((s) => s.user)
   const canUpdate = user?.role === 'OWNER' || user?.role === 'MANAGER' || user?.role === 'DELIVERY_STAFF'
+  // Skipping changes the customer's subscription — owner/manager only (delivery staff just record outcomes)
+  const canSkip = user?.role === 'OWNER' || user?.role === 'MANAGER'
 
   const fetchToday = useCallback(async () => {
     setLoading(true)
     try {
-      // The table shows one page; summary counts need every delivery for today,
-      // so fetch a single max-size page (backend caps page_size at 100) alongside it.
       const [pageRes, summaryRes] = await Promise.all([
         apiClient.get('/deliveries/today/', { params: tableParams }),
-        apiClient.get('/deliveries/today/', { params: { page_size: '100' } }),
+        apiClient.get<{ total: number; pending: number }>('/deliveries/today_summary/'),
       ])
       setDeliveries(pageRes.data.results ?? pageRes.data)
       setCount(pageRes.data.count ?? (pageRes.data.results ?? pageRes.data).length)
-      const all: DeliveryItem[] = summaryRes.data.results ?? summaryRes.data
-      const pending = all.filter((d) => isOpen(d.status)).length
-      setSummary({ pending, completed: all.length - pending })
+      const { total, pending } = summaryRes.data
+      setSummary({ pending, completed: total - pending })
     } catch {
       // empty
     } finally {
@@ -178,7 +177,7 @@ export function TodayDeliveriesPage() {
             >
               Not Delivered
             </button>
-            {d.status === 'PENDING' && (
+            {d.status === 'PENDING' && canSkip && (
               <button
                 type="button"
                 onClick={() => handleSkip(d.id)}

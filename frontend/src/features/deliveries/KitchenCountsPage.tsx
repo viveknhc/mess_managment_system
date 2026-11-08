@@ -21,18 +21,13 @@ export function KitchenCountsPage({ showSummary = false }: { showSummary?: boole
   useEffect(() => {
     async function load() {
       try {
-        const [countsRes, deliveriesRes] = await Promise.all([
+        // today_summary returns status counts only — kitchen staff can't (and needn't) see the delivery list.
+        const [countsRes, summaryRes] = await Promise.all([
           apiClient.get('/deliveries/kitchen_counts/'),
-          apiClient.get('/deliveries/today/'),
+          apiClient.get<StatusSummary>('/deliveries/today_summary/'),
         ])
         setCounts(countsRes.data)
-        const items: Array<{ status: string }> = deliveriesRes.data.results ?? deliveriesRes.data
-        setSummary({
-          delivered: items.filter((d) => d.status === 'DELIVERED').length,
-          pending: items.filter((d) => d.status === 'PENDING' || d.status === 'OUT_FOR_DELIVERY').length,
-          skipped: items.filter((d) => d.status === 'SKIPPED').length,
-          not_delivered: items.filter((d) => d.status === 'NOT_DELIVERED').length,
-        })
+        setSummary(summaryRes.data)
       } catch {
         // empty state
       } finally {

@@ -41,8 +41,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    // A 401 from login/refresh means bad credentials, not an expired session —
+    // let the caller show the error instead of refreshing and reloading /login.
+    const isAuthRequest = /\/auth\/(login|refresh)\/?$/.test(originalRequest?.url ?? '')
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })

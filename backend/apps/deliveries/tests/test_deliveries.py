@@ -295,6 +295,29 @@ class TestDeliveryAPI:
         resp = auth_client(kitchen_a).get(f"{URL}kitchen_counts/")
         assert resp.status_code == 200
 
+    def test_today_summary_counts_by_status(self, owner_a, deliveries):
+        today = deliveries.get(delivery_date=TODAY)
+        auth_client(owner_a).patch(f"{URL}{today.id}/status/", {"status": "DELIVERED"}, format="json")
+        resp = auth_client(owner_a).get(f"{URL}today_summary/")
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "total": 1,
+            "pending": 0,
+            "delivered": 1,
+            "not_delivered": 0,
+            "skipped": 0,
+            "cancelled": 0,
+        }
+
+    def test_today_summary_allowed_for_kitchen_but_list_is_not(self, kitchen_a, deliveries):
+        # Kitchen gets aggregate counts only — never the customer-level delivery list.
+        client = auth_client(kitchen_a)
+        assert client.get(f"{URL}today_summary/").json()["pending"] == 1
+        assert client.get(f"{URL}today/").status_code == 403
+
+    def test_today_summary_is_tenant_scoped(self, owner_b, deliveries):
+        assert auth_client(owner_b).get(f"{URL}today_summary/").json()["total"] == 0
+
     def test_status_update_via_api(self, owner_a, deliveries):
         d = deliveries.first()
         resp = auth_client(owner_a).patch(f"{URL}{d.id}/status/", {"status": "DELIVERED"}, format="json")

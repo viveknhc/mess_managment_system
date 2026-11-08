@@ -147,6 +147,25 @@ class DeliverySelector:
         )
 
     @staticmethod
+    def get_today_summary(business_id):
+        """Today's delivery counts by status — aggregates only, no customer data (kitchen-safe)."""
+        rows = (
+            Delivery.objects.filter(business_id=business_id, delivery_date=datetime.date.today())
+            .values("status")
+            .annotate(count=models.Count("id"))
+        )
+        by_status = {r["status"]: r["count"] for r in rows}
+        return {
+            "total": sum(by_status.values()),
+            "pending": by_status.get(DeliveryStatus.PENDING, 0)
+            + by_status.get(DeliveryStatus.OUT_FOR_DELIVERY, 0),
+            "delivered": by_status.get(DeliveryStatus.DELIVERED, 0),
+            "not_delivered": by_status.get(DeliveryStatus.NOT_DELIVERED, 0),
+            "skipped": by_status.get(DeliveryStatus.SKIPPED, 0),
+            "cancelled": by_status.get(DeliveryStatus.CANCELLED, 0),
+        }
+
+    @staticmethod
     def expire_subscriptions():
         """Nightly sweep: mark ACTIVE subscriptions past end_date as EXPIRED."""
         today = datetime.date.today()

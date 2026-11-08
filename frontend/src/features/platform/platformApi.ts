@@ -1,5 +1,6 @@
 import { apiClient } from '../../services/apiClient'
 import axios from 'axios'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
@@ -83,10 +84,7 @@ export interface PaginatedResponse<T> {
 // ── Helper ───────────────────────────────────────────────────────────────
 
 function errMsg(e: unknown): string {
-  if (axios.isAxiosError(e)) {
-    return e.response?.data?.error?.message || e.message
-  }
-  return String(e)
+  return getApiErrorMessage(e, String(e))
 }
 
 // ── Public API (no auth required) ────────────────────────────────────────

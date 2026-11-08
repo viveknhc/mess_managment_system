@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 interface Staff {
   id: string
@@ -65,10 +66,7 @@ export function StaffForm({ staff, onClose, onSaved }: Props) {
       }
       onSaved()
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
-          ?.message || 'Failed to save'
-      setError(msg)
+      setError(getApiErrorMessage(err, 'Failed to save'))
     } finally {
       setSaving(false)
     }

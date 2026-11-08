@@ -43,10 +43,10 @@ export function DashboardPage() {
 
       {/* Stat cards row */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Active Customers" value={data.customers.active} onClick={() => navigate('/customers')} />
-        <StatCard label="Active Subscriptions" value={data.subscriptions.active} onClick={() => navigate('/subscriptions')} />
-        <StatCard label="Today's Revenue" value={`₹${Number(data.payments.today_revenue).toLocaleString('en-IN')}`} onClick={() => navigate('/payments')} />
-        <StatCard label="Pending Payments" value={`₹${Number(data.payments.total_pending).toLocaleString('en-IN')}`} color="red" onClick={() => navigate('/payments')} />
+        <StatCard label="Active Customers" value={data.customers.active} onClick={() => navigate('/app/customers')} />
+        <StatCard label="Active Subscriptions" value={data.subscriptions.active} onClick={() => navigate('/app/subscriptions')} />
+        <StatCard label="Today's Revenue" value={`₹${Number(data.payments.today_revenue).toLocaleString('en-IN')}`} onClick={() => navigate('/app/payments')} />
+        <StatCard label="Pending Payments" value={`₹${Number(data.payments.total_pending).toLocaleString('en-IN')}`} color="red" onClick={() => navigate('/app/payments')} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -117,10 +117,10 @@ export function DashboardPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold text-gray-900 uppercase tracking-wide">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
-            <QuickAction label="Add Customer" onClick={() => navigate('/customers')} />
-            <QuickAction label="New Subscription" onClick={() => navigate('/subscriptions')} />
-            <QuickAction label="Record Payment" onClick={() => navigate('/payments')} />
-            <QuickAction label="View Deliveries" onClick={() => navigate('/deliveries')} />
+            <QuickAction label="Add Customer" onClick={() => navigate('/app/customers')} />
+            <QuickAction label="New Subscription" onClick={() => navigate('/app/subscriptions')} />
+            <QuickAction label="Record Payment" onClick={() => navigate('/app/payments')} />
+            <QuickAction label="View Deliveries" onClick={() => navigate('/app/deliveries')} />
           </div>
         </div>
       </div>

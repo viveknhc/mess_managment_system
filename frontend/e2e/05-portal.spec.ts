@@ -29,15 +29,16 @@ test('skip tomorrow\'s meal; past date is rejected', async ({ page }) => {
   await expect(row(page, isoDate(1))).toContainText(/SKIPPED/i)
 })
 
-test('pause a few days → PAUSED, meals in range cancelled', async ({ page }) => {
+test('future pause is scheduled: stays active, meals in range cancelled', async ({ page }) => {
   await login(page, USERS.customer3, '/portal')
   await page.getByRole('link', { name: 'My Subscription' }).click()
   await page.getByRole('button', { name: /Pause Subscription/ }).click()
   await field(modal(page), 'From').fill(isoDate(3))
   await field(modal(page), 'To (optional)').fill(isoDate(4))
   await modal(page).getByRole('button', { name: 'Pause' }).click()
-  await expect(page.getByText('Subscription paused')).toBeVisible()
-  await expect(page.getByRole('button', { name: /Skip Meal/ })).toBeDisabled()
+  // Starts in 3 days, so the subscription stays ACTIVE until then (the nightly job flips it)
+  await expect(page.getByText(`Pause scheduled from ${isoDate(3)}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: /Skip Meal/ })).toBeEnabled()
 
   await page.getByRole('link', { name: 'My Meals' }).click()
   await expect(row(page, isoDate(3))).toContainText(/CANCELLED/i)

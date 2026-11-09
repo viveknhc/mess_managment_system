@@ -47,3 +47,50 @@ class Notification(TenantScopedModel):
 
     def __str__(self):
         return f"{self.title} → {self.user}"
+
+
+class EmailKind:
+    OWNER_EXPIRY_DIGEST = "OWNER_EXPIRY_DIGEST"
+    CUSTOMER_EXPIRY = "CUSTOMER_EXPIRY"
+
+
+EMAIL_KIND_CHOICES = [
+    (EmailKind.OWNER_EXPIRY_DIGEST, "Owner expiry digest"),
+    (EmailKind.CUSTOMER_EXPIRY, "Customer expiry alert"),
+]
+
+
+class EmailStatus:
+    SENT = "SENT"
+    FAILED = "FAILED"
+
+
+EMAIL_STATUS_CHOICES = [(EmailStatus.SENT, "Sent"), (EmailStatus.FAILED, "Failed")]
+
+
+class EmailLog(TenantScopedModel):
+    """EMAIL channel send marker — one row per (business, day, dedupe_key).
+
+    Used to make the daily expiry emails idempotent: a SENT row for today means
+    the email is not sent again; a FAILED row is retried on the next run.
+    """
+
+    kind = models.CharField(max_length=30, choices=EMAIL_KIND_CHOICES)
+    ref_date = models.DateField()
+    dedupe_key = models.CharField(max_length=100)
+    recipients = models.TextField()
+    subject = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=EMAIL_STATUS_CHOICES)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "ref_date", "dedupe_key"],
+                name="unique_email_per_business_day_key",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.kind} {self.ref_date} → {self.recipients} ({self.status})"

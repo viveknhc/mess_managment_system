@@ -66,198 +66,106 @@
 <body>
 <div class="wrap">
   <h1>Monthly Plan: What's Pending</h1>
-  <p class="sub">Checked against the code on 9 Nov 2026. ₹2,500 one-time setup + ₹500/month. First payment ₹3,000. ₹1,000 reactivation after 3 months away.</p>
+  <p class="sub">Updated 9 Nov 2026 after the fixes. ₹2,500 one-time setup + ₹500/month.</p>
   <div class="stats">
-    <div class="stat"><b>7</b><span>blockers before charging</span></div>
-    <div class="stat"><b>6</b><span>promised in PDF, missing</span></div>
-    <div class="stat"><b>8 / 15</b><span>setup + monthly items working</span></div>
-    <div class="stat"><b id="open-count">17</b><span>items open below</span></div>
+    <div class="stat"><b>14</b><span>fixed in code</span></div>
+    <div class="stat"><b>3</b><span>needed before charging</span></div>
+    <div class="stat"><b>All pass</b><span>backend tests, ruff, TypeScript</span></div>
+    <div class="stat"><b id="open-count">8</b><span>items open below</span></div>
   </div>
   <div class="progress"><i id="bar"></i></div>
-  <p class="note">Tick the boxes as you finish items. Ticks are saved in this browser only.</p>
+  <p class="note">What's left is mostly setup only you can do. Ticks are saved in this browser only.</p>
 
-  <h2>1. Fix before charging the first client</h2>
+  <h2>Still to do</h2>
 
-  <div class="card red" data-id="jobs">
-    <div class="head"><input type="checkbox" id="c-jobs"><label for="c-jobs"><h3>Run the background jobs <span class="tag t-red">Blocker</span></h3></label></div>
+  <div class="card red" data-id="secrets">
+    <div class="head"><input type="checkbox" id="c-secrets"><label for="c-secrets"><h3>Add the GitHub secrets so the nightly jobs and backups run <span class="tag t-red">Setup</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> Only the platform billing check is in <code>CELERY_BEAT_SCHEDULE</code> (<code>config/settings/base.py</code>). Three tasks are written but never scheduled: mark subscriptions EXPIRED, send "expiring soon" alerts, and generate next day's deliveries. <code>render.yaml</code> runs only gunicorn, with no worker, scheduler or Redis.</p>
-      <p><b>Effect:</b> "Subscription tracking with automatic expiry alerts" doesn't happen. Subscriptions stay ACTIVE past their end date. Overdue businesses are never moved to PAST_DUE or SUSPENDED.</p>
-      <p><b>Fix:</b> Add the tasks to the beat schedule, or (cheaper on Render's free tier) add management commands and call them from a daily cron. Add a test for each.</p>
+      <p><b>Why:</b> The new Daily jobs and Daily DB backup workflows skip until their secrets exist.</p>
+      <p><b>Do:</b> GitHub → Settings → Secrets → Actions: <code>PROD_DATABASE_URL</code>, <code>PROD_SECRET_KEY</code>, <code>BACKUP_PASSPHRASE</code> (keep a copy outside GitHub). Then run each workflow once by hand from the Actions tab.</p>
     </div>
   </div>
 
-  <div class="card red" data-id="billui">
-    <div class="head"><input type="checkbox" id="c-billui"><label for="c-billui"><h3>Fix the broken billing screens <span class="tag t-red">Blocker</span></h3></label></div>
+  <div class="card red" data-id="contact">
+    <div class="head"><input type="checkbox" id="c-contact"><label for="c-contact"><h3>Real WhatsApp number and support email <span class="tag t-red">Setup</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> <code>SignupPage</code> and <code>BillingPage</code> call <code>/signup/</code> and <code>/billing/checkout/</code>, which the backend no longer has (<code>frontend/src/features/platform/platformApi.ts:102,125</code>). <code>BillingPage</code> reads <code>available_plans</code>, which the API no longer returns. <code>e2e/02-platform-billing.spec.ts</code> still tests signup and trial.</p>
-      <p><b>Effect:</b> Owners see errors on the Billing page, and CI's E2E job fails.</p>
-      <p><b>Fix:</b> Remove the signup flow and rebuild <code>BillingPage</code> to show plan, paid-until, amount due, payment history and a Cancel button. Update the frontend types (<code>setup_fee</code>, <code>reactivation_fee</code>, <code>PENDING</code> status) and the E2E spec.</p>
+      <p><b>Why:</b> The app still falls back to <code>910000000000</code> and <code>support@messdeck.in</code> (<code>frontend/src/config/support.ts</code>).</p>
+      <p><b>Do:</b> Set <code>VITE_SUPPORT_WHATSAPP</code> and <code>VITE_SUPPORT_EMAIL</code> in Vercel and redeploy, or replace the fallbacks in <code>support.ts</code>.</p>
     </div>
   </div>
 
-  <div class="card red" data-id="recpay">
-    <div class="head"><input type="checkbox" id="c-recpay"><label for="c-recpay"><h3>Super-admin: record payment, cancel, create business <span class="tag t-red">Blocker</span></h3></label></div>
+  <div class="card red" data-id="pdf">
+    <div class="head"><input type="checkbox" id="c-pdf"><label for="c-pdf"><h3>Fill Contact / Phone in the PDF <span class="tag t-red">Docs</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> The backend endpoints <code>POST platform/businesses/{id}/record-payment/</code>, <code>/cancel/</code> and <code>POST platform/businesses/</code> exist and are tested, but no page calls them. <code>BusinessesListPage</code> shows "Trial Ends" instead of paid-until and amount due. The Plans page can't edit the setup or reactivation fee.</p>
-      <p><b>Effect:</b> You can't collect ₹3,000 / ₹500 / ₹1,000 or onboard a new mess from the app. On Render's free tier there's no shell, so only curl works.</p>
-      <p><b>Fix:</b> Add the forms and columns to the platform pages. Remove the leftover "On Trial" card from the platform dashboard.</p>
+      <p><b>Why:</b> The PDF's Contact and Phone lines are blank.</p>
+      <p><b>Do:</b> Use the same number and email as above.</p>
     </div>
   </div>
 
-  <div class="card red" data-id="unpaid">
-    <div class="head"><input type="checkbox" id="c-unpaid"><label for="c-unpaid"><h3>Suspend businesses that never pay <span class="tag t-red">Blocker</span></h3></label></div>
+  <div class="card amber" data-id="smtp">
+    <div class="head"><input type="checkbox" id="c-smtp"><label for="c-smtp"><h3>Connect an email provider for alert emails <span class="tag t-amber">Setup</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> A new business starts ACTIVE, and a PENDING (never paid) subscription is never suspended by <code>run_billing_checks</code>.</p>
-      <p><b>Effect:</b> A mess can use the app free forever without paying the ₹3,000.</p>
-      <p><b>Fix:</b> Either keep new businesses blocked until the first payment is recorded, or give them a short grace period and then suspend. Add a test.</p>
+      <p><b>Why:</b> Without <code>EMAIL_HOST</code>, alert emails only appear in the logs.</p>
+      <p><b>Do:</b> Pick an SMTP provider (e.g. Brevo or Zoho Mail free tiers), then set <code>EMAIL_HOST</code>, <code>EMAIL_HOST_USER</code>, <code>EMAIL_HOST_PASSWORD</code> and <code>DEFAULT_FROM_EMAIL</code> as GitHub secrets (the nightly jobs send the emails) and in Render.</p>
     </div>
   </div>
 
-  <div class="card red" data-id="enforce">
-    <div class="head"><input type="checkbox" id="c-enforce"><label for="c-enforce"><h3>Enforce suspension on every endpoint <span class="tag t-red">Blocker</span></h3></label></div>
+  <div class="card amber" data-id="restore">
+    <div class="head"><input type="checkbox" id="c-restore"><label for="c-restore"><h3>Test a backup restore once <span class="tag t-amber">Setup</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> Suspension is only checked in <code>TenantScopedViewSet</code> (<code>common/viewsets.py</code>). The dashboard, reports, settings and customer-portal views are plain APIViews and don't check it.</p>
-      <p><b>Effect:</b> A suspended business can still use the dashboard, reports and portal.</p>
-      <p><b>Fix:</b> Move the check into a shared permission class used by every tenant endpoint. Add a test per view.</p>
-    </div>
-  </div>
-
-  <div class="card red" data-id="reactfee">
-    <div class="head"><input type="checkbox" id="c-reactfee"><label for="c-reactfee"><h3>Make &quot;Reactivate&quot; charge the ₹1,000 fee <span class="tag t-red">Blocker</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> The super-admin Reactivate action (<code>services.py</code>, <code>reactivate</code>) restores access with no payment. The fee only applies through record-payment.</p>
-      <p><b>Effect:</b> The "₹1,000 reactivation fee after 3 months" term can be bypassed.</p>
-      <p><b>Fix:</b> Reactivate only through a recorded payment, or have Reactivate require one when more than 3 months have passed.</p>
-    </div>
-  </div>
-
-  <div class="card red" data-id="seed">
-    <div class="head"><input type="checkbox" id="c-seed"><label for="c-seed"><h3>Turn off demo data in production <span class="tag t-red">Blocker</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> <code>render.yaml</code> sets <code>SEED_DEMO: &quot;1&quot;</code>.</p>
-      <p><b>Effect:</b> The "Annapurna Mess" demo data is loaded into the live database.</p>
-      <p><b>Fix:</b> Set it to <code>&quot;0&quot;</code> before the first real client.</p>
-    </div>
-  </div>
-
-  <h2>2. Promised in the PDF but missing</h2>
-
-  <div class="card amber" data-id="import">
-    <div class="head"><input type="checkbox" id="c-import"><label for="c-import"><h3>Import existing customers (up to 100) <span class="tag t-amber">Setup fee</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> There's no CSV or Excel import anywhere in the backend or frontend. The Monthly Plan has <code>max_customers = 0</code> (unlimited), so a 100 limit isn't enforced either.</p>
-      <p><b>Effect:</b> The setup fee promises this import.</p>
-      <p><b>Fix:</b> Add a CSV upload (name, phone, address, notes) with row-level errors and a 100-row cap per import. Or import by script during setup and keep it internal.</p>
-    </div>
-  </div>
-
-  <div class="card amber" data-id="backup">
-    <div class="head"><input type="checkbox" id="c-backup"><label for="c-backup"><h3>Automated daily backup <span class="tag t-amber">Monthly fee</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> <code>docs/db_backup_restore.md</code> covers manual <code>pg_dump</code> only, and its docker commands use the service name <code>postgres</code> while <code>docker-compose.yml</code> calls it <code>db</code>.</p>
-      <p><b>Effect:</b> "Daily data backup" is promised.</p>
-      <p><b>Fix:</b> Schedule a daily <code>pg_dump</code> to off-site storage, or rely on Neon's point-in-time restore (check its retention). Test a restore once, and fix the runbook.</p>
-    </div>
-  </div>
-
-  <div class="card amber" data-id="support">
-    <div class="head"><input type="checkbox" id="c-support"><label for="c-support"><h3>WhatsApp and email support contact <span class="tag t-amber">Monthly fee</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> <code>CONTACT_WHATSAPP = &#x27;910000000000&#x27;</code> is a placeholder (<code>LandingPage.tsx</code>). There's no support email anywhere. The suspended banner says "contact support" with no number or link, and there's no Help entry in the admin menu.</p>
-      <p><b>Effect:</b> "WhatsApp and email support" has no working contact.</p>
-      <p><b>Fix:</b> Set the real number, add a support email, and add a Help/Support link in the app and on the suspended banner.</p>
-    </div>
-  </div>
-
-  <div class="card amber" data-id="alerts">
-    <div class="head"><input type="checkbox" id="c-alerts"><label for="c-alerts"><h3>Expiry alerts beyond in-app <span class="tag t-amber">Monthly fee</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> Alerts are in-app only (<code>notifications/services.py</code>: "IN_APP channel for now"). No email settings exist in <code>config/settings</code>, so there's no email or WhatsApp sending.</p>
-      <p><b>Effect:</b> Owners only see alerts if they open the app. Customers get none.</p>
-      <p><b>Fix:</b> Fix the background jobs first. Then add email (SMTP settings) and later WhatsApp if needed.</p>
-    </div>
-  </div>
-
-  <div class="card amber" data-id="pause">
-    <div class="head"><input type="checkbox" id="c-pause"><label for="c-pause"><h3>Finish pause handling <span class="tag t-amber">Monthly fee</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> Owner pause only changes the status and leaves deliveries on the daily list. Portal pause puts the subscription in PAUSED even for a future window, with no auto-resume. <code>DeliveryService.resume_deliveries</code> is never called, so resuming doesn't restore deliveries. End date isn't extended for paused days.</p>
-      <p><b>Effect:</b> Delivery staff can see paused customers, and resumed customers can miss meals.</p>
-      <p><b>Fix:</b> Cancel deliveries in the range on owner pause, restore them on resume, auto-resume when the window ends, and decide whether to extend the end date.</p>
-    </div>
-  </div>
-
-  <div class="card amber" data-id="tiffin">
-    <div class="head"><input type="checkbox" id="c-tiffin"><label for="c-tiffin"><h3>&quot;Tiffin&quot; vs &quot;packed meals&quot; <span class="tag t-amber">Wording</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> The PDF says breakfast, lunch, dinner, tiffin. The app's default meals are Breakfast, Lunch, Dinner, Snacks, and the landing page says "packed meals".</p>
-      <p><b>Effect:</b> Small mismatch a client may notice.</p>
-      <p><b>Fix:</b> Pick one word and use it in the PDF, landing page and default meals.</p>
-    </div>
-  </div>
-
-  <h2>3. Smaller items</h2>
-
-  <div class="card blue" data-id="pdf">
-    <div class="head"><input type="checkbox" id="c-pdf"><label for="c-pdf"><h3>Fill Contact / Phone in the PDF <span class="tag t-blue">Docs</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> The PDF still has blank "Contact: ____ · Phone: ____" fields.</p>
-      <p><b>Effect:</b> Clients can't reach you from the PDF.</p>
-      <p><b>Fix:</b> Use the same number as the landing page WhatsApp link.</p>
-    </div>
-  </div>
-
-  <div class="card blue" data-id="guide">
-    <div class="head"><input type="checkbox" id="c-guide"><label for="c-guide"><h3>Owner guide for the 30-minute walkthrough <span class="tag t-blue">Docs</span></h3></label></div>
-    <div class="detail">
-      <p><b>Problem:</b> <code>docs/app-workflow.html</code> exists, but there's no owner-facing guide or in-app help.</p>
-      <p><b>Effect:</b> Every walkthrough starts from scratch.</p>
-      <p><b>Fix:</b> Write a one-page owner guide to leave behind after the walkthrough.</p>
+      <p><b>Why:</b> A backup you've never restored isn't proven.</p>
+      <p><b>Do:</b> Follow the restore steps in <code>docs/db_backup_restore.md</code> into a spare Neon branch.</p>
     </div>
   </div>
 
   <div class="card blue" data-id="sleep">
     <div class="head"><input type="checkbox" id="c-sleep"><label for="c-sleep"><h3>Render free tier sleeps <span class="tag t-blue">Hosting</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> The service sleeps after about 15 minutes idle, and the first load takes 30–60s.</p>
-      <p><b>Effect:</b> Feels slow to paying clients.</p>
-      <p><b>Fix:</b> Move to a paid instance once the first client signs.</p>
+      <p><b>Why:</b> The first load after 15 idle minutes takes 30–60s.</p>
+      <p><b>Do:</b> Move to a paid instance once the first client signs.</p>
     </div>
   </div>
 
-  <div class="card blue" data-id="webhook">
-    <div class="head"><input type="checkbox" id="c-webhook"><label for="c-webhook"><h3>Razorpay webhook without a secret <span class="tag t-blue">Security</span></h3></label></div>
+  <div class="card blue" data-id="demo">
+    <div class="head"><input type="checkbox" id="c-demo"><label for="c-demo"><h3>Demo business gets suspended after its paid month <span class="tag t-blue">Demo</span></h3></label></div>
     <div class="detail">
-      <p><b>Problem:</b> Signature verification is skipped when <code>RAZORPAY_WEBHOOK_SECRET</code> is unset (<code>apps/platform/views.py</code>).</p>
-      <p><b>Effect:</b> Low risk now that payments are recorded manually.</p>
-      <p><b>Fix:</b> Set the secret, or remove the webhook route.</p>
+      <p><b>Why:</b> Now that the nightly jobs run, the seeded "Annapurna Mess" is paid until the end of its seeded month and will be auto-suspended 7 days later on a demo instance.</p>
+      <p><b>Do:</b> On a demo instance, record a ₹500 payment for it each month from Platform → Businesses, or reseed.</p>
     </div>
   </div>
 
-  <h2>Already working</h2>
-  <div class="tbl-wrap"><table>
-    <tr><th>PDF promise</th><th>Where it is</th></tr>
-    <tr><td>Customer management with full records</td><td>Customers pages, records with phone, address, location and notes</td></tr>
-    <tr><td>Meal and plan setup</td><td>Meals and Plans pages; defaults Breakfast, Lunch, Dinner, Snacks</td></tr>
-    <tr><td>Payment recording, paid and pending balances</td><td>Payments page, Record Payment form, per-subscription balances</td></tr>
-    <tr><td>Daily delivery list and meal counts</td><td>Today&#x27;s and completed deliveries for delivery staff; kitchen meal counts</td></tr>
-    <tr><td>Dashboard with today&#x27;s summary</td><td>Owner dashboard with today&#x27;s meals, deliveries, collections and dues</td></tr>
-    <tr><td>Owner login plus staff logins</td><td>Owner, Manager, Delivery and Kitchen roles; Staff page</td></tr>
-    <tr><td>Creating the business account</td><td>bootstrap_business command and the platform API (no screen yet, see above)</td></tr>
-    <tr><td>Setting up meals, plans, owner and staff logins</td><td>All available from the owner&#x27;s screens</td></tr>
-    <tr><td>Data private to your business</td><td>Tenant filtering in TenantScopedViewSet, isolation tests in every module</td></tr>
-    <tr><td>Billing rules in the backend</td><td>₹2,500 + ₹500, ₹3,000 first payment, cancel any time, ₹1,000 reactivation, 7-day grace. Tested, waiting on screens and jobs</td></tr>
-  </table></div>
+  <div class="card blue" data-id="pauseopts">
+    <div class="head"><input type="checkbox" id="c-pauseopts"><label for="c-pauseopts"><h3>Pause options <span class="tag t-blue">Later</span></h3></label></div>
+    <div class="detail">
+      <p><b>Why:</b> Paused days always extend the end date. There's no way to cancel a pause scheduled for the future, only to resume one that has started.</p>
+      <p><b>Do:</b> Add a cancel-scheduled-pause action, and a pause rule in Settings if a business wants meal credit instead.</p>
+    </div>
+  </div>
 
-  <h2>Suggested order</h2>
-  <p>Background jobs → billing screens → record payment / cancel / create business → unpaid and suspension gaps → reactivation fee → demo data off → customer import → backups → support contact → the rest.</p>
+  <h2>Fixed</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>What changed</th></tr>
+    <tr><td>Background jobs</td><td>Billing checks, subscription expiry, pause windows, next-day deliveries and expiry alerts are on the Celery beat schedule and in <code>manage.py run_daily_jobs</code>, run nightly by the Daily jobs GitHub workflow.</td></tr>
+    <tr><td>Billing screens</td><td>Signup and checkout removed; owner Billing page shows paid-until, amount due, grace end, history and Cancel. Help &amp; Support page added.</td></tr>
+    <tr><td>Super-admin billing</td><td>Create business, record payment (₹3,000 / ₹500 / ₹1,000), cancel, paid-until and amount-due columns, fee editing; errors shown to the admin.</td></tr>
+    <tr><td>Unpaid businesses</td><td>Suspended 7 days after onboarding if the first payment isn't recorded.</td></tr>
+    <tr><td>Suspension everywhere</td><td>Enforced in JWT authentication for every endpoint (<code>BUSINESS_SUSPENDED</code>), except login and billing. Owners are sent to Billing; staff and customers see a notice.</td></tr>
+    <tr><td>Reactivation fee</td><td>Reactivate is refused while the setup or ₹1,000 reactivation fee is owed; the payment restores access.</td></tr>
+    <tr><td>Demo data</td><td><code>SEED_DEMO</code> is <code>0</code> in <code>render.yaml</code>.</td></tr>
+    <tr><td>Customer import</td><td>CSV import up to 100 rows, all-or-nothing with per-row errors, template download.</td></tr>
+    <tr><td>Daily backup</td><td>Encrypted nightly <code>pg_dump</code> kept 30 days (Daily DB backup workflow); runbook fixed and restore steps added.</td></tr>
+    <tr><td>Expiry alert emails</td><td>Daily digest to the owner plus an email to each customer with an email address; no duplicates on re-runs.</td></tr>
+    <tr><td>Skip and pause</td><td>Pause windows with auto start/end, deliveries removed and restored, end date extended by the meals missed; resume can no longer activate an unpaid subscription.</td></tr>
+    <tr><td>Tiffin wording</td><td>PDF, landing page and default meals all say Tiffin.</td></tr>
+    <tr><td>Owner guide</td><td><code>docs/owner-guide.html</code> for the 30-minute walkthrough.</td></tr>
+    <tr><td>Razorpay webhook</td><td>Refuses unsigned calls when no secret is set.</td></tr>
+  </table></div>
 
 </div>
 
 <script>
   (function () {
-    var KEY = "monthly-plan-pending-v1";
+    var KEY = "monthly-plan-pending-v2";
     var boxes = document.querySelectorAll('.card[data-id] input[type="checkbox"]');
     var state = {};
     try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }

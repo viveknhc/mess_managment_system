@@ -110,14 +110,11 @@ class RazorpayWebhookView(APIView):
 
         # Verify signature
         webhook_secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
-        if webhook_secret:
-            expected = hmac.new(
-                webhook_secret.encode("utf-8"),
-                body,
-                hashlib.sha256,
-            ).hexdigest()
-            if not hmac.compare_digest(expected, signature):
-                return JsonResponse({"error": "Invalid signature"}, status=400)
+        if not webhook_secret:  # never accept unsigned billing events
+            return JsonResponse({"error": "Webhook not configured"}, status=503)
+        expected = hmac.new(webhook_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            return JsonResponse({"error": "Invalid signature"}, status=400)
 
         try:
             payload = json.loads(body)
@@ -233,7 +230,10 @@ class PlatformBusinessViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelVie
     @action(detail=True, methods=["post"])
     def reactivate(self, request, pk=None):
         business = self.get_object()
-        PlatformService.reactivate_business(business)
+        try:
+            PlatformService.reactivate_business(business)
+        except ValueError as e:
+            return _validation_error(str(e))
         return Response({"message": f"Business '{business.name}' reactivated."})
 
 

@@ -26,5 +26,14 @@ services:
         value: superadmin
       - key: SUPERADMIN_PASSWORD # choose a strong password
         sync: false
-      - key: SEED_DEMO # "1" loads the Annapurna Mess demo data once
-        value: "1"
+      - key: SEED_DEMO # keep "0" for real clients; "1" loads the Annapurna Mess demo data once
+        value: "0"
+      # Alert emails (optional — without EMAIL_HOST they only appear in the logs)
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false

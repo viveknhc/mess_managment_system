@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { CustomerForm } from './CustomerForm'
+import { CustomerImportModal } from './CustomerImportModal'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 
@@ -74,6 +75,8 @@ export function CustomersPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [importMessage, setImportMessage] = useState('')
   const table = useServerTable()
   const { params: tableParams, setPage } = table
   const navigate = useNavigate()
@@ -112,14 +115,31 @@ export function CustomersPage() {
           <p className="mt-1 text-sm text-gray-500">{count} customer{count !== 1 ? 's' : ''}</p>
         </div>
         {canWrite && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Add Customer
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Import CSV
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Add Customer
+            </button>
+          </div>
         )}
       </div>
+
+      {importMessage && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+          <span>{importMessage}</span>
+          <button onClick={() => setImportMessage('')} className="font-medium hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Search + filters */}
       <div className="mb-4 flex gap-3">
@@ -180,6 +200,17 @@ export function CustomersPage() {
           onClose={() => setShowForm(false)}
           onSaved={() => {
             setShowForm(false)
+            fetchCustomers()
+          }}
+        />
+      )}
+
+      {showImport && (
+        <CustomerImportModal
+          onClose={() => setShowImport(false)}
+          onImported={(created) => {
+            setShowImport(false)
+            setImportMessage(`Imported ${created} customer${created !== 1 ? 's' : ''} successfully.`)
             fetchCustomers()
           }}
         />

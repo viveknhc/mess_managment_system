@@ -5,6 +5,7 @@ import datetime
 from rest_framework import serializers
 
 from apps.customers.models import Customer
+from apps.deliveries.serializers import SubscriptionPauseSerializer
 from apps.plans.models import Plan
 from apps.subscriptions.models import Subscription
 
@@ -41,11 +42,21 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionDetailSerializer(SubscriptionListSerializer):
-    """Full detail — same fields plus updated_at."""
+    """Full detail — same fields plus updated_at and pause windows."""
+
+    pauses = SubscriptionPauseSerializer(many=True, read_only=True)
 
     class Meta(SubscriptionListSerializer.Meta):
-        fields = SubscriptionListSerializer.Meta.fields + ["updated_at"]
+        fields = SubscriptionListSerializer.Meta.fields + ["updated_at", "pauses"]
         read_only_fields = fields
+
+
+class PauseRequestSerializer(serializers.Serializer):
+    """Owner/manager pause body. All optional: no body = open-ended pause from today."""
+
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class SubscriptionCreateSerializer(serializers.Serializer):

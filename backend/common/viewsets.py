@@ -5,9 +5,8 @@ in an app viewset — tenant filtering and business force-set happen here.
 """
 
 from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied
 
-from common.constants import Role, Status
+from common.constants import Role
 from common.permissions import IsSameBusiness
 
 
@@ -16,12 +15,7 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         assert self.queryset is not None, "TenantScopedViewSet requires .queryset"
-        user = self.request.user
-        # SUPER_ADMIN bypasses suspension check
-        if getattr(user, "role", None) != Role.SUPER_ADMIN:
-            business = getattr(user, "business", None)
-            if business and business.status == Status.SUSPENDED:
-                raise PermissionDenied("Your business account is suspended. Please contact support.")
+        user = self.request.user  # suspension is enforced in common.authentication
         return self.queryset.filter(business_id=user.business_id)
 
     def perform_create(self, serializer):

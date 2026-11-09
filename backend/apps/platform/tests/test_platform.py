@@ -1,5 +1,8 @@
 """Platform billing module tests — monthly plan terms, quota, suspension, SUPER_ADMIN isolation."""
 
+import hashlib
+import hmac
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -63,6 +66,15 @@ def plan_pro(db):
         features=["Unlimited customers", "Unlimited staff", "Priority support"],
         is_active=True,
     )
+
+
+@pytest.fixture()
+def jwt_client_a(owner_a):
+    """Logs in for real — suspension is enforced in JWT authentication, which force_authenticate skips."""
+    c = APIClient()
+    login = c.post("/api/v1/auth/login/", {"username": "owner_a", "password": "pass"})
+    c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.json()['access']}")
+    return c
 
 
 @pytest.fixture()
@@ -130,16 +142,81 @@ class TestSuspension:
         assert sub_a.status == SaasStatus.SUSPENDED
 
     def test_reactivate_business(self, biz_a, sub_a):
+        pay(sub_a, timezone.now().date())
         PlatformService.suspend_business(biz_a)
         PlatformService.reactivate_business(biz_a)
         biz_a.refresh_from_db()
         sub_a.refresh_from_db()
         assert biz_a.status == Status.ACTIVE
-        assert sub_a.status == SaasStatus.PENDING  # nothing paid yet
+        assert sub_a.status == SaasStatus.ACTIVE  # still inside the paid month
 
-    def test_suspended_business_blocked_from_api(self, biz_a, sub_a, client_a):
+    def test_reactivate_refused_while_setup_fee_unpaid(self, biz_a, sub_a):
         PlatformService.suspend_business(biz_a)
-        resp = client_a.get("/api/v1/customers/")
+        with pytest.raises(ValueError, match="setup fee"):
+            PlatformService.reactivate_business(biz_a)
+        biz_a.refresh_from_db()
+        assert biz_a.status == Status.SUSPENDED
+
+    def test_reactivate_refused_when_reactivation_fee_applies(self, biz_a, sub_a):
+        pay(sub_a, D0)
+        PlatformService.suspend_business(biz_a)
+        with pytest.raises(ValueError, match="reactivation fee"):
+            PlatformService.reactivate_business(biz_a, today=date(2026, 6, 1))
+        # Paying the fee is the way back
+        payment = pay(sub_a, date(2026, 6, 1))
+        biz_a.refresh_from_db()
+        assert payment.reactivation_fee == Decimal("1000.00")
+        assert biz_a.status == Status.ACTIVE
+
+    def test_reactivate_within_3_months_allowed_without_fee(self, biz_a, sub_a):
+        pay(sub_a, D0)
+        PlatformService.suspend_business(biz_a)
+        PlatformService.reactivate_business(biz_a, today=date(2026, 3, 1))
+        biz_a.refresh_from_db()
+        sub_a.refresh_from_db()
+        assert biz_a.status == Status.ACTIVE
+        assert sub_a.status == SaasStatus.PAST_DUE  # still owes the month
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "/api/v1/customers/",
+            "/api/v1/dashboard/",
+            "/api/v1/reports/customers/",
+            "/api/v1/settings/",
+            "/api/v1/notifications/",
+        ],
+    )
+    def test_suspended_business_blocked_everywhere(self, biz_a, sub_a, jwt_client_a, url):
+        PlatformService.suspend_business(biz_a)
+        resp = jwt_client_a.get(url)
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == "BUSINESS_SUSPENDED"
+
+    def test_suspended_customer_blocked_from_portal(self, biz_a, sub_a):
+        customer_user = User.objects.create_user(
+            username="cust_a", password="pass", role=Role.CUSTOMER, business=biz_a
+        )
+        assert customer_user.business_id == biz_a.id
+        PlatformService.suspend_business(biz_a)
+        c = APIClient()
+        login = APIClient().post("/api/v1/auth/login/", {"username": "cust_a", "password": "pass"})
+        c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.json()['access']}")
+        assert c.get("/api/v1/portal/dashboard/").status_code == 403
+
+    def test_suspended_owner_can_still_log_in_and_see_billing(self, biz_a, sub_a, owner_a):
+        PlatformService.suspend_business(biz_a)
+        c = APIClient()
+        login = c.post("/api/v1/auth/login/", {"username": "owner_a", "password": "pass"})
+        assert login.status_code == 200
+        c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.json()['access']}")
+        assert c.get("/api/v1/auth/me/").status_code == 200
+        assert c.get("/api/v1/billing/").status_code == 200
+        assert c.get("/api/v1/dashboard/").status_code == 403
+
+    def test_suspended_business_blocked_from_api(self, biz_a, sub_a, jwt_client_a):
+        PlatformService.suspend_business(biz_a)
+        resp = jwt_client_a.get("/api/v1/customers/")
         assert resp.status_code == 403
 
     def test_super_admin_bypasses_suspension(self, biz_a, sub_a, client_super):
@@ -182,11 +259,18 @@ class TestPlatformAdmin:
         assert biz_a.status == Status.SUSPENDED
 
     def test_reactivate_business_endpoint(self, client_super, biz_a, sub_a):
+        pay(sub_a, timezone.now().date())
         PlatformService.suspend_business(biz_a)
         resp = client_super.post(f"/api/v1/platform/businesses/{biz_a.id}/reactivate/")
         assert resp.status_code == 200
         biz_a.refresh_from_db()
         assert biz_a.status == Status.ACTIVE
+
+    def test_reactivate_endpoint_refuses_when_fee_owed(self, client_super, biz_a, sub_a):
+        PlatformService.suspend_business(biz_a)
+        resp = client_super.post(f"/api/v1/platform/businesses/{biz_a.id}/reactivate/")
+        assert resp.status_code == 400
+        assert "Record the payment" in resp.json()["error"]["message"]
 
     def test_crud_plans(self, client_super):
         resp = client_super.post(
@@ -261,38 +345,57 @@ class TestQuotaEnforcement:
 # ── Webhook ──────────────────────────────────────────────────────────────
 
 
+WEBHOOK_SECRET = "whsec_test"
+
+
+def post_webhook(payload, secret=WEBHOOK_SECRET):
+    body = json.dumps(payload).encode()
+    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return APIClient().post(
+        "/api/v1/webhooks/razorpay/",
+        body,
+        content_type="application/json",
+        HTTP_X_RAZORPAY_SIGNATURE=signature,
+    )
+
+
+CHARGED_UNKNOWN = {
+    "event": "subscription.charged",
+    "payload": {
+        "subscription": {"entity": {"id": "sub_unknown"}},
+        "payment": {"entity": {"id": "pay_1", "amount": 49900}},
+    },
+}
+
+
 class TestWebhook:
+    @pytest.fixture(autouse=True)
+    def _secret(self, settings):
+        settings.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET
+
     def test_webhook_ignores_unknown_subscription(self, db):
-        client = APIClient()
-        resp = client.post(
-            "/api/v1/webhooks/razorpay/",
-            {
-                "event": "subscription.charged",
-                "payload": {
-                    "subscription": {"entity": {"id": "sub_unknown"}},
-                    "payment": {"entity": {"id": "pay_1", "amount": 49900}},
-                },
-            },
-            format="json",
-        )
-        assert resp.status_code == 200
+        assert post_webhook(CHARGED_UNKNOWN).status_code == 200
 
     def test_webhook_charge_success(self, sub_a, plan_basic):
         PlatformService.activate_subscription(sub_a, plan_basic, razorpay_subscription_id="sub_test123")
-        client = APIClient()
-        resp = client.post(
-            "/api/v1/webhooks/razorpay/",
+        resp = post_webhook(
             {
                 "event": "subscription.charged",
                 "payload": {
                     "subscription": {"entity": {"id": "sub_test123"}},
                     "payment": {"entity": {"id": "pay_1", "amount": 49900, "order_id": "ord_1"}},
                 },
-            },
-            format="json",
+            }
         )
         assert resp.status_code == 200
         assert SaasPayment.objects.filter(razorpay_payment_id="pay_1").exists()
+
+    def test_webhook_rejects_bad_signature(self, db):
+        assert post_webhook(CHARGED_UNKNOWN, secret="wrong").status_code == 400
+
+    def test_webhook_rejected_when_secret_not_configured(self, db, settings):
+        settings.RAZORPAY_WEBHOOK_SECRET = ""
+        assert post_webhook(CHARGED_UNKNOWN).status_code == 503
 
 
 # ── Monthly plan terms (docs/Monthly_Subscription_Plan.pdf) ──────────────
@@ -414,9 +517,23 @@ class TestBillingTimeline:
         biz_a.refresh_from_db()
         assert biz_a.status == Status.SUSPENDED
 
-    def test_pending_business_not_auto_suspended(self, sub_a, biz_a):
-        PlatformService.run_billing_checks(date(2027, 1, 1))
+    def test_unpaid_new_business_suspended_after_grace(self, sub_a, biz_a):
+        onboarded = timezone.now().date()
+        PlatformService.run_billing_checks(onboarded + timedelta(days=6))
         biz_a.refresh_from_db()
+        assert biz_a.status == Status.ACTIVE  # time to set up and pay
+        PlatformService.run_billing_checks(onboarded + timedelta(days=7))
+        biz_a.refresh_from_db()
+        sub_a.refresh_from_db()
+        assert biz_a.status == Status.SUSPENDED
+        assert sub_a.status == SaasStatus.SUSPENDED
+
+    def test_first_payment_after_unpaid_suspension_restores_access(self, sub_a, biz_a):
+        onboarded = timezone.now().date()
+        PlatformService.run_billing_checks(onboarded + timedelta(days=10))
+        payment = pay(sub_a, onboarded + timedelta(days=12))
+        biz_a.refresh_from_db()
+        assert payment.amount == Decimal("3000.00")
         assert biz_a.status == Status.ACTIVE
 
     def test_payment_after_suspension_restores_access_from_today(self, sub_a, biz_a):

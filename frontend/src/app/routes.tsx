@@ -27,6 +27,7 @@ import { TodayDeliveriesPage } from '../features/deliveries/TodayDeliveriesPage'
 import { PaymentsPage } from '../features/payments/PaymentsPage'
 import { SubscriptionsPage } from '../features/subscriptions/SubscriptionsPage'
 import { BillingPage } from '../features/platform/BillingPage'
+import { HelpSupportPage } from '../features/platform/HelpSupportPage'
 import { PlatformDashboardPage } from '../features/platform/PlatformDashboardPage'
 import { BusinessesListPage } from '../features/platform/BusinessesListPage'
 import { PlatformPlansPage } from '../features/platform/PlatformPlansPage'
@@ -79,6 +80,7 @@ export function AppRoutes() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="business" element={<BusinessProfilePage />} />
           <Route path="billing" element={<BillingPage />} />
+          <Route path="support" element={<HelpSupportPage />} />
         </Route>
       </Route>
 

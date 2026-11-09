@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { apiClient } from '../services/apiClient'
+import { apiClient, BUSINESS_SUSPENDED_EVENT } from '../services/apiClient'
 import { tokenStorage } from '../services/tokenStorage'
 
 export interface User {
@@ -65,3 +65,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, isAuthenticated: false, isLoading: false })
   },
 }))
+
+// A request was rejected with BUSINESS_SUSPENDED — the business was suspended mid-session.
+window.addEventListener(BUSINESS_SUSPENDED_EVENT, () => {
+  const { user } = useAuthStore.getState()
+  if (user && user.business_status !== 'SUSPENDED') {
+    useAuthStore.setState({ user: { ...user, business_status: 'SUSPENDED' } })
+  }
+})

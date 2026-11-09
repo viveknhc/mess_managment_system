@@ -328,7 +328,8 @@ class TestPortalPause:
         )
         assert resp.status_code == 200
         sub_a.refresh_from_db()
-        assert sub_a.status == SubStatus.PAUSED
+        # Window starts tomorrow → stays ACTIVE until the daily sweep flips it.
+        assert sub_a.status == SubStatus.ACTIVE
         d = Delivery.objects.get(subscription=sub_a, delivery_date=start)
         assert d.status == DeliveryStatus.CANCELLED
 

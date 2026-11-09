@@ -33,7 +33,7 @@ MONTHLY_PLAN_DEFAULTS = {
     "max_staff": 0,
     "features": [
         "Customer management with full records",
-        "Meal and plan setup (breakfast, lunch, dinner, packed meals)",
+        "Meal and plan setup (breakfast, lunch, dinner, tiffin)",
         "Subscription tracking with automatic expiry alerts",
         "Payment recording with paid and pending balances",
         "Daily delivery list and meal counts",
@@ -46,7 +46,7 @@ MONTHLY_PLAN_DEFAULTS = {
 }
 GRACE_DAYS = 7  # unpaid this many days after the due date → suspended
 REACTIVATION_GAP_MONTHS = 3  # returning after MORE than this → reactivation fee
-DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Tiffin"]
 
 
 def add_months(d: date, months: int) -> date:
@@ -225,6 +225,7 @@ class PlatformService:
         - ACTIVE on/after its due date → PAST_DUE (grace period starts)
         - PAST_DUE for GRACE_DAYS → SUSPENDED
         - CANCELLED once the paid month ends → business access suspended
+        - PENDING (first payment never made) for GRACE_DAYS after onboarding → SUSPENDED
         - legacy TRIAL past its end date → SUSPENDED
         """
         today = today or timezone.now().date()
@@ -244,6 +245,12 @@ class PlatformService:
         ).select_related("business")
         to_suspend += SaasSubscription.objects.filter(
             status=SaasStatus.TRIAL, trial_end_date__lt=today
+        ).select_related("business")
+        to_suspend += SaasSubscription.objects.filter(
+            status=SaasStatus.PENDING,
+            setup_fee_paid=False,
+            created_at__date__lte=today - timedelta(days=GRACE_DAYS),
+            business__status=Status.ACTIVE,
         ).select_related("business")
 
         for sub in to_suspend:
@@ -336,11 +343,21 @@ class PlatformService:
     def reactivate_business(business, today=None):
         """SUPER_ADMIN override: restore access without a payment.
 
-        Billing status follows the dates — if the paid month is over, the business is
+        Refused when the setup fee is unpaid or the reactivation fee applies — those
+        businesses come back only through record_manual_payment, so the fees can't be skipped.
+        Otherwise billing status follows the dates: if the paid month is over, the business is
         PAST_DUE again and the nightly check re-suspends it after the grace period.
-        To bring back a lapsed business properly, record a payment instead.
         """
         today = today or timezone.now().date()
+        sub = getattr(business, "saas_subscription", None)
+        if sub is not None:
+            due = PlatformService.amount_due(sub, today)
+            if due.setup_fee or due.reactivation_fee:
+                raise ValueError(
+                    f"₹{due.total} is due (includes "
+                    + ("the setup fee" if due.setup_fee else "the reactivation fee")
+                    + "). Record the payment to restore access."
+                )
         business.status = Status.ACTIVE
         business.save(update_fields=["status"])
 

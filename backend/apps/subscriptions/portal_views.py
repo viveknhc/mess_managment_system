@@ -212,9 +212,9 @@ class PortalSubscriptionActionsView(APIView):
         if not sub.plan.pause_allowed:
             return _error("VALIDATION_ERROR", "Pausing is not allowed on this plan.", 400)
 
-        # Pause flow (D-10): flip status via state machine, cancel deliveries in range.
-        SubscriptionService.pause(sub)
-        DeliveryService.pause_deliveries(
+        # Pause flow (D-10): record the window, cancel its deliveries; status flips
+        # to PAUSED now only if the window starts today (else the daily sweep does it).
+        sub = SubscriptionService.pause(
             sub, start_date=start_date, end_date=end_date, reason=request.data.get("reason", "")
         )
         return Response(SubscriptionListSerializer(sub).data)

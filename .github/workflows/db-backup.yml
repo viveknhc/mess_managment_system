@@ -1,0 +1,56 @@
+name: Daily DB backup
+
+# Dumps the production database every night, encrypts it, and keeps it as a
+# workflow artifact for 30 days. The repo is public, so the dump is encrypted
+# (AES-256, gpg symmetric) — without BACKUP_PASSPHRASE the artifact is useless.
+#
+# Repo secrets: PROD_DATABASE_URL, BACKUP_PASSPHRASE (store it somewhere safe —
+# lose it and the backups can't be restored). Restore steps: docs/db_backup_restore.md
+# Skips quietly until both secrets are set.
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 IST
+  workflow_dispatch:
+
+concurrency: db-backup
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check configuration
+        id: cfg
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "PROD_DATABASE_URL or BACKUP_PASSPHRASE not set — skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install PostgreSQL 17 client
+        if: steps.cfg.outputs.skip != 'true'
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+      - name: Dump and encrypt
+        if: steps.cfg.outputs.skip != 'true'
+        run: |
+          set -o pipefail
+          name="messdeck_$(date -u +%Y%m%d_%H%M)"
+          /usr/lib/postgresql/17/bin/pg_dump --format=custom --no-owner --no-privileges "$DATABASE_URL" \
+            | gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$BACKUP_PASSPHRASE" \
+                  -o "$name.dump.gpg"
+          size=$(stat -c %s "$name.dump.gpg")
+          echo "Backup $name.dump.gpg: $size bytes"
+          [ "$size" -gt 1000 ] || { echo "Backup suspiciously small"; exit 1; }
+          echo "BACKUP_NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        if: steps.cfg.outputs.skip != 'true'
+        with:
+          name: ${{ env.BACKUP_NAME }}
+          path: ${{ env.BACKUP_NAME }}.dump.gpg
+          retention-days: 30
+          if-no-files-found: error

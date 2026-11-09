@@ -132,7 +132,8 @@ export function PortalSubscriptionPage() {
     setBusy(false)
     if (res.ok) {
       setDialog(null)
-      flash('ok', 'Subscription paused')
+      // A future window keeps the subscription ACTIVE until its start date
+      flash('ok', res.data?.status === 'PAUSED' ? 'Subscription paused' : `Pause scheduled from ${pauseStart}`)
       load()
     } else {
       flash('err', res.error)

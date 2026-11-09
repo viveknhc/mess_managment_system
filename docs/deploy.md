@@ -32,7 +32,7 @@ Sign up for all three with your GitHub account. Total time: about 20 minutes. Fr
    | `DATABASE_URL` | the Neon connection string from step 1 |
    | `SUPERADMIN_PASSWORD` | a strong password of your choice (platform admin login) |
    | `CORS_ALLOWED_ORIGINS` | `https://example.com` for now. You'll replace it in step 4 |
-4. Click **Apply**. The first build takes 3–5 minutes. It installs packages, creates the tables, creates the `superadmin` user and loads the demo data (`SEED_DEMO=1`).
+4. Click **Apply**. The first build takes 3–5 minutes. It installs packages, creates the tables and creates the `superadmin` user. (Demo data loads only if you set `SEED_DEMO=1`.)
 5. When it shows **Live**, copy the URL at the top, e.g. `https://mess-manager-api.onrender.com`.
    Check it in a browser: `https://<your-render-url>/api/v1/pricing/` should show `[]`.
 
@@ -67,10 +67,11 @@ Push to `main`. **Render and Vercel both redeploy automatically.** Database migr
 ## Free-tier limitations (good to know)
 
 - **The backend sleeps** after ~15 minutes without traffic. The first request after that takes 30–60 seconds while it wakes up; open the site a minute before a demo.
-- **Demo logins are public.** The demo passwords (`owner123` etc.) are in the public repo's seed script, so anyone who finds the site can log into the demo business. That's fine for a demo. For real use, set `SEED_DEMO` to `0` before the first deploy (or use a fresh database) and sign up a real business instead.
+- **Demo logins are public.** The demo passwords (`owner123` etc.) are in the public repo's seed script, so anyone who finds the site can log into the demo business. That's fine for a demo. `render.yaml` now ships with `SEED_DEMO=0`; set it to `1` only for a demo instance. Real businesses are created by the platform admin (Platform → Businesses → Add Business).
 - **Logo uploads don't persist.** Render's free disk is wiped on every deploy/restart and uploaded files aren't served in production. A file storage service (e.g. Cloudinary or S3) is needed for that.
-- **Background jobs don't run.** There's no Celery/Redis on the free plan, so the daily trial-expiry and past-due checks don't run automatically. Everything else works.
-- **Online billing is off.** Razorpay keys aren't set, so SaaS plans without a Razorpay Plan ID activate instantly (dev mode).
+- **Background jobs run from GitHub Actions.** There's no Celery/Redis on the free plan, so the **Daily jobs** workflow (`.github/workflows/daily-jobs.yml`) runs `python manage.py run_daily_jobs` against the production database at 00:10 IST: billing checks (overdue → suspended), subscription expiry, next-day deliveries and expiry alerts. Add the repo secrets `PROD_DATABASE_URL` and `PROD_SECRET_KEY` (any long random string), and optionally `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` for alert emails. Until `PROD_DATABASE_URL` is set the workflow skips. Run it once by hand (Actions → Daily jobs → Run workflow) to check.
+- **Daily backups** also run from GitHub Actions — see [db_backup_restore.md](db_backup_restore.md).
+- **Billing is manual.** The platform admin records each UPI/cash/bank payment (Platform → Businesses → Record payment). The Razorpay webhook refuses all calls until `RAZORPAY_WEBHOOK_SECRET` is set.
 
 ## Troubleshooting
 

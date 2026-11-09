@@ -206,4 +206,4 @@ class TestBootstrapSeeds:
         )
         biz = Business.objects.get(name="Test Mess")
         meals = list(Meal.objects.filter(business=biz).values_list("name", flat=True))
-        assert sorted(meals) == ["Breakfast", "Dinner", "Lunch", "Snacks"]
+        assert sorted(meals) == ["Breakfast", "Dinner", "Lunch", "Tiffin"]

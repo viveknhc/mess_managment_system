@@ -18,7 +18,7 @@ from apps.businesses.models import Business
 from apps.meals.models import Meal
 from common.constants import Role
 
-DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Tiffin"]
 
 
 class Command(BaseCommand):

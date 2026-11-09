@@ -9,11 +9,12 @@ from rest_framework.response import Response
 
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.serializers import (
+    PauseRequestSerializer,
     SubscriptionCreateSerializer,
     SubscriptionDetailSerializer,
     SubscriptionListSerializer,
 )
-from apps.subscriptions.services import SubscriptionService
+from apps.subscriptions.services import PauseValidationError, SubscriptionService
 from common.constants import Role
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
@@ -108,9 +109,22 @@ class SubscriptionViewSet(TenantScopedViewSet):
 
     @action(detail=True, methods=["post"])
     def pause(self, request, pk=None):
+        """Body (optional): {start_date?, end_date?, reason?}. No end_date = until resumed."""
         sub = self.get_object()
+        body = PauseRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
         try:
-            sub = SubscriptionService.pause(sub)
+            sub = SubscriptionService.pause(
+                sub,
+                start_date=body.validated_data.get("start_date"),
+                end_date=body.validated_data.get("end_date"),
+                reason=body.validated_data.get("reason", ""),
+            )
+        except PauseValidationError as e:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": str(e), "fields": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ValueError as e:
             return Response(
                 {"error": {"code": "INVALID_TRANSITION", "message": str(e), "fields": {}}},

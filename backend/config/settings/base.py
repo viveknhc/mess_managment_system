@@ -9,6 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -113,7 +114,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- DRF (arch. §8) ---
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("common.authentication.TenantJWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardPagination",
     "PAGE_SIZE": 20,
@@ -142,14 +143,35 @@ SIMPLE_JWT = {
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
 CELERY_TASK_ACKS_LATE = True
+CELERY_TIMEZONE = TIME_ZONE
+
+# Nightly jobs, in run order. Celery beat runs them on Celery hosts; elsewhere
+# (e.g. Render free tier) `python manage.py run_daily_jobs` runs them from a cron.
+DAILY_JOBS = [
+    "apps.platform.tasks.run_billing_checks",  # overdue → past due → suspended
+    "apps.deliveries.tasks.expire_subscriptions_task",  # ACTIVE past end_date → EXPIRED
+    "apps.subscriptions.tasks.process_pause_windows_task",  # start/end pause windows
+    "apps.deliveries.tasks.generate_next_day_deliveries_task",
+    "apps.notifications.tasks.send_expiring_notifications_task",  # expiry alerts
+]
 CELERY_BEAT_SCHEDULE = {
-    "run-billing-checks": {
-        "task": "apps.platform.tasks.run_billing_checks",
-        "schedule": 86400,  # daily
-    },
+    task.rsplit(".", 1)[1]: {"task": task, "schedule": crontab(hour=0, minute=10 + 5 * i)}
+    for i, task in enumerate(DAILY_JOBS)
 }
 
 # --- Razorpay (SaaS billing) ---
 RAZORPAY_KEY_ID = env.str("RAZORPAY_KEY_ID", default="")
 RAZORPAY_KEY_SECRET = env.str("RAZORPAY_KEY_SECRET", default="")
 RAZORPAY_WEBHOOK_SECRET = env.str("RAZORPAY_WEBHOOK_SECRET", default="")
+
+# --- Email (expiry alerts; see apps/notifications) ---
+# Default: console backend (prints emails). production.py switches to SMTP when
+# EMAIL_HOST is set. Tests get Django's locmem backend automatically.
+EMAIL_BACKEND = env.str("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env.str("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", default="MessDeck <noreply@localhost>")

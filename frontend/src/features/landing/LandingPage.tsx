@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from './Logo'
-import { whatsappLink } from '../../utils/contact'
+import { whatsappLink } from '../../config/support'
 
 /* ------------------------------------------------------------------ */
 /*  Intersection-observer fade-in hook                                 */
@@ -77,7 +77,7 @@ const PAIN_POINTS = [
 // Mirrors "Monthly fee covers" in docs/Monthly_Subscription_Plan.pdf — keep the two in sync.
 const FEATURES = [
   { emoji: '👥', title: 'Customer Management', desc: 'Full records for every customer. Search, filter, and see everything at a glance.' },
-  { emoji: '🍽️', title: 'Meals & Plans', desc: 'Set up breakfast, lunch, dinner, and packed meal plans with your own prices.' },
+  { emoji: '🍽️', title: 'Meals & Plans', desc: 'Set up breakfast, lunch, dinner, and tiffin plans with your own prices.' },
   { emoji: '📅', title: 'Subscription Tracking', desc: 'Start dates, renewals, and automatic alerts before a subscription expires.' },
   { emoji: '💰', title: 'Payment Recording', desc: 'Record every payment and see paid and pending balances for each customer.' },
   { emoji: '🚚', title: 'Deliveries & Meal Counts', desc: 'A daily delivery list for your staff and exact meal counts for your kitchen.' },

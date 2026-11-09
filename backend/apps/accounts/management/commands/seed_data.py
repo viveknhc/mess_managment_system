@@ -24,7 +24,6 @@ from apps.audit.services import AuditService
 from apps.businesses.models import Business
 from apps.customers.models import Customer
 from apps.deliveries.models import Delivery, DeliveryStatus, MealSkip, SubscriptionPause
-from apps.deliveries.services import DeliveryService
 from apps.meals.models import Meal
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
@@ -452,14 +451,8 @@ class Command(BaseCommand):
             sub.refresh_from_db()
             self._process_past_deliveries(sub, delivery_staff)
             # Pause
-            SubscriptionService.pause(sub)
-            pause_start = TODAY
-            pause_end = TODAY + timedelta(days=3)
-            DeliveryService.pause_deliveries(
-                sub,
-                start_date=pause_start,
-                end_date=pause_end,
-                reason="Out of station",
+            SubscriptionService.pause(
+                sub, start_date=TODAY, end_date=TODAY + timedelta(days=3), reason="Out of station"
             )
 
         # ── 1 RENEWED chain (expired → renew → pay → ACTIVE) ────────────

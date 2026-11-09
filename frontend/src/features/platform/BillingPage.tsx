@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { billingApi, type BillingData, type SaasSubscription } from './platformApi'
 import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
-import { whatsappLink } from '../../utils/contact'
+import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../../config/support'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 
@@ -106,6 +106,24 @@ export function BillingPage() {
             {STATUS_LABEL[sub.status]}
           </span>
         </div>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-gray-500">Paid until</dt>
+            <dd className="mt-0.5 font-medium text-gray-900">
+              {sub.current_period_end ? formatDate(dayBefore(sub.current_period_end)) : 'Not paid yet'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Amount due</dt>
+            <dd className="mt-0.5 font-medium text-gray-900">{rupees(due.total)} on {formatDate(due.due_date)}</dd>
+          </div>
+          {sub.grace_ends && (
+            <div>
+              <dt className="text-gray-500">Grace period ends</dt>
+              <dd className="mt-0.5 font-medium text-red-700">{formatDate(sub.grace_ends)}</dd>
+            </div>
+          )}
+        </dl>
         <p className="mt-4 text-sm text-gray-700">{statusMessage(sub)}</p>
       </div>
 
@@ -129,15 +147,23 @@ export function BillingPage() {
         </dl>
         <div className="mt-5 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
           <p className="font-medium text-gray-900">How to pay</p>
-          <p className="mt-1">Pay by UPI, cash, or bank transfer, then send us the payment reference on WhatsApp. We'll update your account the same day.</p>
-          <a
-            href={whatsappLink(payMessage)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-          >
-            Send payment details on WhatsApp
-          </a>
+          <p className="mt-1">Pay by UPI or cash and message us on WhatsApp with the payment reference. We'll update your account the same day.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <a
+              href={whatsappLink(payMessage)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              Send payment details on WhatsApp
+            </a>
+            <span className="text-gray-500">
+              or email{' '}
+              <a href={supportEmailLink(`MessDeck payment — ${sub.business_name}`)} className="text-blue-600 underline">
+                {SUPPORT_EMAIL}
+              </a>
+            </span>
+          </div>
         </div>
       </div>
 

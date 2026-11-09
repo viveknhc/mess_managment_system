@@ -163,6 +163,7 @@ export function BusinessesListPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [paying, setPaying] = useState<PlatformBusiness | null>(null)
+  const [actionError, setActionError] = useState('')
   const table = useServerTable()
   const { params: tableParams } = table
 
@@ -186,21 +187,27 @@ export function BusinessesListPage() {
   const columns = useMemo<Column<PlatformBusiness>[]>(() => {
     async function handleSuspend(id: string) {
       if (!confirm('Suspend this business?')) return
+      setActionError('')
       const result = await platformApi.suspendBusiness(id)
       if (result.ok) fetchBusinesses()
+      else setActionError(result.error)
     }
 
     async function handleReactivate(id: string) {
       if (!confirm('Restore access without a payment? To bring back a lapsed business, use Record Payment instead.')) return
+      setActionError('')
       const result = await platformApi.reactivateBusiness(id)
+      // 400 when money is owed (setup unpaid / reactivation fee) — the message says to record a payment instead.
       if (result.ok) fetchBusinesses()
+      else setActionError(result.error)
     }
 
     async function handleCancel(biz: PlatformBusiness) {
       if (!confirm(`Cancel the monthly plan for ${biz.name}? They keep access until the paid month ends.`)) return
+      setActionError('')
       const result = await platformApi.cancelBusiness(biz.id)
       if (result.ok) fetchBusinesses()
-      else alert(result.error)
+      else setActionError(result.error)
     }
 
     return [
@@ -331,6 +338,15 @@ export function BusinessesListPage() {
           Add Business
         </button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="mb-4 flex items-start justify-between gap-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError('')} className="text-red-500 hover:text-red-700" aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

@@ -53,5 +53,15 @@ class MealSkipSerializer(serializers.ModelSerializer):
 class SubscriptionPauseSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPause
-        fields = ["id", "subscription", "start_date", "end_date", "reason", "created_at"]
+        fields = [
+            "id",
+            "subscription",
+            "start_date",
+            "end_date",
+            "reason",
+            "resumed_on",
+            "is_closed",
+            "days_extended",
+            "created_at",
+        ]
         read_only_fields = fields

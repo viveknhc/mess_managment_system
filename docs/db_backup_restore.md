@@ -1,15 +1,47 @@
 # Database Backup & Restore Runbook
 
+## Production (Neon) — automatic daily backup
+
+The **Daily DB backup** GitHub Actions workflow (`.github/workflows/db-backup.yml`)
+runs every night at 02:00 IST. It dumps the production database with `pg_dump`,
+encrypts the dump with AES-256 (gpg) and keeps it as a workflow artifact for
+**30 days**. Neon's own restore history is a second safety net.
+
+**One-time setup** (GitHub → repo → Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `PROD_DATABASE_URL` | Neon connection string (`postgresql://…?sslmode=require`) |
+| `BACKUP_PASSPHRASE` | A long random passphrase. **Keep a copy outside GitHub** (password manager): without it the backups can't be decrypted. |
+
+Run it once by hand (Actions → Daily DB backup → Run workflow) and check the artifact appears.
+
+**Restore** (test this once before you need it):
+
+```bash
+# 1. Download the artifact (Actions → run → Artifacts) and unzip it, or:
+gh run download <run-id> -n messdeck_YYYYMMDD_HHMM
+
+# 2. Decrypt
+gpg --batch --passphrase "$BACKUP_PASSPHRASE" -d messdeck_YYYYMMDD_HHMM.dump.gpg > backup.dump
+
+# 3. Restore into an EMPTY database (create a new Neon branch/database for this,
+#    check the data, then point DATABASE_URL at it)
+pg_restore --no-owner --no-privileges -d "$TARGET_DATABASE_URL" backup.dump
+```
+
+Use a `pg_restore` at least as new as the server (PostgreSQL 17 client for Neon).
+
 ## Backup
 
 ### Docker (PostgreSQL container)
 
 ```bash
 # Full backup
-docker compose exec postgres pg_dump -U mess_user mess_db > backup_$(date +%Y%m%d_%H%M%S).sql
+docker compose exec db pg_dump -U mess_user mess_db > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Compressed backup
-docker compose exec postgres pg_dump -U mess_user mess_db | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+docker compose exec db pg_dump -U mess_user mess_db | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
 ```
 
 ### Local (SQLite)
@@ -30,12 +62,12 @@ pg_dump -U mess_user mess_db > backup_$(date +%Y%m%d_%H%M%S).sql
 
 ```bash
 # Full restore (destructive — drops existing data)
-docker compose exec -T postgres psql -U mess_user mess_db < backup_20240101_120000.sql
+docker compose exec -T db psql -U mess_user mess_db < backup_20240101_120000.sql
 
 # Safe restore — drop and recreate DB first
-docker compose exec postgres dropdb -U mess_user mess_db
-docker compose exec postgres createdb -U mess_user mess_db
-docker compose exec -T postgres psql -U mess_user mess_db < backup_20240101_120000.sql
+docker compose exec db dropdb -U mess_user mess_db
+docker compose exec db createdb -U mess_user mess_db
+docker compose exec -T db psql -U mess_user mess_db < backup_20240101_120000.sql
 ```
 
 ### Local (SQLite)

@@ -25,7 +25,7 @@ def api_exception_handler(exc, context):
     if response is None:
         return None  # unhandled — Django's 500 path logs it
 
-    code = _STATUS_TO_CODE.get(response.status_code, "SERVER_ERROR")
+    code = getattr(exc, "error_code", None) or _STATUS_TO_CODE.get(response.status_code, "SERVER_ERROR")
     detail = response.data
 
     fields = {}

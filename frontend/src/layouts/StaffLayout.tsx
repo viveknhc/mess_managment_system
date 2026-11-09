@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { SuspendedNotice } from '../components/SuspendedNotice'
 
 const DELIVERY_NAV = [
   { to: '/staff', label: "Today's Deliveries", end: true },
@@ -56,7 +57,7 @@ export function StaffLayout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-0 py-4 sm:px-4">
-        <Outlet />
+        {user?.business_status === 'SUSPENDED' ? <SuspendedNotice /> : <Outlet />}
       </main>
     </div>
   )

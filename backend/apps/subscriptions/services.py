@@ -14,6 +14,39 @@ from apps.subscriptions.models import Subscription
 from common.constants import SubStatus
 
 
+class PauseValidationError(ValueError):
+    """Bad pause request (dates/overlap) — distinct from an illegal transition."""
+
+
+def _lock(subscription):
+    """Row-lock the subscription and refresh the given instance in place."""
+    Subscription.objects.select_for_update().filter(pk=subscription.pk).first()
+    subscription.refresh_from_db()
+    return subscription
+
+
+def _close_window(subscription, pause, today):
+    """Finish a pause window: extend end_date by its paused meals, reactivate,
+    and generate replacement deliveries. Caller holds the subscription lock."""
+    from apps.deliveries.services import DeliveryService, PauseSelector
+
+    paused_meals = PauseSelector.paused_meal_count(pause)
+    fields = []
+    if paused_meals and subscription.status in (SubStatus.ACTIVE, SubStatus.PAUSED):
+        last = pause.last_paused_day or today - timedelta(days=1)
+        subscription.end_date = max(subscription.end_date, last) + timedelta(days=paused_meals)
+        fields.append("end_date")
+    DeliveryService.close_pause(pause, days_extended=paused_meals if "end_date" in fields else 0)
+
+    still_paused = any(p.covers(today) for p in PauseSelector.open_pauses(subscription))
+    if subscription.status == SubStatus.PAUSED and not still_paused:
+        subscription.transition_to(SubStatus.ACTIVE)
+        fields.append("status")
+    if fields:
+        subscription.save(update_fields=[*fields, "updated_at"])
+    DeliveryService.generate_delivery_schedule(subscription)
+
+
 class SubscriptionService:
     @staticmethod
     @transaction.atomic
@@ -44,21 +77,115 @@ class SubscriptionService:
             remaining_meals=plan.total_meals,
         )
 
+    # ── Pause / resume (D-10) ────────────────────────────────────────────
+    #
+    # A pause is a window [start_date, end_date] (end_date None = open-ended)
+    # recorded as deliveries.SubscriptionPause. Deliveries in the window are
+    # CANCELLED and tagged with the pause so they can be restored. The
+    # subscription is PAUSED only while today is inside the window; a future
+    # window leaves it ACTIVE until process_pause_windows() flips it.
+    #
+    # End-date rule: BusinessSettings has no pause rule (only skip_rule), so
+    # paused days always EXTEND the subscription — when a window closes,
+    # end_date = max(end_date, last paused day) + number of meals the window
+    # actually cancelled, and the replacement deliveries are generated.
+
     @staticmethod
     @transaction.atomic
-    def pause(subscription):
-        """Pause an ACTIVE subscription."""
-        subscription.transition_to(SubStatus.PAUSED)
-        subscription.save(update_fields=["status", "updated_at"])
+    def pause(subscription, *, start_date=None, end_date=None, reason="", today=None):
+        """Pause an ACTIVE subscription for a window starting today or later.
+
+        Raises ValueError on an illegal transition and PauseValidationError
+        on bad dates / overlapping windows.
+        """
+        from apps.deliveries.services import DeliveryService, PauseSelector
+
+        today = today or datetime.date.today()
+        _lock(subscription)
+        if not subscription.can_transition_to(SubStatus.PAUSED):
+            raise ValueError(f"Cannot transition from {subscription.status} to {SubStatus.PAUSED}")
+
+        start_date = start_date or today
+        if start_date < today:
+            raise PauseValidationError("Pause start date cannot be in the past.")
+        if end_date is not None and end_date < start_date:
+            raise PauseValidationError("end_date cannot be before start_date.")
+        if start_date > subscription.end_date:
+            raise PauseValidationError("Pause must start on or before the subscription end date.")
+        if any(p.overlaps(start_date, end_date) for p in PauseSelector.open_pauses(subscription)):
+            raise PauseValidationError("This pause overlaps an existing pause on the subscription.")
+
+        DeliveryService.pause_deliveries(
+            subscription, start_date=start_date, end_date=end_date, reason=reason
+        )
+        if start_date <= today:
+            subscription.transition_to(SubStatus.PAUSED)
+            subscription.save(update_fields=["status", "updated_at"])
         return subscription
 
     @staticmethod
     @transaction.atomic
-    def resume(subscription):
-        """Resume a PAUSED subscription."""
-        subscription.transition_to(SubStatus.ACTIVE)
-        subscription.save(update_fields=["status", "updated_at"])
+    def resume(subscription, *, today=None):
+        """Resume a PAUSED subscription now.
+
+        Ends every started window today, restores deliveries from today on,
+        and extends end_date by the meals that were actually paused.
+        """
+        from apps.deliveries.services import DeliveryService, PauseSelector
+
+        today = today or datetime.date.today()
+        _lock(subscription)
+        # Resume is PAUSED → ACTIVE only (PENDING → ACTIVE is reserved for full payment).
+        if subscription.status != SubStatus.PAUSED:
+            raise ValueError(f"Cannot resume a {subscription.status} subscription (must be PAUSED)")
+
+        for pause in PauseSelector.open_pauses(subscription):
+            if pause.start_date > today:
+                continue  # future window stays scheduled
+            DeliveryService.end_pause_early(pause, on_date=today)
+            DeliveryService.resume_deliveries(subscription, pause, from_date=today)
+            _close_window(subscription, pause, today)
+
+        if subscription.status == SubStatus.PAUSED:  # legacy pause with no window record
+            subscription.transition_to(SubStatus.ACTIVE)
+            subscription.save(update_fields=["status", "updated_at"])
         return subscription
+
+    @staticmethod
+    def process_pause_windows(today=None):
+        """Daily sweep (all tenants): close ended windows, start due ones.
+
+        - Window whose end_date < today → close: extend end_date, PAUSED → ACTIVE,
+          generate replacement deliveries.
+        - Window covering today on an ACTIVE subscription → ACTIVE → PAUSED.
+
+        Idempotent; each window is handled in its own transaction.
+        """
+        from apps.deliveries.services import DeliveryService, PauseSelector
+
+        today = today or datetime.date.today()
+        ended = started = 0
+
+        for pause in PauseSelector.windows_ending_before(today):
+            with transaction.atomic():
+                sub = _lock(pause.subscription)
+                pause.refresh_from_db()
+                if pause.is_closed:
+                    continue
+                _close_window(sub, pause, today)
+                ended += 1
+
+        for pause in PauseSelector.windows_starting_by(today):
+            with transaction.atomic():
+                sub = _lock(pause.subscription)
+                if sub.status != SubStatus.ACTIVE:
+                    continue
+                DeliveryService.cancel_window_deliveries(pause)
+                sub.transition_to(SubStatus.PAUSED)
+                sub.save(update_fields=["status", "updated_at"])
+                started += 1
+
+        return {"started": started, "ended": ended}
 
     @staticmethod
     @transaction.atomic

@@ -4,6 +4,7 @@ Deployed on Render (see render.yaml + build.sh) with Postgres on Neon; the
 React frontend is hosted separately (Vercel) and calls this API cross-origin.
 """
 
+import logging
 import os
 
 from .base import *  # noqa: F401,F403
@@ -45,6 +46,17 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
+
+# Email: explicit EMAIL_BACKEND wins; else SMTP when EMAIL_HOST is configured,
+# otherwise fall back to console (emails only appear in logs) with a warning.
+if not os.environ.get("EMAIL_BACKEND"):
+    if EMAIL_HOST:  # noqa: F405
+        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    else:
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+        logging.getLogger(__name__).warning(
+            "EMAIL_HOST is not set — using console email backend; expiry alert emails will not be delivered."
+        )
 
 # Log to stdout so errors show up in the host's log viewer
 LOGGING = {

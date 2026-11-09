@@ -19,6 +19,13 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * Fired when the backend rejects a request because the business is suspended
+ * (403, error.code = BUSINESS_SUSPENDED). authStore listens and marks the user's
+ * business as suspended so layouts can send the owner to Billing.
+ */
+export const BUSINESS_SUSPENDED_EVENT = 'messdeck:business-suspended'
+
 // Response interceptor: handle 401 → refresh once → retry → logout
 let isRefreshing = false
 let failedQueue: Array<{
@@ -79,6 +86,10 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false
       }
+    }
+
+    if (error.response?.status === 403 && error.response.data?.error?.code === 'BUSINESS_SUSPENDED') {
+      window.dispatchEvent(new Event(BUSINESS_SUSPENDED_EVENT))
     }
 
     return Promise.reject(error)

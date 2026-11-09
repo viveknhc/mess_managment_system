@@ -1,6 +1,7 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
+import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
 
 const navItems = [
   { to: '/app', label: 'Dashboard', end: true },
@@ -15,11 +16,17 @@ const navItems = [
   { to: '/app/settings', label: 'Settings', end: false },
   { to: '/app/business', label: 'Business Profile', end: false },
   { to: '/app/billing', label: 'Billing', end: false },
+  { to: '/app/support', label: 'Help & Support', end: false },
 ]
+
+/** Pages a suspended business can still use — the backend allows /auth/* and /billing/* only. */
+const SUSPENDED_ALLOWED = ['/app/billing', '/app/support']
 
 export function AdminLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const suspended = user?.business_status === 'SUSPENDED'
 
   async function handleLogout() {
     await logout()
@@ -76,16 +83,33 @@ export function AdminLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          {user?.business_status === 'SUSPENDED' && (
-            <div className="border-b border-red-200 bg-red-50 px-6 py-3 text-center text-sm font-medium text-red-700">
+          {suspended && (
+            <div role="alert" className="border-b border-red-200 bg-red-50 px-6 py-3 text-center text-sm font-medium text-red-700">
               Your business account is suspended. Please{' '}
-              <a href="/app/billing" className="underline">
-                update your billing
+              <Link to="/app/billing" className="underline">
+                pay the amount due
+              </Link>{' '}
+              or contact support on{' '}
+              <a
+                href={whatsappLink(`Hi, my MessDeck account for ${user?.business_name ?? 'my business'} is suspended.`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                WhatsApp
               </a>{' '}
-              or contact support to reactivate.
+              or{' '}
+              <a href={supportEmailLink('MessDeck account suspended')} className="underline">
+                {SUPPORT_EMAIL}
+              </a>{' '}
+              to reactivate.
             </div>
           )}
-          <Outlet />
+          {suspended && !SUSPENDED_ALLOWED.some((p) => pathname.startsWith(p)) ? (
+            <Navigate to="/app/billing" replace />
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>

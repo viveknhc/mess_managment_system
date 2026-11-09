@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { SuspendedNotice } from '../components/SuspendedNotice'
 
 const NAV_ITEMS = [
   { to: '/portal', label: 'Dashboard', end: true },
@@ -12,6 +13,7 @@ const NAV_ITEMS = [
 export function CustomerLayout() {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const suspended = useAuthStore((s) => s.user?.business_status === 'SUSPENDED')
 
   async function handleLogout() {
     await logout()
@@ -50,7 +52,7 @@ export function CustomerLayout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-0 py-4 sm:px-4">
-        <Outlet />
+        {suspended ? <SuspendedNotice /> : <Outlet />}
       </main>
       <footer className="border-t border-gray-200 bg-white py-3 text-center text-xs text-gray-400">
         Powered by Mess Management

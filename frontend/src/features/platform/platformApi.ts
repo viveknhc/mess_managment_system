@@ -1,5 +1,6 @@
 import { apiClient } from '../../services/apiClient'
 import { getApiErrorMessage } from '../../utils/apiError'
+import type { CheckoutStart, CheckoutSuccess } from '../../utils/razorpay'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export interface SaasSubscription {
 export interface BillingData {
   subscription: SaasSubscription
   payments: SaasPayment[]
+  online_payment_enabled: boolean
 }
 
 export type ManualPaymentMethod = 'UPI' | 'CASH' | 'BANK_TRANSFER'
@@ -136,6 +138,24 @@ export const billingApi = {
   async cancel() {
     try {
       const { data } = await apiClient.post<{ subscription: SaasSubscription }>('/billing/cancel/')
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  async startPayment() {
+    try {
+      const { data } = await apiClient.post<CheckoutStart>('/billing/pay/')
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  async verifyPayment(result: CheckoutSuccess) {
+    try {
+      const { data } = await apiClient.post<{ subscription: SaasSubscription }>('/billing/pay/verify/', result)
       return { ok: true as const, data }
     } catch (e) {
       return { ok: false as const, error: errMsg(e) }

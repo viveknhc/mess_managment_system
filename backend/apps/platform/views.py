@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.businesses.models import Business
-from apps.platform.models import SaasPayment, SaasPlan, SaasSubscription
+from apps.platform.models import SaasCheckoutOrder, SaasPayment, SaasPlan, SaasSubscription
 from apps.platform.permissions import IsOwner, IsOwnerOrManager, IsSuperAdmin
 from apps.platform.serializers import (
     CreateBusinessSerializer,
@@ -28,6 +28,7 @@ from apps.platform.serializers import (
     SaasSubscriptionSerializer,
 )
 from apps.platform.services import PlatformService
+from common.razorpay_checkout import CheckoutError, to_paise
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +74,63 @@ class BillingView(APIView):
             {
                 "subscription": SaasSubscriptionSerializer(sub).data,
                 "payments": SaasPaymentSerializer(payments, many=True).data,
+                "online_payment_enabled": PlatformService.online_payment_enabled(),
             }
         )
+
+
+class BillingPayView(APIView):
+    """POST /billing/pay/ — open Razorpay Checkout for the amount due.
+    POST /billing/pay/verify/ — Checkout success: verify the signature and record the payment.
+    Reachable while suspended (billing/ prefix), so a suspended business can pay to come back."""
+
+    permission_classes = [IsAuthenticated, IsOwnerOrManager]
+
+    def post(self, request, step="start"):
+        try:
+            sub = SaasSubscription.objects.select_related("business", "plan").get(
+                business=request.user.business
+            )
+        except SaasSubscription.DoesNotExist:
+            return Response({"error": {"code": "NOT_FOUND", "message": "No subscription found."}}, status=404)
+        try:
+            if step == "verify":
+                order = SaasCheckoutOrder.objects.filter(
+                    saas_subscription=sub, razorpay_order_id=request.data.get("razorpay_order_id", "")
+                ).first()
+                if not order:
+                    return Response(
+                        {"error": {"code": "NOT_FOUND", "message": "Payment order not found."}}, status=404
+                    )
+                PlatformService.confirm_checkout(
+                    order,
+                    payment_id=request.data.get("razorpay_payment_id", ""),
+                    signature=request.data.get("razorpay_signature", ""),
+                )
+            else:
+                order, key_id = PlatformService.start_checkout(sub)
+                if order is not None:
+                    return Response(
+                        {
+                            "status": "CHECKOUT",
+                            "key_id": key_id,
+                            "order_id": order.razorpay_order_id,
+                            "amount": to_paise(order.amount),
+                            "currency": "INR",
+                            "name": "MessDeck",
+                            "description": f"{sub.plan.name if sub.plan else 'Monthly Plan'} — {sub.business.name}",
+                            "prefill": {
+                                "name": request.user.name,
+                                "email": request.user.email,
+                                "contact": request.user.phone,
+                            },
+                        }
+                    )
+        except (ValueError, CheckoutError) as e:
+            return _validation_error(str(e))
+        sub.refresh_from_db()
+        sub.business.refresh_from_db()
+        return Response({"status": "PAID", "subscription": SaasSubscriptionSerializer(sub).data})
 
 
 class BillingCancelView(APIView):
@@ -122,6 +178,8 @@ class RazorpayWebhookView(APIView):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
         event = payload.get("event", "")
+        if event in ("order.paid", "payment.captured"):
+            return self._checkout_paid(payload)
         entity = payload.get("payload", {}).get("subscription", {}).get("entity", {})
         rz_sub_id = entity.get("id", "")
 
@@ -163,6 +221,17 @@ class RazorpayWebhookView(APIView):
         elif event == "subscription.cancelled":
             PlatformService.suspend_business(sub.business)
 
+        return JsonResponse({"status": "ok"})
+
+    def _checkout_paid(self, payload):
+        """Billing-page Checkout paid — covers owners who closed the tab before it confirmed."""
+        payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        order_id = payment.get("order_id", "")
+        if payment.get("status") != "captured" or not order_id:
+            return JsonResponse({"status": "ignored"})
+        if not SaasCheckoutOrder.objects.filter(razorpay_order_id=order_id).exists():
+            return JsonResponse({"status": "ignored"})
+        PlatformService.complete_checkout(order_id, payment.get("id", ""))
         return JsonResponse({"status": "ok"})
 
 

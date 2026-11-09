@@ -3,6 +3,7 @@ import { billingApi, type BillingData, type SaasSubscription } from './platformA
 import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../../config/support'
+import { payOnline } from '../../utils/razorpay'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 
@@ -33,6 +34,8 @@ export function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  const [paying, setPaying] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const fetchBilling = useCallback(async () => {
     setLoading(true)
@@ -84,6 +87,18 @@ export function BillingPage() {
     setCancelling(false)
   }
 
+  async function handlePay() {
+    setPaying(true)
+    setError('')
+    setNotice('')
+    const res = await payOnline(billingApi.startPayment, billingApi.verifyPayment)
+    if (res.outcome === 'error') setError(res.error)
+    if (res.outcome === 'paid') setNotice('Payment received. Thank you!')
+    await fetchBilling()
+    setPaying(false)
+  }
+
+  const canPayOnline = billing.online_payment_enabled && Number(due.total) > 0
   const payMessage = `Hi, I've paid ${rupees(due.total)} for ${sub.business_name} (MessDeck). Payment reference: `
 
   return (
@@ -91,6 +106,7 @@ export function BillingPage() {
       <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
 
       {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {notice && <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{notice}</div>}
 
       {/* Current status */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
@@ -145,8 +161,20 @@ export function BillingPage() {
           </div>
           <div className="flex justify-between"><dt className="text-gray-600">Due on</dt><dd className="text-gray-900">{formatDate(due.due_date)}</dd></div>
         </dl>
+        {canPayOnline && (
+          <div className="mt-5">
+            <button
+              onClick={handlePay}
+              disabled={paying}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            >
+              {paying ? 'Opening payment…' : `Pay ${rupees(due.total)} now`}
+            </button>
+            <p className="mt-2 text-xs text-gray-500">UPI, card or netbanking via Razorpay. Your account updates as soon as the payment goes through.</p>
+          </div>
+        )}
         <div className="mt-5 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
-          <p className="font-medium text-gray-900">How to pay</p>
+          <p className="font-medium text-gray-900">{canPayOnline ? 'Or pay directly' : 'How to pay'}</p>
           <p className="mt-1">Pay by UPI or cash and message us on WhatsApp with the payment reference. We'll update your account the same day.</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <a

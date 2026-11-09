@@ -164,6 +164,9 @@ RAZORPAY_KEY_ID = env.str("RAZORPAY_KEY_ID", default="")
 RAZORPAY_KEY_SECRET = env.str("RAZORPAY_KEY_SECRET", default="")
 RAZORPAY_WEBHOOK_SECRET = env.str("RAZORPAY_WEBHOOK_SECRET", default="")
 
+# Encrypts per-business secrets (owners' Razorpay key secret). Empty = derived from SECRET_KEY.
+FIELD_ENCRYPTION_KEY = env.str("FIELD_ENCRYPTION_KEY", default="")
+
 # --- Email (expiry alerts; see apps/notifications) ---
 # Default: console backend (prints emails). production.py switches to SMTP when
 # EMAIL_HOST is set. Tests get Django's locmem backend automatically.

@@ -1,4 +1,5 @@
 import { apiClient } from '../../services/apiClient'
+import type { CheckoutStart, CheckoutSuccess } from '../../utils/razorpay'
 
 export interface PortalSubscription {
   id: string
@@ -67,6 +68,26 @@ export const portalApi = {
   subscriptions: () => apiClient.get<PortalSubscription[]>('/portal/subscriptions/'),
 
   payments: () => apiClient.get<PortalPayment[]>('/portal/payments/'),
+
+  onlinePayment: () => apiClient.get<{ enabled: boolean }>('/portal/online-payment/'),
+
+  startPayment: async (subId: string) => {
+    try {
+      const { data } = await apiClient.post<CheckoutStart>(`/portal/subscriptions/${subId}/pay/`)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e, 'Could not start the payment') }
+    }
+  },
+
+  verifyPayment: async (subId: string, result: CheckoutSuccess) => {
+    try {
+      const { data } = await apiClient.post(`/portal/subscriptions/${subId}/pay/verify/`, result)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e, 'Could not confirm the payment') }
+    }
+  },
 
   deliveries: () => apiClient.get<PortalDelivery[]>('/portal/deliveries/'),
 

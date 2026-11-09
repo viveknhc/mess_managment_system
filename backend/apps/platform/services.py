@@ -6,17 +6,22 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from apps.businesses.models import Business
 from apps.platform.models import (
+    CheckoutStatus,
+    PaymentMethod,
     PaymentStatus,
+    SaasCheckoutOrder,
     SaasPayment,
     SaasPlan,
     SaasStatus,
     SaasSubscription,
 )
+from common import razorpay_checkout
 from common.constants import Status
 
 logger = logging.getLogger(__name__)
@@ -47,6 +52,7 @@ MONTHLY_PLAN_DEFAULTS = {
 GRACE_DAYS = 7  # unpaid this many days after the due date → suspended
 REACTIVATION_GAP_MONTHS = 3  # returning after MORE than this → reactivation fee
 DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Tiffin"]
+CHECKOUT_OPEN_WINDOW = timedelta(days=2)  # older unpaid Checkout orders are given up on
 
 
 def add_months(d: date, months: int) -> date:
@@ -150,7 +156,17 @@ class PlatformService:
 
     @staticmethod
     @transaction.atomic
-    def record_manual_payment(subscription, *, amount, method, reference="", recorded_by=None, today=None):
+    def record_manual_payment(
+        subscription,
+        *,
+        amount,
+        method,
+        reference="",
+        recorded_by=None,
+        today=None,
+        razorpay_payment_id="",
+        razorpay_order_id="",
+    ):
         """SUPER_ADMIN records a UPI/cash/bank payment. Amount must equal what is due.
 
         Pays for one month. The month continues from the previous due date if the business
@@ -183,6 +199,8 @@ class PlatformService:
             method=method,
             reference=reference,
             recorded_by=recorded_by,
+            razorpay_payment_id=razorpay_payment_id,
+            razorpay_order_id=razorpay_order_id,
             period_start=period_start,
             period_end=period_end,
         )
@@ -200,6 +218,111 @@ class PlatformService:
             business.status = Status.ACTIVE
             business.save(update_fields=["status"])
         return payment
+
+    # ── Owner pays online (Razorpay Checkout, platform keys) ──────────────
+
+    @staticmethod
+    def online_payment_enabled():
+        return bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET)
+
+    @staticmethod
+    def start_checkout(subscription):
+        """Return (order, key_id) for Checkout, or (None, None) if an unconfirmed payment
+        was just found and applied, so nothing is due now."""
+        if not PlatformService.online_payment_enabled():
+            raise ValueError(
+                "Online payment isn't available yet. Please pay by UPI and send us the reference."
+            )
+        if PlatformService.reconcile_checkout(subscription):
+            return None, None
+
+        due = PlatformService.amount_due(subscription).total
+        reusable = SaasCheckoutOrder.objects.filter(
+            saas_subscription=subscription,
+            status=CheckoutStatus.CREATED,
+            amount=due,
+            created_at__gte=timezone.now() - CHECKOUT_OPEN_WINDOW,
+        ).first()
+        if reusable:
+            return reusable, settings.RAZORPAY_KEY_ID
+
+        rz_order = razorpay_checkout.create_order(
+            settings.RAZORPAY_KEY_ID,
+            settings.RAZORPAY_KEY_SECRET,
+            amount=due,
+            receipt=f"saas-{subscription.id.hex[:16]}",
+            notes={"business_id": str(subscription.business_id), "business": subscription.business.name},
+        )
+        order = SaasCheckoutOrder.objects.create(
+            saas_subscription=subscription, amount=due, razorpay_order_id=rz_order["id"]
+        )
+        return order, settings.RAZORPAY_KEY_ID
+
+    @staticmethod
+    def confirm_checkout(order, *, payment_id, signature):
+        """Checkout success callback: verify the signature, then record the payment."""
+        if not razorpay_checkout.verify_payment_signature(
+            settings.RAZORPAY_KEY_SECRET, order.razorpay_order_id, payment_id, signature
+        ):
+            raise ValueError("Payment could not be verified. If money was deducted, contact support.")
+        order = PlatformService.complete_checkout(order.razorpay_order_id, payment_id)
+        if order.status == CheckoutStatus.FAILED:
+            raise ValueError(order.failure_reason)
+        return order
+
+    @staticmethod
+    def reconcile_checkout(subscription):
+        """Apply captured payments on open orders whose success never reached us. True if any applied."""
+        applied = False
+        cutoff = timezone.now() - CHECKOUT_OPEN_WINDOW
+        open_orders = SaasCheckoutOrder.objects.filter(
+            saas_subscription=subscription, status=CheckoutStatus.CREATED
+        )
+        for order in open_orders:
+            payment_id = razorpay_checkout.fetch_captured_payment_id(
+                settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET, order.razorpay_order_id
+            )
+            if payment_id:
+                applied |= PlatformService.complete_checkout(order.razorpay_order_id, payment_id).status == (
+                    CheckoutStatus.PAID
+                )
+            elif order.created_at < cutoff:
+                SaasCheckoutOrder.objects.filter(id=order.id, status=CheckoutStatus.CREATED).update(
+                    status=CheckoutStatus.EXPIRED
+                )
+        return applied
+
+    @staticmethod
+    def complete_checkout(razorpay_order_id, payment_id):
+        """Record the payment for a paid order — once, whether from Checkout, webhook or reconcile."""
+        with transaction.atomic():
+            order = (
+                SaasCheckoutOrder.objects.select_for_update()
+                .select_related("saas_subscription")
+                .get(razorpay_order_id=razorpay_order_id)
+            )
+            if order.status in (CheckoutStatus.PAID, CheckoutStatus.FAILED):
+                return order
+            order.razorpay_payment_id = payment_id
+            try:
+                order.payment = PlatformService.record_manual_payment(
+                    order.saas_subscription,
+                    amount=order.amount,
+                    method=PaymentMethod.RAZORPAY,
+                    reference=payment_id,
+                    razorpay_payment_id=payment_id,
+                    razorpay_order_id=razorpay_order_id,
+                )
+                order.status = CheckoutStatus.PAID
+            except ValueError as e:
+                order.status = CheckoutStatus.FAILED
+                order.failure_reason = (
+                    f"₹{order.amount} was received (Razorpay {payment_id}) but could not be applied: {e} "
+                    "Please contact support."
+                )[:255]
+                logger.error("SaaS payment %s for order %s not applied: %s", payment_id, order.id, e)
+            order.save()
+        return order
 
     @staticmethod
     @transaction.atomic

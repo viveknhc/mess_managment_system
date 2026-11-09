@@ -140,3 +140,40 @@ class SaasPayment(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.business.name} — ₹{self.amount} ({self.status})"
+
+
+class CheckoutStatus:
+    CREATED = "CREATED"  # owner opened Razorpay Checkout, not paid (yet)
+    PAID = "PAID"  # SaasPayment recorded
+    FAILED = "FAILED"  # money captured but amount no longer matched what was due — sort out manually
+    EXPIRED = "EXPIRED"  # abandoned
+
+
+CHECKOUT_STATUS_CHOICES = [
+    (CheckoutStatus.CREATED, "Created"),
+    (CheckoutStatus.PAID, "Paid"),
+    (CheckoutStatus.FAILED, "Failed"),
+    (CheckoutStatus.EXPIRED, "Expired"),
+]
+
+
+class SaasCheckoutOrder(UUIDModel, TimeStampedModel):
+    """A Razorpay order an owner opened from the Billing page to pay what is due."""
+
+    saas_subscription = models.ForeignKey(
+        SaasSubscription, on_delete=models.CASCADE, related_name="checkout_orders"
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    razorpay_order_id = models.CharField(max_length=64, unique=True)
+    razorpay_payment_id = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=10, choices=CHECKOUT_STATUS_CHOICES, default=CheckoutStatus.CREATED)
+    payment = models.OneToOneField(
+        SaasPayment, null=True, blank=True, on_delete=models.SET_NULL, related_name="checkout_order"
+    )
+    failure_reason = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.razorpay_order_id} ₹{self.amount} ({self.status})"

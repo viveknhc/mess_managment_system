@@ -213,7 +213,35 @@
   </div>
 
   <!-- 8 -->
-  <h2><span class="n">8</span>Check everything works</h2>
+  <h2><span class="n">8</span>Online payments: Razorpay</h2>
+  <div class="card">
+    <p>Two kinds of online payment, kept separate:</p>
+    <ul>
+      <li><b>Mess owners pay you</b> the MessDeck fee with a <b>Pay now</b> button on their Billing page. The money goes to <b>your</b> Razorpay account.</li>
+      <li><b>Customers pay their mess</b> for a meal plan from the customer portal. The money goes to <b>that owner's own</b> Razorpay account. Each owner adds their keys in <b>Settings → Online Payments</b>, and you never handle their money.</li>
+    </ul>
+    <p>Without keys, the buttons are hidden and everything works as before: payments are recorded by hand.</p>
+    <ol>
+      <li>Sign up at <b>razorpay.com</b>. You can start in <b>Test Mode</b> straight away; real payments need KYC (PAN, bank account, business details) and take a few days to approve.</li>
+      <li>Razorpay Dashboard → <b>Account &amp; Settings → API Keys → Generate key</b>. Copy the Key ID and Key Secret (the secret is shown once).</li>
+      <li>Render → mess-manager-api → <b>Environment</b>, add:
+        <div class="tbl"><table>
+          <tr><th>Key</th><th>Value</th></tr>
+          <tr><td><code>RAZORPAY_KEY_ID</code></td><td><code>rzp_test_…</code> (later <code>rzp_live_…</code>)</td></tr>
+          <tr><td><code>RAZORPAY_KEY_SECRET</code></td><td>The key secret</td></tr>
+          <tr><td><code>RAZORPAY_WEBHOOK_SECRET</code></td><td>Any long random string, the same one you use in the next step</td></tr>
+        </table></div>
+      </li>
+      <li>Razorpay Dashboard → <b>Account &amp; Settings → Webhooks → Add new webhook</b>:
+        URL <code>https://&lt;render-url&gt;/api/v1/webhooks/razorpay/</code>, the same secret, and event <b>order.paid</b>. This catches owners who pay and close the tab before the page confirms.</li>
+      <li>Log in as an owner → <b>Billing</b> → <b>Pay now</b>. In Test Mode, pay with UPI ID <code>success@razorpay</code> or test card <code>4111 1111 1111 1111</code> (any future expiry, any CVV). The plan should turn Active.</li>
+    </ol>
+    <p><b>For each mess owner who wants customer payments:</b> they create their own Razorpay account, generate API keys, and paste them in <b>Settings → Online Payments</b>, then tick <b>Customers can pay online</b>. Customers then see a <b>Pay</b> button on <b>My Subscription</b>. A paid subscription turns Active and its deliveries are created, the same as a recorded cash payment.</p>
+    <p class="muted">Owners' key secrets are stored encrypted using the server's <code>SECRET_KEY</code>. If you ever change <code>SECRET_KEY</code> on Render, owners must paste their key secret again. To avoid that, set a separate <code>FIELD_ENCRYPTION_KEY</code> (any long random string) <b>before</b> owners add keys, and never change it.</p>
+  </div>
+
+  <!-- 9 -->
+  <h2><span class="n">9</span>Check everything works</h2>
   <div class="card">
     <ol>
       <li>Open your Vercel URL. The <i>Contact Us</i> button on the landing page should open WhatsApp chat with +91 85477 68153.</li>
@@ -222,8 +250,8 @@
     </ol>
   </div>
 
-  <!-- 9 -->
-  <h2><span class="n">9</span>Onboard your first client</h2>
+  <!-- 10 -->
+  <h2><span class="n">10</span>Onboard your first client</h2>
   <div class="card">
     <ol>
       <li>Platform → <b>Businesses</b> → <b>Add Business</b>. Enter the mess's name and contact details, and an owner username and password for them.</li>
@@ -235,8 +263,8 @@
     </ol>
   </div>
 
-  <!-- 10 -->
-  <h2><span class="n">10</span>Own domain (optional)</h2>
+  <!-- 11 -->
+  <h2><span class="n">11</span>Own domain (optional)</h2>
   <div class="card">
     <p>For example <code>app.messdeck.in</code> for the website and <code>api.messdeck.in</code> for the API.</p>
     <ol>
@@ -253,8 +281,8 @@
     <p class="muted">Both hosts issue HTTPS certificates automatically once DNS is set up.</p>
   </div>
 
-  <!-- 11 -->
-  <h2><span class="n">11</span>Updating and day-to-day</h2>
+  <!-- 12 -->
+  <h2><span class="n">12</span>Updating and day-to-day</h2>
   <div class="card">
     <ul>
       <li><b>Deploying changes:</b> push to <code>main</code>. Render and Vercel redeploy automatically; database migrations run during the Render build.</li>
@@ -271,8 +299,8 @@
     </ul>
   </div>
 
-  <!-- 12 -->
-  <h2><span class="n">12</span>Troubleshooting</h2>
+  <!-- 13 -->
+  <h2><span class="n">13</span>Troubleshooting</h2>
   <div class="tbl"><table>
     <tr><th>Symptom</th><th>Fix</th></tr>
     <tr><td>Every login says "Invalid username or password"</td><td>The API is asleep or the URL is wrong. Open <code>https://&lt;render-url&gt;/api/v1/pricing/</code> and wait for it to load. Then check Vercel's <code>VITE_API_BASE_URL</code> ends in <code>/api/v1</code> and redeploy.</td></tr>
@@ -297,6 +325,7 @@
       <li><label><input type="checkbox"> GitHub secrets added; Daily jobs and Daily DB backup both ran green</label></li>
       <li><label><input type="checkbox"> One backup restored successfully into a spare branch</label></li>
       <li><label><input type="checkbox"> Email provider connected and a test alert received</label></li>
+      <li><label><input type="checkbox"> (Optional) Razorpay keys on Render, webhook added, one test Pay now went through</label></li>
       <li><label><input type="checkbox"> Render moved off the sleeping free instance</label></li>
       <li><label><input type="checkbox"> Contact and Phone filled in on the Monthly Plan PDF</label></li>
       <li><label><input type="checkbox"> Dry run: test business added, ₹3,000 recorded, customer added, a day of deliveries marked</label></li>

@@ -28,6 +28,14 @@ services:
         sync: false
       - key: SEED_DEMO # keep "0" for real clients; "1" loads the Annapurna Mess demo data once
         value: "0"
+      # Razorpay (optional) — owners pay the MessDeck fee from the Billing page.
+      # Without keys the Pay button is hidden. Customers pay into each owner's own keys (set in-app).
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET # webhook URL: https://<render-url>/api/v1/webhooks/razorpay/ (event: order.paid)
+        sync: false
       # Alert emails (optional — without EMAIL_HOST they only appear in the logs)
       - key: EMAIL_HOST
         sync: false

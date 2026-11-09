@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import type { PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
+import { payOnline } from '../../utils/razorpay'
 
 type DialogKind = 'skip' | 'pause' | 'renew' | null
 
@@ -70,6 +71,8 @@ export function PortalSubscriptionPage() {
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
   const [dialog, setDialog] = useState<DialogKind>(null)
   const [busy, setBusy] = useState(false)
+  const [onlineEnabled, setOnlineEnabled] = useState(false)
+  const [payingId, setPayingId] = useState<string | null>(null)
 
   // dialog inputs
   const [skipDate, setSkipDate] = useState('')
@@ -97,7 +100,25 @@ export function PortalSubscriptionPage() {
 
   useEffect(() => {
     load()
+    portalApi.onlinePayment().then(({ data }) => setOnlineEnabled(data.enabled)).catch(() => {})
   }, [load])
+
+  async function handlePay(sub: PortalSubscription) {
+    setPayingId(sub.id)
+    const res = await payOnline(
+      () => portalApi.startPayment(sub.id),
+      (result) => portalApi.verifyPayment(sub.id, result),
+    )
+    setPayingId(null)
+    if (res.outcome === 'paid') flash('ok', 'Payment received. Thank you!')
+    if (res.outcome === 'error') flash('err', res.error)
+    load()
+  }
+
+  // Unpaid balances the customer can settle online (a renewal waiting for payment, or a part-paid plan)
+  const payable = onlineEnabled
+    ? subs.filter((s) => ['PENDING', 'ACTIVE', 'PAUSED'].includes(s.status) && Number(s.pending_amount) > 0)
+    : []
 
   const current = subs.find((s) => s.status === 'ACTIVE' || s.status === 'PAUSED') ?? subs[0]
 
@@ -182,6 +203,24 @@ export function PortalSubscriptionPage() {
         </div>
       ) : (
         <>
+          {payable.map((s) => (
+            <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{formatINR(s.pending_amount)} due · {s.plan_name}</p>
+                <p className="text-xs text-gray-600">
+                  {s.status === 'PENDING' ? 'Pay to start your meals.' : `${s.start_date} → ${s.end_date}`}
+                </p>
+              </div>
+              <button
+                onClick={() => handlePay(s)}
+                disabled={payingId !== null}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {payingId === s.id ? 'Opening…' : `Pay ${formatINR(s.pending_amount)}`}
+              </button>
+            </div>
+          ))}
+
           {current && (
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-2">
@@ -317,8 +356,8 @@ export function PortalSubscriptionPage() {
       {dialog === 'renew' && (
         <DialogShell title="Renew Subscription" onClose={() => setDialog(null)}>
           <p className="text-sm text-gray-600">
-            This creates a new <strong>pending</strong> subscription for {current?.plan_name} starting today. Pay at
-            the mess to activate it.
+            This creates a new <strong>pending</strong> subscription for {current?.plan_name} starting today.{' '}
+            {onlineEnabled ? 'Pay online or at the mess to activate it.' : 'Pay at the mess to activate it.'}
           </p>
           <DialogActions onCancel={() => setDialog(null)} onConfirm={handleRenew} busy={busy} label="Renew" />
         </DialogShell>

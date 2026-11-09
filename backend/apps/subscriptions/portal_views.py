@@ -5,6 +5,7 @@ only ever see and act on their own rows. Staff/admin APIs are unreachable here.
 """
 
 import datetime
+import logging
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,12 +15,16 @@ from rest_framework.views import APIView
 from apps.deliveries.models import Delivery, DeliveryStatus
 from apps.deliveries.serializers import DeliveryListSerializer
 from apps.deliveries.services import DeliveryService
-from apps.payments.models import Payment
+from apps.payments.models import Payment, PaymentOrder
 from apps.payments.serializers import PaymentListSerializer
+from apps.payments.services import OnlinePaymentService
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.serializers import SubscriptionListSerializer
 from apps.subscriptions.services import SubscriptionService
 from common.constants import Role, SubStatus
+from common.razorpay_checkout import CheckoutError, to_paise
+
+logger = logging.getLogger(__name__)
 
 
 class PortalRateThrottle(ScopedRateThrottle):
@@ -123,8 +128,78 @@ class PortalSubscriptionsView(APIView):
         customer, err = _portal_customer(request)
         if err:
             return err
+        try:  # apply online payments whose Checkout success never reached us (tab closed)
+            OnlinePaymentService.reconcile_customer(customer)
+        except Exception:
+            logger.exception("Online payment reconcile failed for customer %s", customer.id)
         subs = Subscription.objects.filter(customer=customer).select_related("plan", "customer")
         return Response(SubscriptionListSerializer(subs, many=True).data)
+
+
+class PortalOnlinePaymentView(APIView):
+    """GET /api/v1/portal/online-payment/ — can this customer pay online?"""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [PortalRateThrottle]
+
+    def get(self, request):
+        customer, err = _portal_customer(request)
+        if err:
+            return err
+        return Response({"enabled": OnlinePaymentService.is_enabled(customer.business_id)})
+
+
+class PortalPayView(APIView):
+    """POST /api/v1/portal/subscriptions/<id>/pay/ — open Razorpay Checkout for the pending amount.
+    POST .../pay/verify/ — Checkout success: verify the signature and record the payment."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [PortalWriteThrottle]
+
+    def post(self, request, sub_id=None, step="start"):
+        customer, err = _portal_customer(request)
+        if err:
+            return err
+        sub = _get_own_subscription(customer, sub_id)
+        if not sub:
+            return _error("NOT_FOUND", "Subscription not found.", 404)
+        try:
+            if step == "verify":
+                return self._verify(request, sub)
+            return self._start(sub, customer)
+        except (ValueError, CheckoutError) as e:
+            return _error("VALIDATION_ERROR", str(e), 400)
+
+    def _start(self, sub, customer):
+        order, key_id = OnlinePaymentService.start_checkout(sub)
+        if order is None:
+            sub.refresh_from_db()
+            return Response({"status": "PAID", "subscription": SubscriptionListSerializer(sub).data})
+        return Response(
+            {
+                "status": "CHECKOUT",
+                "key_id": key_id,
+                "order_id": order.razorpay_order_id,
+                "amount": to_paise(order.amount),
+                "currency": "INR",
+                "name": customer.business.name,
+                "description": f"{sub.plan.name} subscription",
+                "prefill": {"name": customer.name, "email": customer.email, "contact": customer.phone},
+            }
+        )
+
+    def _verify(self, request, sub):
+        order_id = request.data.get("razorpay_order_id", "")
+        order = PaymentOrder.objects.filter(subscription=sub, razorpay_order_id=order_id).first()
+        if not order:
+            return _error("NOT_FOUND", "Payment order not found.", 404)
+        OnlinePaymentService.confirm(
+            order,
+            payment_id=request.data.get("razorpay_payment_id", ""),
+            signature=request.data.get("razorpay_signature", ""),
+        )
+        sub.refresh_from_db()
+        return Response({"status": "PAID", "subscription": SubscriptionListSerializer(sub).data})
 
 
 class PortalSubscriptionActionsView(APIView):

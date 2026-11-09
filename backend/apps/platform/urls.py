@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 
 from apps.platform.views import (
     BillingCancelView,
+    BillingPayView,
     BillingView,
     PlatformBusinessViewSet,
     PlatformPaymentListView,
@@ -25,6 +26,8 @@ urlpatterns = [
     # Business owner billing
     path("billing/", BillingView.as_view(), name="billing"),
     path("billing/cancel/", BillingCancelView.as_view(), name="billing-cancel"),
+    path("billing/pay/", BillingPayView.as_view(), name="billing-pay"),
+    path("billing/pay/verify/", BillingPayView.as_view(), {"step": "verify"}, name="billing-pay-verify"),
     # SUPER_ADMIN platform management
     path("platform/payments/", PlatformPaymentListView.as_view(), name="platform-payments"),
     path("platform/stats/", PlatformStatsView.as_view(), name="platform-stats"),

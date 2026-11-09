@@ -69,9 +69,9 @@
   <p class="sub">Updated 9 Nov 2026 after the fixes. ₹2,500 one-time setup + ₹500/month.</p>
   <div class="stats">
     <div class="stat"><b>14</b><span>fixed in code</span></div>
-    <div class="stat"><b>3</b><span>needed before charging</span></div>
+    <div class="stat"><b>2</b><span>needed before charging</span></div>
     <div class="stat"><b>All pass</b><span>backend tests, ruff, TypeScript</span></div>
-    <div class="stat"><b id="open-count">8</b><span>items open below</span></div>
+    <div class="stat"><b id="open-count">7</b><span>items open below</span></div>
   </div>
   <div class="progress"><i id="bar"></i></div>
   <p class="note">What's left is mostly setup only you can do. Ticks are saved in this browser only.</p>
@@ -86,19 +86,11 @@
     </div>
   </div>
 
-  <div class="card red" data-id="contact">
-    <div class="head"><input type="checkbox" id="c-contact"><label for="c-contact"><h3>Real WhatsApp number and support email <span class="tag t-red">Setup</span></h3></label></div>
-    <div class="detail">
-      <p><b>Why:</b> The app still falls back to <code>910000000000</code> and <code>support@messdeck.in</code> (<code>frontend/src/config/support.ts</code>).</p>
-      <p><b>Do:</b> Set <code>VITE_SUPPORT_WHATSAPP</code> and <code>VITE_SUPPORT_EMAIL</code> in Vercel and redeploy, or replace the fallbacks in <code>support.ts</code>.</p>
-    </div>
-  </div>
-
   <div class="card red" data-id="pdf">
     <div class="head"><input type="checkbox" id="c-pdf"><label for="c-pdf"><h3>Fill Contact / Phone in the PDF <span class="tag t-red">Docs</span></h3></label></div>
     <div class="detail">
       <p><b>Why:</b> The PDF's Contact and Phone lines are blank.</p>
-      <p><b>Do:</b> Use the same number and email as above.</p>
+      <p><b>Do:</b> Contact: viveknhc@gmail.com · Phone / WhatsApp: +91 85477 68153 (same as the app).</p>
     </div>
   </div>
 
@@ -157,6 +149,7 @@
     <tr><td>Expiry alert emails</td><td>Daily digest to the owner plus an email to each customer with an email address; no duplicates on re-runs.</td></tr>
     <tr><td>Skip and pause</td><td>Pause windows with auto start/end, deliveries removed and restored, end date extended by the meals missed; resume can no longer activate an unpaid subscription.</td></tr>
     <tr><td>Tiffin wording</td><td>PDF, landing page and default meals all say Tiffin.</td></tr>
+    <tr><td>Support contact</td><td>WhatsApp +91 85477 68153 and viveknhc@gmail.com across the landing page, Billing, Help &amp; Support and the suspended banner.</td></tr>
     <tr><td>Owner guide</td><td><code>docs/owner-guide.html</code> for the 30-minute walkthrough.</td></tr>
     <tr><td>Razorpay webhook</td><td>Refuses unsigned calls when no secret is set.</td></tr>
   </table></div>

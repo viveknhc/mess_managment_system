@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MessDeck Hosting Guide</title>
+<style>
+  :root {
+    --bg:#fef9ed; --card:#ffffff; --text:#1d3f24; --muted:#4b6a2c; --line:#e6eed2;
+    --accent:#678234; --soft:#f4f7ea; --code:#eef3e1;
+    --warn:#9a6700; --warn-soft:#fff4d6; --red:#b42318; --red-soft:#fdecea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#101a12; --card:#16231a; --text:#e6eed2; --muted:#a9c175; --line:#2d5230;
+      --accent:#a9c175; --soft:#1d3f24; --code:#1d3f24;
+      --warn:#f2c14e; --warn-soft:#35290e; --red:#ff8a80; --red-soft:#3a1c19;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 16px 72px; }
+  h1 { font-size: 28px; margin: 0; }
+  .sub { color: var(--muted); margin: 4px 0 20px; }
+  h2 { font-size: 20px; margin: 40px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h2 .n { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:var(--text); color:var(--bg); font-size:14px; margin-right:8px; vertical-align: 2px; }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px; margin:10px 0; }
+  .tip { border-left:4px solid var(--accent); }
+  .warn { border-left:4px solid var(--warn); background:var(--warn-soft); }
+  .stop { border-left:4px solid var(--red); background:var(--red-soft); }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  li { margin: 5px 0; }
+  code { background:var(--code); padding:1px 6px; border-radius:5px; font-size:13.5px; word-break: break-all; }
+  pre { background:var(--code); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:13px; margin:8px 0; }
+  pre code { background:none; padding:0; word-break: normal; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14.5px; }
+  th { background:var(--soft); }
+  .tbl { overflow-x:auto; margin: 8px 0; }
+  .arch { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:12px 0; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; }
+  .box b { display:block; font-size:16px; }
+  .box span { color:var(--muted); font-size:13px; }
+  .toc { columns: 2; column-gap: 24px; }
+  @media (max-width: 600px) { .toc { columns: 1; } }
+  .check li { list-style: none; margin-left: -22px; }
+  .check input { margin-right: 8px; accent-color: var(--accent); }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>MessDeck Hosting Guide</h1>
+  <p class="sub">How to put MessDeck online for paying clients, step by step. About 45 minutes the first time. Written 9 Nov 2026.</p>
+
+  <div class="arch">
+    <div class="box"><b>Vercel</b><span>Website (React)<br><code>frontend/</code></span></div>
+    <div class="box"><b>Render</b><span>API (Django)<br><code>backend/</code></span></div>
+    <div class="box"><b>Neon</b><span>Database<br>(PostgreSQL)</span></div>
+    <div class="box"><b>GitHub Actions</b><span>Nightly jobs<br>+ daily backup</span></div>
+    <div class="box"><b>Email provider</b><span>Expiry alert<br>emails</span></div>
+  </div>
+  <p class="muted">All of these have free tiers, and you sign in to each with your GitHub account. Free-tier limits change, so check each site's pricing page.</p>
+
+  <div class="card">
+    <b>Steps</b>
+    <ol class="toc">
+      <li>Before you start</li>
+      <li>Database: Neon</li>
+      <li>API: Render</li>
+      <li>Website: Vercel</li>
+      <li>Connect website and API</li>
+      <li>Nightly jobs and backups</li>
+      <li>Alert emails</li>
+      <li>Check everything works</li>
+      <li>Onboard your first client</li>
+      <li>Own domain (optional)</li>
+      <li>Updating and day-to-day</li>
+      <li>Troubleshooting</li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <h2><span class="n">1</span>Before you start</h2>
+  <div class="card">
+    <ul>
+      <li>All code is pushed to <code>main</code> on GitHub (<code>viveknhc/mess_managment_system</code>). Every host deploys from there.</li>
+      <li>CI is green on GitHub (Actions tab). Don't deploy a red build.</li>
+      <li>Decide these and write them down in a password manager:
+        <ul>
+          <li>a <b>super admin password</b> (the platform login you use to create businesses and record payments)</li>
+          <li>a <b>backup passphrase</b> (long and random; without it backups can't be opened)</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="n">2</span>Database: Neon</h2>
+  <div class="card">
+    <ol>
+      <li>Go to <b>neon.tech</b>, sign up, then <b>Create project</b>.
+        <ul>
+          <li>Name: <code>messdeck</code></li>
+          <li>Postgres version: the default (17 is fine)</li>
+          <li>Region: <b>Asia Pacific (Singapore)</b>, close to your clients and to Render</li>
+        </ul>
+      </li>
+      <li>On the project dashboard click <b>Connect</b>, <b>turn off Connection pooling</b> (use the direct connection) and copy the connection string:
+        <pre><code>postgresql://neondb_owner:xxxx@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require</code></pre>
+        This is your <code>DATABASE_URL</code>. Keep it private: anyone with it can read all client data.
+      </li>
+    </ol>
+  </div>
+
+  <!-- 3 -->
+  <h2><span class="n">3</span>API: Render</h2>
+  <div class="card">
+    <ol>
+      <li>Go to <b>render.com</b>, sign up with GitHub and allow access to the repo.</li>
+      <li><b>New +</b> → <b>Blueprint</b> → pick the repo. Render reads <code>render.yaml</code> and shows a service called <code>mess-manager-api</code>.</li>
+      <li>Fill in the values it asks for:
+        <div class="tbl"><table>
+          <tr><th>Key</th><th>Value</th></tr>
+          <tr><td><code>DATABASE_URL</code></td><td>The Neon connection string from step 2</td></tr>
+          <tr><td><code>SUPERADMIN_PASSWORD</code></td><td>Your super admin password</td></tr>
+          <tr><td><code>CORS_ALLOWED_ORIGINS</code></td><td><code>https://example.com</code> for now. You'll fix it in step 5.</td></tr>
+          <tr><td><code>EMAIL_HOST</code> etc.</td><td>Leave empty. The alert emails are sent by the nightly job (step 7), not by Render.</td></tr>
+        </table></div>
+      </li>
+      <li>Leave <code>SEED_DEMO</code> at <code>0</code>. Set it to <code>1</code> only for a separate demo instance; demo logins are public.</li>
+      <li>Click <b>Apply</b>. The first build takes 3–5 minutes. It installs packages, creates the tables and creates the <code>superadmin</code> user.</li>
+      <li>When it shows <b>Live</b>, copy the URL at the top, e.g. <code>https://mess-manager-api.onrender.com</code>. Open <code>https://&lt;render-url&gt;/api/v1/pricing/</code> in a browser: you should see a JSON response, not an error page.</li>
+    </ol>
+  </div>
+
+  <!-- 4 -->
+  <h2><span class="n">4</span>Website: Vercel</h2>
+  <div class="card">
+    <ol>
+      <li>Go to <b>vercel.com</b>, sign up with GitHub, then <b>Add New… → Project</b> → import the repo.</li>
+      <li>Settings:
+        <ul>
+          <li><b>Root Directory:</b> <code>frontend</code> (click <i>Edit</i> and choose it). This matters: it's what makes page refreshes work.</li>
+          <li>Framework preset: <b>Vite</b> (auto-detected)</li>
+          <li><b>Environment Variables:</b>
+            <div class="tbl"><table>
+              <tr><th>Key</th><th>Value</th></tr>
+              <tr><td><code>VITE_API_BASE_URL</code></td><td><code>https://&lt;render-url&gt;/api/v1</code></td></tr>
+            </table></div>
+          </li>
+        </ul>
+      </li>
+      <li>Click <b>Deploy</b>. After about a minute you get a URL like <code>https://messdeck.vercel.app</code>.</li>
+    </ol>
+  </div>
+  <div class="card warn">
+    <b>Support contact is built in.</b> The landing page, Billing page and Help &amp; Support use WhatsApp <code>+91 85477 68153</code> and <code>viveknhc@gmail.com</code> (set in <code>frontend/src/config/support.ts</code>). To change them without editing code, add <code>VITE_SUPPORT_WHATSAPP</code> (digits only, with 91) and <code>VITE_SUPPORT_EMAIL</code> here. Vite reads <code>VITE_*</code> variables at build time, so redeploy after changing any of them (Deployments → ⋯ → Redeploy).
+  </div>
+
+  <!-- 5 -->
+  <h2><span class="n">5</span>Connect website and API</h2>
+  <div class="card">
+    <p>In <b>Render</b> → <code>mess-manager-api</code> → <b>Environment</b>, set <code>CORS_ALLOWED_ORIGINS</code> to your Vercel URL exactly: <code>https://messdeck.vercel.app</code> (https, no trailing slash). <b>Save changes</b>; Render redeploys by itself.</p>
+  </div>
+
+  <!-- 6 -->
+  <h2><span class="n">6</span>Nightly jobs and backups (GitHub Actions)</h2>
+  <div class="card">
+    <p>Render's free plan can't run background workers, so two GitHub workflows do it:</p>
+    <div class="tbl"><table>
+      <tr><th>Workflow</th><th>When</th><th>What it does</th></tr>
+      <tr><td><b>Daily jobs</b></td><td>00:10 IST</td><td>Suspends overdue businesses, expires finished subscriptions, starts and ends pauses, prepares tomorrow's deliveries, sends expiry alerts</td></tr>
+      <tr><td><b>Daily DB backup</b></td><td>02:00 IST</td><td>Encrypted copy of the whole database, kept for 30 days</td></tr>
+    </table></div>
+    <ol>
+      <li>On GitHub: repo → <b>Settings → Secrets and variables → Actions → New repository secret</b>. Add:
+        <div class="tbl"><table>
+          <tr><th>Secret</th><th>Value</th></tr>
+          <tr><td><code>PROD_DATABASE_URL</code></td><td>The Neon connection string (same as Render's <code>DATABASE_URL</code>)</td></tr>
+          <tr><td><code>PROD_SECRET_KEY</code></td><td>Any long random string (e.g. from a password generator)</td></tr>
+          <tr><td><code>BACKUP_PASSPHRASE</code></td><td>Your backup passphrase from step 1</td></tr>
+        </table></div>
+      </li>
+      <li><b>Actions</b> tab → <b>Daily jobs</b> → <b>Run workflow</b>. It should finish green, with one <code>OK</code> line per job in the log.</li>
+      <li><b>Actions</b> → <b>Daily DB backup</b> → <b>Run workflow</b>. When it's green, the run page shows an artifact named <code>messdeck_YYYYMMDD_HHMM</code>.</li>
+    </ol>
+  </div>
+  <div class="card stop">
+    <b>Until these secrets exist, nothing runs.</b> Both workflows skip quietly, so unpaid businesses are never suspended, subscriptions never expire and no backups are taken. Also, GitHub pauses scheduled workflows after 60 days with no commits to the repo; if that happens, re-enable them from the Actions tab.
+  </div>
+  <div class="card tip">
+    <b>Test one restore now</b>, not on the day you need it. Steps are in <code>docs/db_backup_restore.md</code>: download the artifact, decrypt with your passphrase, and <code>pg_restore</code> into a spare Neon branch. Then delete the branch.
+  </div>
+
+  <!-- 7 -->
+  <h2><span class="n">7</span>Alert emails</h2>
+  <div class="card">
+    <p>Every night, owners get a summary of subscriptions ending in the next 3 days, and customers with an email address get a reminder. Without an email provider, these only appear in the job log.</p>
+    <p><b>Simplest option, a Gmail account:</b> turn on 2-step verification, then create an <b>App password</b> (Google Account → Security → App passwords). Gmail limits how many emails you can send per day, so move to a provider such as Brevo or Zoho Mail as you add clients.</p>
+    <p>Add these as GitHub secrets (same place as step 6):</p>
+    <div class="tbl"><table>
+      <tr><th>Secret</th><th>Gmail example</th></tr>
+      <tr><td><code>EMAIL_HOST</code></td><td><code>smtp.gmail.com</code></td></tr>
+      <tr><td><code>EMAIL_HOST_USER</code></td><td><code>yourname@gmail.com</code></td></tr>
+      <tr><td><code>EMAIL_HOST_PASSWORD</code></td><td>The 16-character app password</td></tr>
+      <tr><td><code>DEFAULT_FROM_EMAIL</code></td><td><code>MessDeck &lt;yourname@gmail.com&gt;</code></td></tr>
+    </table></div>
+    <p class="muted">Port 587 with TLS is the default, so no other settings are needed for Gmail. Run <b>Daily jobs</b> again by hand; if any subscription is expiring, the owner's email should arrive.</p>
+  </div>
+
+  <!-- 8 -->
+  <h2><span class="n">8</span>Check everything works</h2>
+  <div class="card">
+    <ol>
+      <li>Open your Vercel URL. The <i>Contact Us</i> button on the landing page should open WhatsApp chat with +91 85477 68153.</li>
+      <li>Log in as <code>superadmin</code> with your password. You should land on the Platform dashboard.</li>
+      <li>Open <code>https://&lt;render-url&gt;/admin/</code> and log in as <code>superadmin</code> too. This is the raw database admin; use it only to fix problems.</li>
+    </ol>
+  </div>
+
+  <!-- 9 -->
+  <h2><span class="n">9</span>Onboard your first client</h2>
+  <div class="card">
+    <ol>
+      <li>Platform → <b>Businesses</b> → <b>Add Business</b>. Enter the mess's name and contact details, and an owner username and password for them.</li>
+      <li>When they pay ₹3,000 (₹2,500 setup + ₹500 first month), click <b>Record Payment</b> on their row. The amount is filled in; choose UPI, Cash or Bank transfer and add the UPI reference.
+        <br><span class="muted">If no payment is recorded within 7 days of adding the business, the nightly job suspends it.</span></li>
+      <li>Log in as the owner (or sit with them) and set up: <b>Meals</b>, <b>Plans</b>, <b>Staff</b> logins, then <b>Customers → Import CSV</b> with their existing list (up to 100 per file).</li>
+      <li>Do the 30-minute walkthrough with <code>docs/owner-guide.html</code> and leave them a copy.</li>
+      <li>Each month, record their ₹500 the same way. The Businesses list shows who is paid until when and what's due.</li>
+    </ol>
+  </div>
+
+  <!-- 10 -->
+  <h2><span class="n">10</span>Own domain (optional)</h2>
+  <div class="card">
+    <p>For example <code>app.messdeck.in</code> for the website and <code>api.messdeck.in</code> for the API.</p>
+    <ol>
+      <li><b>Vercel</b> → project → Settings → <b>Domains</b> → add <code>app.messdeck.in</code> and create the DNS record it shows at your domain registrar.</li>
+      <li><b>Render</b> → service → Settings → <b>Custom Domains</b> → add <code>api.messdeck.in</code> and create its DNS record.</li>
+      <li>Render → Environment:
+        <ul>
+          <li><code>ALLOWED_HOSTS</code> = <code>api.messdeck.in</code></li>
+          <li><code>CORS_ALLOWED_ORIGINS</code> = <code>https://app.messdeck.in</code> (add the Vercel URL too, comma-separated, if you still use it)</li>
+        </ul>
+      </li>
+      <li>Vercel → <code>VITE_API_BASE_URL</code> = <code>https://api.messdeck.in/api/v1</code>, then redeploy.</li>
+    </ol>
+    <p class="muted">Both hosts issue HTTPS certificates automatically once DNS is set up.</p>
+  </div>
+
+  <!-- 11 -->
+  <h2><span class="n">11</span>Updating and day-to-day</h2>
+  <div class="card">
+    <ul>
+      <li><b>Deploying changes:</b> push to <code>main</code>. Render and Vercel redeploy automatically; database migrations run during the Render build.</li>
+      <li><b>Each morning:</b> glance at the Actions tab. Both nightly workflows should be green. GitHub emails you when a workflow fails.</li>
+      <li><b>Changing the super admin password:</b> change <code>SUPERADMIN_PASSWORD</code> on Render; it's applied on the next deploy.</li>
+    </ul>
+  </div>
+  <div class="card warn">
+    <b>Free-tier limits that clients will notice</b>
+    <ul>
+      <li><b>The API sleeps</b> after about 15 minutes without traffic, and the next visit takes 30–60 seconds to load. Before the first paying client, move the Render service to a paid instance (Render → service → Settings → Instance type) so it stays awake.</li>
+      <li><b>Logo uploads don't persist</b> on Render's free disk; they disappear on every deploy. A file storage service (e.g. Cloudinary or S3) would be needed for logos.</li>
+      <li><b>Neon free</b> has a storage cap and a short restore history; check usage in the Neon dashboard as clients grow.</li>
+    </ul>
+  </div>
+
+  <!-- 12 -->
+  <h2><span class="n">12</span>Troubleshooting</h2>
+  <div class="tbl"><table>
+    <tr><th>Symptom</th><th>Fix</th></tr>
+    <tr><td>Every login says "Invalid username or password"</td><td>The API is asleep or the URL is wrong. Open <code>https://&lt;render-url&gt;/api/v1/pricing/</code> and wait for it to load. Then check Vercel's <code>VITE_API_BASE_URL</code> ends in <code>/api/v1</code> and redeploy.</td></tr>
+    <tr><td>Browser console shows a CORS error</td><td><code>CORS_ALLOWED_ORIGINS</code> on Render must exactly match the website address (https, no trailing slash).</td></tr>
+    <tr><td>Refreshing a page like <code>/app/customers</code> gives 404</td><td>Vercel's Root Directory must be <code>frontend</code>.</td></tr>
+    <tr><td>Render build fails at <code>migrate</code></td><td><code>DATABASE_URL</code> is wrong or missing <code>?sslmode=require</code>.</td></tr>
+    <tr><td>Render says the Python version isn't found</td><td>Change <code>PYTHON_VERSION</code> in Render → Environment to a 3.12.x version Render lists.</td></tr>
+    <tr><td>Daily jobs workflow says "skipping"</td><td>The <code>PROD_DATABASE_URL</code> secret is missing or misspelled.</td></tr>
+    <tr><td>Daily jobs fails with a missing column or table</td><td>The database is behind the code. Check the latest Render deploy succeeded (it runs the migrations), then re-run the workflow.</td></tr>
+    <tr><td>Backup fails with "server version mismatch"</td><td>Neon was upgraded past PostgreSQL 17. In <code>.github/workflows/db-backup.yml</code>, change <code>17</code> to the new version in both places.</td></tr>
+    <tr><td>No alert emails arrive</td><td>Check the Daily jobs log. "console" output means <code>EMAIL_HOST</code> isn't set; an SMTP error usually means a wrong app password.</td></tr>
+    <tr><td>A client says they're locked out</td><td>They're probably suspended for non-payment. Record their payment (Platform → Businesses → Record Payment) and access comes back immediately.</td></tr>
+  </table></div>
+
+  <h2>Go-live checklist</h2>
+  <div class="card">
+    <ul class="check">
+      <li><label><input type="checkbox"> Neon project created, connection string saved</label></li>
+      <li><label><input type="checkbox"> Render API live, <code>SEED_DEMO</code> = 0</label></li>
+      <li><label><input type="checkbox"> Vercel site live; Contact Us opens WhatsApp with +91 85477 68153</label></li>
+      <li><label><input type="checkbox"> <code>CORS_ALLOWED_ORIGINS</code> set to the website address</label></li>
+      <li><label><input type="checkbox"> GitHub secrets added; Daily jobs and Daily DB backup both ran green</label></li>
+      <li><label><input type="checkbox"> One backup restored successfully into a spare branch</label></li>
+      <li><label><input type="checkbox"> Email provider connected and a test alert received</label></li>
+      <li><label><input type="checkbox"> Render moved off the sleeping free instance</label></li>
+      <li><label><input type="checkbox"> Contact and Phone filled in on the Monthly Plan PDF</label></li>
+      <li><label><input type="checkbox"> Dry run: test business added, ₹3,000 recorded, customer added, a day of deliveries marked</label></li>
+    </ul>
+    <p class="muted">These ticks aren't saved; print the page if you want a paper checklist.</p>
+  </div>
+
+</div>
+</body>
+</html>

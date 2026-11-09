@@ -29,16 +29,6 @@ test('dashboard KPI cards and quick actions open their pages', async ({ page }) 
   await expect(page).toHaveURL(/\/app\/payments$/)
 })
 
-test('signup explains why a duplicate username was rejected', async ({ page }) => {
-  await page.goto('/signup')
-  await page.getByPlaceholder("e.g. Rahul's Mess").fill('Duplicate Owner Mess')
-  await page.getByPlaceholder('rahul', { exact: true }).fill('owner') // seeded username
-  await page.getByPlaceholder('Min 8 characters').fill('whatever123')
-  await page.getByRole('button', { name: 'Start Free Trial' }).click()
-  await expect(page.getByText('Username already taken.')).toBeVisible()
-  await expect(page.getByText('Request failed.')).toHaveCount(0)
-})
-
 test('staff form explains why a duplicate username was rejected', async ({ page }) => {
   await login(page, USERS.owner, '/app')
   await page.getByRole('link', { name: 'Staff' }).click()

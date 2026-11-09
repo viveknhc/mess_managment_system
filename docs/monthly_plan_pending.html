@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monthly Plan Pending</title>
+<style>
+  :root {
+    --bg:#f6f8f7; --card:#ffffff; --text:#1c2421; --muted:#5d6b64; --line:#dfe7e2;
+    --brand:#1f6f4a; --brand-soft:#e6f2ec;
+    --red:#b42318; --red-soft:#fdecea;
+    --amber:#9a6700; --amber-soft:#fff4d6;
+    --green:#1a7f4b; --green-soft:#e3f5ea;
+    --blue:#1d4ed8; --blue-soft:#e6edff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f1512; --card:#171f1b; --text:#e6efe9; --muted:#9db0a6; --line:#2a352f;
+      --brand:#4ec58b; --brand-soft:#173126;
+      --red:#ff8a80; --red-soft:#3a1c19;
+      --amber:#f2c14e; --amber-soft:#35290e;
+      --green:#5fd394; --green-soft:#14301f;
+      --blue:#8ab0ff; --blue-soft:#17233f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; color: var(--brand); }
+  h2 { font-size: 19px; margin: 36px 0 12px; }
+  h3 { font-size: 15.5px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:12px; margin: 18px 0 8px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .stat b { display:block; font-size: 24px; line-height:1.2; }
+  .stat span { color:var(--muted); font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+  .card.red { border-left:4px solid var(--red); }
+  .card.amber { border-left:4px solid var(--amber); }
+  .card.blue { border-left:4px solid var(--blue); }
+  .head { display:flex; gap:10px; align-items:flex-start; }
+  .head input { margin-top:5px; width:18px; height:18px; accent-color: var(--brand); flex:none; }
+  .head label { flex:1; cursor:pointer; }
+  .tag { display:inline-block; font-size:11.5px; font-weight:600; border-radius:999px; padding:2px 9px; margin-left:6px; vertical-align:middle; }
+  .t-red { background:var(--red-soft); color:var(--red); }
+  .t-amber { background:var(--amber-soft); color:var(--amber); }
+  .t-green { background:var(--green-soft); color:var(--green); }
+  .t-blue { background:var(--blue-soft); color:var(--blue); }
+  .detail { margin: 8px 0 0 28px; color: var(--muted); }
+  .detail p { margin: 4px 0; }
+  .detail b { color: var(--text); }
+  .done .head label { text-decoration: line-through; opacity:.6; }
+  code { background:var(--brand-soft); color:var(--brand); padding:1px 6px; border-radius:5px; font-size:13px; }
+  table { width:100%; border-collapse: collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
+  th { background:var(--brand-soft); color:var(--brand); font-size:13px; }
+  tr:last-child td { border-bottom:0; }
+  .tbl-wrap { overflow-x:auto; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  .note { color:var(--muted); font-size:13px; }
+  .progress { height:10px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
+  .progress > i { display:block; height:100%; width:0; background:var(--brand); transition:width .25s; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Monthly Plan: What's Pending</h1>
+  <p class="sub">Checked against the code on 9 Nov 2026. ₹2,500 one-time setup + ₹500/month. First payment ₹3,000. ₹1,000 reactivation after 3 months away.</p>
+  <div class="stats">
+    <div class="stat"><b>7</b><span>blockers before charging</span></div>
+    <div class="stat"><b>6</b><span>promised in PDF, missing</span></div>
+    <div class="stat"><b>8 / 15</b><span>setup + monthly items working</span></div>
+    <div class="stat"><b id="open-count">17</b><span>items open below</span></div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+  <p class="note">Tick the boxes as you finish items. Ticks are saved in this browser only.</p>
+
+  <h2>1. Fix before charging the first client</h2>
+
+  <div class="card red" data-id="jobs">
+    <div class="head"><input type="checkbox" id="c-jobs"><label for="c-jobs"><h3>Run the background jobs <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Only the platform billing check is in <code>CELERY_BEAT_SCHEDULE</code> (<code>config/settings/base.py</code>). Three tasks are written but never scheduled: mark subscriptions EXPIRED, send "expiring soon" alerts, and generate next day's deliveries. <code>render.yaml</code> runs only gunicorn, with no worker, scheduler or Redis.</p>
+      <p><b>Effect:</b> "Subscription tracking with automatic expiry alerts" doesn't happen. Subscriptions stay ACTIVE past their end date. Overdue businesses are never moved to PAST_DUE or SUSPENDED.</p>
+      <p><b>Fix:</b> Add the tasks to the beat schedule, or (cheaper on Render's free tier) add management commands and call them from a daily cron. Add a test for each.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="billui">
+    <div class="head"><input type="checkbox" id="c-billui"><label for="c-billui"><h3>Fix the broken billing screens <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>SignupPage</code> and <code>BillingPage</code> call <code>/signup/</code> and <code>/billing/checkout/</code>, which the backend no longer has (<code>frontend/src/features/platform/platformApi.ts:102,125</code>). <code>BillingPage</code> reads <code>available_plans</code>, which the API no longer returns. <code>e2e/02-platform-billing.spec.ts</code> still tests signup and trial.</p>
+      <p><b>Effect:</b> Owners see errors on the Billing page, and CI's E2E job fails.</p>
+      <p><b>Fix:</b> Remove the signup flow and rebuild <code>BillingPage</code> to show plan, paid-until, amount due, payment history and a Cancel button. Update the frontend types (<code>setup_fee</code>, <code>reactivation_fee</code>, <code>PENDING</code> status) and the E2E spec.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="recpay">
+    <div class="head"><input type="checkbox" id="c-recpay"><label for="c-recpay"><h3>Super-admin: record payment, cancel, create business <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The backend endpoints <code>POST platform/businesses/{id}/record-payment/</code>, <code>/cancel/</code> and <code>POST platform/businesses/</code> exist and are tested, but no page calls them. <code>BusinessesListPage</code> shows "Trial Ends" instead of paid-until and amount due. The Plans page can't edit the setup or reactivation fee.</p>
+      <p><b>Effect:</b> You can't collect ₹3,000 / ₹500 / ₹1,000 or onboard a new mess from the app. On Render's free tier there's no shell, so only curl works.</p>
+      <p><b>Fix:</b> Add the forms and columns to the platform pages. Remove the leftover "On Trial" card from the platform dashboard.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="unpaid">
+    <div class="head"><input type="checkbox" id="c-unpaid"><label for="c-unpaid"><h3>Suspend businesses that never pay <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> A new business starts ACTIVE, and a PENDING (never paid) subscription is never suspended by <code>run_billing_checks</code>.</p>
+      <p><b>Effect:</b> A mess can use the app free forever without paying the ₹3,000.</p>
+      <p><b>Fix:</b> Either keep new businesses blocked until the first payment is recorded, or give them a short grace period and then suspend. Add a test.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="enforce">
+    <div class="head"><input type="checkbox" id="c-enforce"><label for="c-enforce"><h3>Enforce suspension on every endpoint <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Suspension is only checked in <code>TenantScopedViewSet</code> (<code>common/viewsets.py</code>). The dashboard, reports, settings and customer-portal views are plain APIViews and don't check it.</p>
+      <p><b>Effect:</b> A suspended business can still use the dashboard, reports and portal.</p>
+      <p><b>Fix:</b> Move the check into a shared permission class used by every tenant endpoint. Add a test per view.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="reactfee">
+    <div class="head"><input type="checkbox" id="c-reactfee"><label for="c-reactfee"><h3>Make &quot;Reactivate&quot; charge the ₹1,000 fee <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The super-admin Reactivate action (<code>services.py</code>, <code>reactivate</code>) restores access with no payment. The fee only applies through record-payment.</p>
+      <p><b>Effect:</b> The "₹1,000 reactivation fee after 3 months" term can be bypassed.</p>
+      <p><b>Fix:</b> Reactivate only through a recorded payment, or have Reactivate require one when more than 3 months have passed.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="seed">
+    <div class="head"><input type="checkbox" id="c-seed"><label for="c-seed"><h3>Turn off demo data in production <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>render.yaml</code> sets <code>SEED_DEMO: &quot;1&quot;</code>.</p>
+      <p><b>Effect:</b> The "Annapurna Mess" demo data is loaded into the live database.</p>
+      <p><b>Fix:</b> Set it to <code>&quot;0&quot;</code> before the first real client.</p>
+    </div>
+  </div>
+
+  <h2>2. Promised in the PDF but missing</h2>
+
+  <div class="card amber" data-id="import">
+    <div class="head"><input type="checkbox" id="c-import"><label for="c-import"><h3>Import existing customers (up to 100) <span class="tag t-amber">Setup fee</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> There's no CSV or Excel import anywhere in the backend or frontend. The Monthly Plan has <code>max_customers = 0</code> (unlimited), so a 100 limit isn't enforced either.</p>
+      <p><b>Effect:</b> The setup fee promises this import.</p>
+      <p><b>Fix:</b> Add a CSV upload (name, phone, address, notes) with row-level errors and a 100-row cap per import. Or import by script during setup and keep it internal.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="backup">
+    <div class="head"><input type="checkbox" id="c-backup"><label for="c-backup"><h3>Automated daily backup <span class="tag t-amber">Monthly fee</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>docs/db_backup_restore.md</code> covers manual <code>pg_dump</code> only, and its docker commands use the service name <code>postgres</code> while <code>docker-compose.yml</code> calls it <code>db</code>.</p>
+      <p><b>Effect:</b> "Daily data backup" is promised.</p>
+      <p><b>Fix:</b> Schedule a daily <code>pg_dump</code> to off-site storage, or rely on Neon's point-in-time restore (check its retention). Test a restore once, and fix the runbook.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="support">
+    <div class="head"><input type="checkbox" id="c-support"><label for="c-support"><h3>WhatsApp and email support contact <span class="tag t-amber">Monthly fee</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>CONTACT_WHATSAPP = &#x27;910000000000&#x27;</code> is a placeholder (<code>LandingPage.tsx</code>). There's no support email anywhere. The suspended banner says "contact support" with no number or link, and there's no Help entry in the admin menu.</p>
+      <p><b>Effect:</b> "WhatsApp and email support" has no working contact.</p>
+      <p><b>Fix:</b> Set the real number, add a support email, and add a Help/Support link in the app and on the suspended banner.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="alerts">
+    <div class="head"><input type="checkbox" id="c-alerts"><label for="c-alerts"><h3>Expiry alerts beyond in-app <span class="tag t-amber">Monthly fee</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Alerts are in-app only (<code>notifications/services.py</code>: "IN_APP channel for now"). No email settings exist in <code>config/settings</code>, so there's no email or WhatsApp sending.</p>
+      <p><b>Effect:</b> Owners only see alerts if they open the app. Customers get none.</p>
+      <p><b>Fix:</b> Fix the background jobs first. Then add email (SMTP settings) and later WhatsApp if needed.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="pause">
+    <div class="head"><input type="checkbox" id="c-pause"><label for="c-pause"><h3>Finish pause handling <span class="tag t-amber">Monthly fee</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Owner pause only changes the status and leaves deliveries on the daily list. Portal pause puts the subscription in PAUSED even for a future window, with no auto-resume. <code>DeliveryService.resume_deliveries</code> is never called, so resuming doesn't restore deliveries. End date isn't extended for paused days.</p>
+      <p><b>Effect:</b> Delivery staff can see paused customers, and resumed customers can miss meals.</p>
+      <p><b>Fix:</b> Cancel deliveries in the range on owner pause, restore them on resume, auto-resume when the window ends, and decide whether to extend the end date.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="tiffin">
+    <div class="head"><input type="checkbox" id="c-tiffin"><label for="c-tiffin"><h3>&quot;Tiffin&quot; vs &quot;packed meals&quot; <span class="tag t-amber">Wording</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The PDF says breakfast, lunch, dinner, tiffin. The app's default meals are Breakfast, Lunch, Dinner, Snacks, and the landing page says "packed meals".</p>
+      <p><b>Effect:</b> Small mismatch a client may notice.</p>
+      <p><b>Fix:</b> Pick one word and use it in the PDF, landing page and default meals.</p>
+    </div>
+  </div>
+
+  <h2>3. Smaller items</h2>
+
+  <div class="card blue" data-id="pdf">
+    <div class="head"><input type="checkbox" id="c-pdf"><label for="c-pdf"><h3>Fill Contact / Phone in the PDF <span class="tag t-blue">Docs</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The PDF still has blank "Contact: ____ · Phone: ____" fields.</p>
+      <p><b>Effect:</b> Clients can't reach you from the PDF.</p>
+      <p><b>Fix:</b> Use the same number as the landing page WhatsApp link.</p>
+    </div>
+  </div>
+
+  <div class="card blue" data-id="guide">
+    <div class="head"><input type="checkbox" id="c-guide"><label for="c-guide"><h3>Owner guide for the 30-minute walkthrough <span class="tag t-blue">Docs</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>docs/app-workflow.html</code> exists, but there's no owner-facing guide or in-app help.</p>
+      <p><b>Effect:</b> Every walkthrough starts from scratch.</p>
+      <p><b>Fix:</b> Write a one-page owner guide to leave behind after the walkthrough.</p>
+    </div>
+  </div>
+
+  <div class="card blue" data-id="sleep">
+    <div class="head"><input type="checkbox" id="c-sleep"><label for="c-sleep"><h3>Render free tier sleeps <span class="tag t-blue">Hosting</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The service sleeps after about 15 minutes idle, and the first load takes 30–60s.</p>
+      <p><b>Effect:</b> Feels slow to paying clients.</p>
+      <p><b>Fix:</b> Move to a paid instance once the first client signs.</p>
+    </div>
+  </div>
+
+  <div class="card blue" data-id="webhook">
+    <div class="head"><input type="checkbox" id="c-webhook"><label for="c-webhook"><h3>Razorpay webhook without a secret <span class="tag t-blue">Security</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Signature verification is skipped when <code>RAZORPAY_WEBHOOK_SECRET</code> is unset (<code>apps/platform/views.py</code>).</p>
+      <p><b>Effect:</b> Low risk now that payments are recorded manually.</p>
+      <p><b>Fix:</b> Set the secret, or remove the webhook route.</p>
+    </div>
+  </div>
+
+  <h2>Already working</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>PDF promise</th><th>Where it is</th></tr>
+    <tr><td>Customer management with full records</td><td>Customers pages, records with phone, address, location and notes</td></tr>
+    <tr><td>Meal and plan setup</td><td>Meals and Plans pages; defaults Breakfast, Lunch, Dinner, Snacks</td></tr>
+    <tr><td>Payment recording, paid and pending balances</td><td>Payments page, Record Payment form, per-subscription balances</td></tr>
+    <tr><td>Daily delivery list and meal counts</td><td>Today&#x27;s and completed deliveries for delivery staff; kitchen meal counts</td></tr>
+    <tr><td>Dashboard with today&#x27;s summary</td><td>Owner dashboard with today&#x27;s meals, deliveries, collections and dues</td></tr>
+    <tr><td>Owner login plus staff logins</td><td>Owner, Manager, Delivery and Kitchen roles; Staff page</td></tr>
+    <tr><td>Creating the business account</td><td>bootstrap_business command and the platform API (no screen yet, see above)</td></tr>
+    <tr><td>Setting up meals, plans, owner and staff logins</td><td>All available from the owner&#x27;s screens</td></tr>
+    <tr><td>Data private to your business</td><td>Tenant filtering in TenantScopedViewSet, isolation tests in every module</td></tr>
+    <tr><td>Billing rules in the backend</td><td>₹2,500 + ₹500, ₹3,000 first payment, cancel any time, ₹1,000 reactivation, 7-day grace. Tested, waiting on screens and jobs</td></tr>
+  </table></div>
+
+  <h2>Suggested order</h2>
+  <p>Background jobs → billing screens → record payment / cancel / create business → unpaid and suspension gaps → reactivation fee → demo data off → customer import → backups → support contact → the rest.</p>
+
+</div>
+
+<script>
+  (function () {
+    var KEY = "monthly-plan-pending-v1";
+    var boxes = document.querySelectorAll('.card[data-id] input[type="checkbox"]');
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+    function render() {
+      var done = 0;
+      boxes.forEach(function (b) {
+        var card = b.closest(".card");
+        card.classList.toggle("done", b.checked);
+        if (b.checked) done++;
+      });
+      document.getElementById("open-count").textContent = boxes.length - done;
+      document.getElementById("bar").style.width = Math.round(done / boxes.length * 100) + "%";
+    }
+    boxes.forEach(function (b) {
+      var id = b.closest(".card").getAttribute("data-id");
+      b.checked = !!state[id];
+      b.addEventListener("change", function () {
+        state[id] = b.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+        render();
+      });
+    });
+    render();
+  })();
+</script>
+</body>
+</html>

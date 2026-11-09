@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from './Logo'
+import { whatsappLink } from '../../utils/contact'
 
 /* ------------------------------------------------------------------ */
 /*  Intersection-observer fade-in hook                                 */
@@ -40,9 +41,7 @@ function FadeIn({ children, className = '' }: { children: React.ReactNode; class
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-// TODO: replace with the real WhatsApp number (country code, no + or spaces) before going live.
-const CONTACT_WHATSAPP = '910000000000'
-const CONTACT_URL = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Hi, I want to set up MessDeck for my mess.')}`
+const CONTACT_URL = whatsappLink('Hi, I want to set up MessDeck for my mess.')
 
 const SETUP_FEE = '₹2,500'
 const MONTHLY_FEE = '₹500'

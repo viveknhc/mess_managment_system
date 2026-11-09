@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { platformApi, type SaasPayment } from './platformApi'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { METHOD_LABEL } from './billingFormat'
 
 const columns: Column<SaasPayment>[] = [
   {
@@ -24,7 +25,27 @@ const columns: Column<SaasPayment>[] = [
     sortable: true,
     align: 'right',
     className: 'font-medium text-gray-900',
-    render: (p) => <>&#8377;{p.amount}</>,
+    render: (p) => (
+      <>
+        &#8377;{p.amount}
+        {Number(p.setup_fee) > 0 && <span className="block text-xs font-normal text-gray-500">incl. &#8377;{p.setup_fee} setup</span>}
+        {Number(p.reactivation_fee) > 0 && (
+          <span className="block text-xs font-normal text-gray-500">incl. &#8377;{p.reactivation_fee} reactivation</span>
+        )}
+      </>
+    ),
+  },
+  {
+    key: 'method',
+    header: 'Method',
+    sortable: true,
+    className: 'text-gray-700',
+    render: (p) => (
+      <>
+        {METHOD_LABEL[p.method] ?? p.method}
+        {p.reference && <span className="block text-xs text-gray-500">{p.reference}</span>}
+      </>
+    ),
   },
   {
     key: 'status',

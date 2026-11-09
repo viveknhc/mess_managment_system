@@ -8,6 +8,8 @@ type PlanWithAdmin = SaasPlan & { razorpay_plan_id: string; is_active: boolean }
 const emptyPlan: Partial<PlanWithAdmin> = {
   name: '',
   price_monthly: '',
+  setup_fee: '0',
+  reactivation_fee: '0',
   max_customers: 0,
   max_staff: 0,
   features: [],
@@ -101,6 +103,22 @@ export function PlatformPlansPage() {
         align: 'right',
         className: 'whitespace-nowrap font-medium text-gray-900',
         render: (plan) => <>&#8377;{plan.price_monthly}</>,
+      },
+      {
+        key: 'setup_fee',
+        header: 'Setup Fee',
+        sortable: true,
+        align: 'right',
+        className: 'whitespace-nowrap text-gray-700',
+        render: (plan) => <>&#8377;{plan.setup_fee}</>,
+      },
+      {
+        key: 'reactivation_fee',
+        header: 'Reactivation Fee',
+        sortable: true,
+        align: 'right',
+        className: 'whitespace-nowrap text-gray-700',
+        render: (plan) => <>&#8377;{plan.reactivation_fee}</>,
       },
       {
         key: 'max_customers',
@@ -225,6 +243,30 @@ export function PlatformPlansPage() {
                 onChange={(e) => setEditingPlan({ ...editingPlan, price_monthly: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs text-gray-600">
+                  One-time setup fee
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Setup fee"
+                    value={editingPlan.setup_fee ?? '0'}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, setup_fee: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="text-xs text-gray-600">
+                  Reactivation fee (back after 3+ months)
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Reactivation fee"
+                    value={editingPlan.reactivation_fee ?? '0'}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, reactivation_fee: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <input
                   type="number"

@@ -243,7 +243,16 @@ class PlatformPlanViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
     serializer_class = SaasPlanSerializer
     queryset = SaasPlan.objects.all()
-    ordering_fields = ["name", "price_monthly", "max_customers", "max_staff", "is_active", "created_at"]
+    ordering_fields = [
+        "name",
+        "price_monthly",
+        "setup_fee",
+        "reactivation_fee",
+        "max_customers",
+        "max_staff",
+        "is_active",
+        "created_at",
+    ]
 
 
 class PlatformPaymentListView(generics.ListAPIView):
@@ -252,7 +261,15 @@ class PlatformPaymentListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
     serializer_class = SaasPaymentSerializer
     queryset = SaasPayment.objects.all().select_related("business", "plan")
-    ordering_fields = ["created_at", "business__name", "plan__name", "amount", "status", "period_start"]
+    ordering_fields = [
+        "created_at",
+        "business__name",
+        "plan__name",
+        "amount",
+        "method",
+        "status",
+        "period_start",
+    ]
 
 
 class PlatformStatsView(APIView):

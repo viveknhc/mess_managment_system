@@ -34,8 +34,9 @@ export function PlatformDashboardPage() {
   const cards = [
     { label: 'Total Businesses', value: stats.total_businesses, color: 'blue' },
     { label: 'Active', value: stats.active_businesses, color: 'green' },
-    { label: 'On Trial', value: stats.trial_businesses, color: 'indigo' },
-    { label: 'Paid', value: stats.paid_businesses, color: 'emerald' },
+    { label: 'Awaiting First Payment', value: stats.pending_businesses, color: 'indigo' },
+    { label: 'Paid & Current', value: stats.paid_businesses, color: 'emerald' },
+    { label: 'Payment Overdue', value: stats.past_due_businesses, color: 'yellow' },
     { label: 'Suspended', value: stats.suspended_businesses, color: 'red' },
     { label: 'Total Revenue', value: `\u20B9${stats.total_revenue}`, color: 'purple' },
   ]

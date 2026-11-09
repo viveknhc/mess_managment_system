@@ -7,7 +7,6 @@ import { PlatformLayout } from '../layouts/PlatformLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
 import { LandingPage } from '../features/landing/LandingPage'
-import { SignupPage } from '../features/platform/SignupPage'
 import { PortalDashboard } from '../features/portal/PortalDashboard'
 import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
 import { PortalPaymentsPage } from '../features/portal/PortalPaymentsPage'
@@ -63,7 +62,6 @@ export function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingOrDashboard />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
 
       {/* Admin routes — Owner + Manager (not SUPER_ADMIN — they use /platform) */}
       <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER']} />}>

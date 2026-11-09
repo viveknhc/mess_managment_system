@@ -1,8 +1,5 @@
 import { apiClient } from '../../services/apiClient'
-import axios from 'axios'
 import { getApiErrorMessage } from '../../utils/apiError'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -10,28 +7,61 @@ export interface SaasPlan {
   id: string
   name: string
   price_monthly: string
+  setup_fee: string
+  reactivation_fee: string
   max_customers: number
   max_staff: number
   features: string[]
+}
+
+export type SaasStatus = 'PENDING' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED'
+
+export interface AmountDue {
+  setup_fee: string
+  reactivation_fee: string
+  monthly_fee: string
+  total: string
+  due_date: string
 }
 
 export interface SaasSubscription {
   id: string
   business_id: string
   business_name: string
+  business_status: string
   plan: string | null
   plan_name: string | null
   plan_price: string | null
-  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED'
+  plan_details: SaasPlan | null
+  status: SaasStatus
+  setup_fee_paid: boolean
+  cancelled_at: string | null
   trial_end_date: string | null
   current_period_start: string | null
+  /** First day not covered by the last payment — the next fee is due on this date. */
   current_period_end: string | null
   days_remaining: number | null
+  grace_ends: string | null
+  amount_due: AmountDue
 }
 
 export interface BillingData {
   subscription: SaasSubscription
-  available_plans: SaasPlan[]
+  payments: SaasPayment[]
+}
+
+export type ManualPaymentMethod = 'UPI' | 'CASH' | 'BANK_TRANSFER'
+
+export interface CreateBusinessInput {
+  business_name: string
+  phone?: string
+  email?: string
+  address?: string
+  owner_username: string
+  owner_password: string
+  owner_name?: string
+  owner_email?: string
+  owner_phone?: string
 }
 
 export interface PlatformBusiness {
@@ -40,9 +70,11 @@ export interface PlatformBusiness {
   phone: string
   email: string
   status: string
-  saas_status: string | null
+  saas_status: SaasStatus | null
   plan_name: string | null
   trial_end_date: string | null
+  paid_until: string | null
+  amount_due: AmountDue | null
   owner_name: string | null
   owner_email: string | null
   customer_count: number
@@ -56,7 +88,11 @@ export interface SaasPayment {
   business_name: string
   plan_name: string | null
   amount: string
+  setup_fee: string
+  reactivation_fee: string
   status: string
+  method: string
+  reference: string
   razorpay_payment_id: string
   period_start: string | null
   period_end: string | null
@@ -69,6 +105,8 @@ export interface PlatformStats {
   active_businesses: number
   suspended_businesses: number
   trial_businesses: number
+  pending_businesses: number
+  past_due_businesses: number
   paid_businesses: number
   total_revenue: string
   plans_breakdown: { plan__name: string; count: number }[]
@@ -87,31 +125,6 @@ function errMsg(e: unknown): string {
   return getApiErrorMessage(e, String(e))
 }
 
-// ── Public API (no auth required) ────────────────────────────────────────
-
-export const publicApi = {
-  async signup(data: {
-    business_name: string
-    owner_username: string
-    owner_password: string
-    owner_name?: string
-    owner_email?: string
-    owner_phone?: string
-  }) {
-    try {
-      const res = await axios.post(`${API_BASE}/signup/`, data)
-      return { ok: true as const, data: res.data }
-    } catch (e) {
-      return { ok: false as const, error: errMsg(e) }
-    }
-  },
-
-  async getPlans() {
-    const { data } = await axios.get<SaasPlan[]>(`${API_BASE}/pricing/`)
-    return data
-  },
-}
-
 // ── Authenticated API ────────────────────────────────────────────────────
 
 export const billingApi = {
@@ -120,9 +133,9 @@ export const billingApi = {
     return data
   },
 
-  async checkout(planId: string) {
+  async cancel() {
     try {
-      const { data } = await apiClient.post('/billing/checkout/', { plan_id: planId })
+      const { data } = await apiClient.post<{ subscription: SaasSubscription }>('/billing/cancel/')
       return { ok: true as const, data }
     } catch (e) {
       return { ok: false as const, error: errMsg(e) }
@@ -147,11 +160,36 @@ export const platformApi = {
     }
   },
 
-  async reactivateBusiness(id: string, extendTrialDays = 0) {
+  async reactivateBusiness(id: string) {
     try {
-      const { data } = await apiClient.post(`/platform/businesses/${id}/reactivate/`, {
-        extend_trial_days: extendTrialDays,
-      })
+      const { data } = await apiClient.post(`/platform/businesses/${id}/reactivate/`)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  async createBusiness(input: CreateBusinessInput) {
+    try {
+      const { data } = await apiClient.post<PlatformBusiness>('/platform/businesses/', input)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  async recordPayment(id: string, payment: { amount: string; method: ManualPaymentMethod; reference?: string }) {
+    try {
+      const { data } = await apiClient.post<SaasPayment>(`/platform/businesses/${id}/record-payment/`, payment)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  async cancelBusiness(id: string) {
+    try {
+      const { data } = await apiClient.post(`/platform/businesses/${id}/cancel/`)
       return { ok: true as const, data }
     } catch (e) {
       return { ok: false as const, error: errMsg(e) }

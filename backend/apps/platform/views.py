@@ -1,4 +1,4 @@
-"""Platform billing views — public signup, business billing, SUPER_ADMIN management."""
+"""Platform billing views — business billing, SUPER_ADMIN onboarding and payment recording."""
 
 import hashlib
 import hmac
@@ -9,7 +9,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -17,53 +17,26 @@ from rest_framework.views import APIView
 
 from apps.businesses.models import Business
 from apps.platform.models import SaasPayment, SaasPlan, SaasSubscription
-from apps.platform.permissions import IsOwnerOrManager, IsSuperAdmin
+from apps.platform.permissions import IsOwner, IsOwnerOrManager, IsSuperAdmin
 from apps.platform.serializers import (
-    CheckoutSerializer,
+    CreateBusinessSerializer,
     PlatformBusinessSerializer,
+    RecordPaymentSerializer,
     SaasPaymentSerializer,
     SaasPlanPublicSerializer,
     SaasPlanSerializer,
     SaasSubscriptionSerializer,
-    SignupSerializer,
 )
 from apps.platform.services import PlatformService
 
 logger = logging.getLogger(__name__)
 
 
-# ── Public: Signup ────────────────────────────────────────────────────────
-
-
-class SignupView(APIView):
-    """Self-serve business registration — creates business + owner + trial."""
-
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    def post(self, request):
-        serializer = SignupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        # Map serializer field name to service kwarg
-        data["name"] = data.pop("business_name")
-        business, user = PlatformService.register_business(**data)
-
-        # Generate JWT tokens for immediate login
-        from rest_framework_simplejwt.tokens import RefreshToken
-
-        refresh = RefreshToken.for_user(user)
-        from apps.accounts.serializers import UserSerializer
-
-        return Response(
-            {
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": UserSerializer(user).data,
-                "business": {"id": str(business.id), "name": business.name},
-            },
-            status=status.HTTP_201_CREATED,
-        )
+def _validation_error(message):
+    return Response(
+        {"error": {"code": "VALIDATION_ERROR", "message": message, "fields": {}}},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 # ── Public: Plans listing ─────────────────────────────────────────────────
@@ -83,80 +56,42 @@ class PublicPlansView(generics.ListAPIView):
 
 
 class BillingView(APIView):
-    """Current billing status for the business owner."""
+    """Current billing status, amount due and payment history for the business owner."""
 
     permission_classes = [IsAuthenticated, IsOwnerOrManager]
 
     def get(self, request):
         try:
-            sub = request.user.business.saas_subscription
+            sub = SaasSubscription.objects.select_related("business", "plan").get(
+                business=request.user.business
+            )
         except SaasSubscription.DoesNotExist:
             return Response({"error": {"code": "NOT_FOUND", "message": "No subscription found."}}, status=404)
 
-        serializer = SaasSubscriptionSerializer(sub)
-        plans = SaasPlanPublicSerializer(SaasPlan.objects.filter(is_active=True), many=True)
-        return Response({"subscription": serializer.data, "available_plans": plans.data})
+        payments = SaasPayment.objects.filter(business=request.user.business, status="PAID")
+        return Response(
+            {
+                "subscription": SaasSubscriptionSerializer(sub).data,
+                "payments": SaasPaymentSerializer(payments, many=True).data,
+            }
+        )
 
 
-class CheckoutView(APIView):
-    """Initiate Razorpay subscription checkout."""
+class BillingCancelView(APIView):
+    """Owner cancels the monthly plan. Access continues until the paid month ends."""
 
-    permission_classes = [IsAuthenticated, IsOwnerOrManager]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     def post(self, request):
-        serializer = CheckoutSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        plan = SaasPlan.objects.get(id=serializer.validated_data["plan_id"])
-        business = request.user.business
-
         try:
-            sub = business.saas_subscription
+            sub = request.user.business.saas_subscription
         except SaasSubscription.DoesNotExist:
-            sub = PlatformService.start_trial(business)
-
-        if not plan.razorpay_plan_id:
-            # No Razorpay plan configured — activate directly (dev/testing)
-            PlatformService.activate_subscription(sub, plan)
-            return Response(
-                {"message": "Plan activated.", "subscription": SaasSubscriptionSerializer(sub).data}
-            )
-
-        # Create Razorpay subscription
-        from apps.platform.razorpay import RazorpayClient
-
+            return Response({"error": {"code": "NOT_FOUND", "message": "No subscription found."}}, status=404)
         try:
-            if not sub.razorpay_customer_id:
-                owner = business.users.filter(role="OWNER").first()
-                rz_customer = RazorpayClient.create_customer(
-                    name=business.name,
-                    email=owner.email if owner else "",
-                    contact=owner.phone if owner else "",
-                )
-                sub.razorpay_customer_id = rz_customer["id"]
-                sub.save(update_fields=["razorpay_customer_id"])
-
-            rz_sub = RazorpayClient.create_subscription(
-                plan_id=plan.razorpay_plan_id,
-                customer_id=sub.razorpay_customer_id,
-            )
-            sub.razorpay_subscription_id = rz_sub["id"]
-            sub.plan = plan
-            sub.save(update_fields=["razorpay_subscription_id", "plan"])
-
-            return Response(
-                {
-                    "razorpay_subscription_id": rz_sub["id"],
-                    "razorpay_key": settings.RAZORPAY_KEY_ID,
-                    "subscription": SaasSubscriptionSerializer(sub).data,
-                }
-            )
-        except Exception as e:
-            logger.exception("Razorpay checkout error")
-            return Response(
-                {"error": {"code": "PAYMENT_ERROR", "message": str(e), "fields": {}}},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            PlatformService.cancel_subscription(sub)
+        except ValueError as e:
+            return _validation_error(str(e))
+        return Response({"subscription": SaasSubscriptionSerializer(sub).data})
 
 
 # ── Razorpay Webhook ──────────────────────────────────────────────────────
@@ -237,20 +172,57 @@ class RazorpayWebhookView(APIView):
 # ── SUPER_ADMIN: Platform Management ─────────────────────────────────────
 
 
-class PlatformBusinessViewSet(viewsets.ReadOnlyModelViewSet):
-    """All businesses with billing status — SUPER_ADMIN only."""
+class PlatformBusinessViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """All businesses with billing status; onboarding and payments — SUPER_ADMIN only."""
 
     permission_classes = [IsAuthenticated, IsSuperAdmin]
     serializer_class = PlatformBusinessSerializer
-    queryset = Business.objects.all().prefetch_related("users")
+    queryset = Business.objects.all().select_related("saas_subscription__plan").prefetch_related("users")
     ordering_fields = [
         "name",
         "status",
         "saas_subscription__status",
         "saas_subscription__plan__name",
         "saas_subscription__trial_end_date",
+        "saas_subscription__current_period_end",
         "created_at",
     ]
+
+    def create(self, request, *args, **kwargs):
+        serializer = CreateBusinessSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        data["name"] = data.pop("business_name")
+        business, _owner = PlatformService.create_business(**data)
+        return Response(PlatformBusinessSerializer(business).data, status=status.HTTP_201_CREATED)
+
+    def _subscription(self, business):
+        try:
+            return business.saas_subscription
+        except SaasSubscription.DoesNotExist:
+            return PlatformService.start_billing(business)
+
+    @action(detail=True, methods=["post"], url_path="record-payment")
+    def record_payment(self, request, pk=None):
+        business = self.get_object()
+        serializer = RecordPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            payment = PlatformService.record_manual_payment(
+                self._subscription(business), recorded_by=request.user, **serializer.validated_data
+            )
+        except ValueError as e:
+            return _validation_error(str(e))
+        return Response(SaasPaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        business = self.get_object()
+        try:
+            PlatformService.cancel_subscription(self._subscription(business))
+        except ValueError as e:
+            return _validation_error(str(e))
+        return Response({"message": f"Monthly plan for '{business.name}' cancelled."})
 
     @action(detail=True, methods=["post"])
     def suspend(self, request, pk=None):
@@ -261,8 +233,7 @@ class PlatformBusinessViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def reactivate(self, request, pk=None):
         business = self.get_object()
-        extend_days = request.data.get("extend_trial_days", 0)
-        PlatformService.reactivate_business(business, extend_trial_days=int(extend_days))
+        PlatformService.reactivate_business(business)
         return Response({"message": f"Business '{business.name}' reactivated."})
 
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { Logo } from './Logo'
 
 /* ------------------------------------------------------------------ */
 /*  Intersection-observer fade-in hook                                 */
@@ -41,7 +42,7 @@ function FadeIn({ children, className = '' }: { children: React.ReactNode; class
 
 // TODO: replace with the real WhatsApp number (country code, no + or spaces) before going live.
 const CONTACT_WHATSAPP = '910000000000'
-const CONTACT_URL = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Hi, I want to set up Mess Manager for my mess.')}`
+const CONTACT_URL = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Hi, I want to set up MessDeck for my mess.')}`
 
 const SETUP_FEE = '₹2,500'
 const MONTHLY_FEE = '₹500'
@@ -159,27 +160,27 @@ function Navbar() {
   return (
     <nav
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-white/80 backdrop-blur-lg shadow-sm' : 'bg-transparent'
+        scrolled ? 'bg-cream/85 backdrop-blur-lg shadow-sm' : 'bg-transparent'
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="#hero" onClick={(e) => handleAnchor(e, '#hero')} className="flex items-center gap-2 font-bold text-xl text-primary-600">
-            <span className="text-2xl">{'\uD83C\uDF5B'}</span> Mess Manager
+          <a href="#hero" onClick={(e) => handleAnchor(e, '#hero')} aria-label="MessDeck home">
+            <Logo />
           </a>
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map((l) => (
-              <a key={l.href} href={l.href} onClick={(e) => handleAnchor(e, l.href)} className="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">
+              <a key={l.href} href={l.href} onClick={(e) => handleAnchor(e, l.href)} className="text-sm font-medium text-gray-600 hover:text-brand-800 transition-colors">
                 {l.label}
               </a>
             ))}
-            <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors">
+            <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-brand-800 transition-colors">
               Login
             </Link>
-            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors">
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-brand-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-900 transition-colors">
               Contact Us
             </a>
           </div>
@@ -195,15 +196,15 @@ function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-lg">
+        <div className="md:hidden bg-cream/95 backdrop-blur-lg border-t border-brand-100 shadow-lg">
           <div className="px-4 py-4 space-y-3">
             {NAV_LINKS.map((l) => (
-              <a key={l.href} href={l.href} onClick={(e) => handleAnchor(e, l.href)} className="block text-sm font-medium text-gray-600 hover:text-primary-600">
+              <a key={l.href} href={l.href} onClick={(e) => handleAnchor(e, l.href)} className="block text-sm font-medium text-gray-600 hover:text-brand-800">
                 {l.label}
               </a>
             ))}
             <Link to="/login" className="block text-sm font-medium text-gray-700">Login</Link>
-            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white text-center">
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-brand-800 px-4 py-2 text-sm font-semibold text-white text-center">
               Contact Us
             </a>
           </div>
@@ -215,14 +216,17 @@ function Navbar() {
 
 function HeroSection() {
   return (
-    <section id="hero" className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-blue-50 pt-24 pb-16 sm:pt-32 sm:pb-24">
+    <section id="hero" className="relative overflow-hidden bg-gradient-to-br from-cream via-cream to-brand-50 pt-24 pb-16 sm:pt-32 sm:pb-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Copy */}
           <div className="text-center lg:text-left">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight">
+            <p className="mb-6 inline-block rounded-full bg-brand-800 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-cream">
+              Run your mess smarter.
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-brand-800 leading-tight">
               Run Your Mess{' '}
-              <span className="text-primary-600">Like a Pro.</span>
+              <span className="text-brand-500">Like a Pro.</span>
               <br />
               <span className="text-gray-500 text-3xl sm:text-4xl lg:text-5xl">Ditch the Notebooks.</span>
             </h1>
@@ -230,19 +234,19 @@ function HeroSection() {
               Manage customers, subscriptions, payments, and deliveries from your phone. We set everything up for you, and you pay just {MONTHLY_FEE} a month.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/25 hover:bg-primary-700 hover:shadow-xl transition-all">
+              <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-brand-800 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-800/25 hover:bg-brand-900 hover:shadow-xl transition-all">
                 Contact Us on WhatsApp
               </a>
-              <a href="#pricing" onClick={(e) => { e.preventDefault(); document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' }) }} className="rounded-xl border-2 border-gray-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-all">
+              <a href="#pricing" onClick={(e) => { e.preventDefault(); document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' }) }} className="rounded-xl border-2 border-brand-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 hover:border-brand-500 hover:text-brand-800 transition-all">
                 See Pricing
               </a>
             </div>
-            <p className="mt-4 text-sm text-gray-400">{SETUP_FEE} one-time setup &middot; {MONTHLY_FEE}/month &middot; Cancel any time</p>
+            <p className="mt-4 text-sm text-brand-600">{SETUP_FEE} one-time setup &middot; {MONTHLY_FEE}/month &middot; Cancel any time</p>
           </div>
 
           {/* Mock dashboard illustration */}
           <div className="relative hidden lg:block">
-            <div className="relative rounded-2xl bg-white shadow-2xl border border-gray-100 p-6 transform rotate-1 hover:rotate-0 transition-transform duration-500">
+            <div className="relative rounded-2xl bg-white shadow-2xl shadow-brand-900/10 border border-brand-100 p-6 transform rotate-1 hover:rotate-0 transition-transform duration-500">
               {/* Mini dashboard header */}
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 rounded-full bg-red-400" />
@@ -253,9 +257,9 @@ function HeroSection() {
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {[
-                  { label: 'Active Subs', val: '247', color: 'text-primary-600', bg: 'bg-primary-50' },
-                  { label: 'Today\'s Meals', val: '189', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                  { label: 'Collected', val: '\u20B9120K', color: 'text-amber-600', bg: 'bg-amber-50' },
+                  { label: 'Active Subs', val: '247', color: 'text-brand-800', bg: 'bg-brand-50' },
+                  { label: 'Today\'s Meals', val: '189', color: 'text-brand-500', bg: 'bg-brand-100' },
+                  { label: 'Collected', val: '\u20B9120K', color: 'text-amber-700', bg: 'bg-amber-50' },
                 ].map((s) => (
                   <div key={s.label} className={`${s.bg} rounded-lg p-3`}>
                     <div className={`text-xl font-bold ${s.color}`}>{s.val}</div>
@@ -266,20 +270,20 @@ function HeroSection() {
               {/* Fake table rows */}
               <div className="space-y-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg bg-gray-50 p-2.5">
-                    <div className="h-8 w-8 rounded-full bg-gray-200" />
+                  <div key={i} className="flex items-center gap-3 rounded-lg bg-cream p-2.5">
+                    <div className="h-8 w-8 rounded-full bg-brand-100" />
                     <div className="flex-1">
                       <div className="h-3 w-24 rounded bg-gray-200" />
                       <div className="mt-1 h-2 w-16 rounded bg-gray-100" />
                     </div>
-                    <div className={`h-5 w-14 rounded-full ${i <= 2 ? 'bg-green-100' : i === 3 ? 'bg-yellow-100' : 'bg-red-100'}`} />
+                    <div className={`h-5 w-14 rounded-full ${i <= 2 ? 'bg-brand-200' : i === 3 ? 'bg-yellow-100' : 'bg-red-100'}`} />
                   </div>
                 ))}
               </div>
             </div>
             {/* Floating card */}
-            <div className="absolute -top-4 -right-4 rounded-xl bg-white shadow-lg border border-gray-100 p-3 animate-bounce" style={{ animationDuration: '3s' }}>
-              <div className="text-2xl font-bold text-green-600">+12%</div>
+            <div className="absolute -top-4 -right-4 rounded-xl bg-white shadow-lg border border-brand-100 p-3 animate-bounce" style={{ animationDuration: '3s' }}>
+              <div className="text-2xl font-bold text-brand-500">+12%</div>
               <div className="text-xs text-gray-500">Collections</div>
             </div>
           </div>
@@ -291,11 +295,11 @@ function HeroSection() {
 
 function PainPointsSection() {
   return (
-    <section className="bg-gray-50 py-16 sm:py-24">
+    <section className="bg-cream py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+            <h2 className="text-3xl sm:text-4xl font-bold text-brand-800">
               Still Running Your Mess on Paper?
             </h2>
             <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
@@ -308,7 +312,7 @@ function PainPointsSection() {
             <FadeIn key={i}>
               <div className={`bg-white rounded-xl border-t-4 ${p.accent} p-6 shadow-sm hover:shadow-md transition-shadow`}>
                 <div className="text-4xl mb-4">{p.emoji}</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{p.title}</h3>
+                <h3 className="text-lg font-semibold text-brand-800 mb-2">{p.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{p.desc}</p>
               </div>
             </FadeIn>
@@ -325,7 +329,7 @@ function FeaturesSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+            <h2 className="text-3xl sm:text-4xl font-bold text-brand-800">
               Everything You Need to Manage Your Mess
             </h2>
             <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
@@ -336,9 +340,9 @@ function FeaturesSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
           {FEATURES.map((f, i) => (
             <FadeIn key={i}>
-              <div className="group rounded-xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+              <div className="group rounded-xl border border-brand-100 bg-white p-6 shadow-sm hover:border-brand-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                 <div className="text-3xl mb-3">{f.emoji}</div>
-                <h3 className="text-base font-semibold text-gray-900 mb-1">{f.title}</h3>
+                <h3 className="text-base font-semibold text-brand-800 mb-1">{f.title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
               </div>
             </FadeIn>
@@ -351,30 +355,30 @@ function FeaturesSection() {
 
 function HowItWorksSection() {
   return (
-    <section className="bg-primary-600 py-16 sm:py-24">
+    <section className="bg-brand-800 py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-white">
               Get Started in 3 Simple Steps
             </h2>
-            <p className="mt-4 text-lg text-primary-100 max-w-2xl mx-auto">
+            <p className="mt-4 text-lg text-brand-100 max-w-2xl mx-auto">
               We do the setup work, so you can start using it right away.
             </p>
           </div>
         </FadeIn>
         <div className="grid md:grid-cols-3 gap-8 relative">
           {/* Dashed connector (desktop only) */}
-          <div className="hidden md:block absolute top-12 left-1/6 right-1/6 border-t-2 border-dashed border-primary-300" style={{ left: '20%', right: '20%' }} />
+          <div className="hidden md:block absolute top-12 left-1/6 right-1/6 border-t-2 border-dashed border-brand-400" style={{ left: '20%', right: '20%' }} />
 
           {STEPS.map((s) => (
             <FadeIn key={s.num}>
               <div className="relative text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-primary-600 text-2xl font-bold shadow-lg">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-brand-800 text-2xl font-bold shadow-lg">
                   {s.num}
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">{s.title}</h3>
-                <p className="text-primary-100 text-sm">{s.desc}</p>
+                <p className="text-brand-100 text-sm">{s.desc}</p>
               </div>
             </FadeIn>
           ))}
@@ -386,11 +390,11 @@ function HowItWorksSection() {
 
 function PricingSection() {
   return (
-    <section id="pricing" className="bg-gray-50 py-16 sm:py-24">
+    <section id="pricing" className="bg-cream py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+            <h2 className="text-3xl sm:text-4xl font-bold text-brand-800">
               Simple, Transparent Pricing
             </h2>
             <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
@@ -400,13 +404,13 @@ function PricingSection() {
         </FadeIn>
         <FadeIn>
           <div className="mx-auto max-w-4xl grid md:grid-cols-2 gap-8">
-            <div className="rounded-2xl bg-white border border-gray-200 p-8 shadow-sm">
+            <div className="rounded-2xl bg-white border border-brand-200 p-8 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-500">One-time setup</h3>
-              <div className="mt-4 text-4xl font-extrabold text-gray-900">{SETUP_FEE}</div>
+              <div className="mt-4 text-4xl font-extrabold text-brand-800">{SETUP_FEE}</div>
               <ul className="mt-8 space-y-3">
                 {SETUP_INCLUDES.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm">
-                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-gray-600">{f}</span>
@@ -414,19 +418,19 @@ function PricingSection() {
                 ))}
               </ul>
             </div>
-            <div className="rounded-2xl bg-primary-600 text-white p-8 shadow-xl">
-              <h3 className="text-lg font-semibold text-primary-100">Monthly subscription</h3>
+            <div className="rounded-2xl bg-brand-800 text-white p-8 shadow-xl">
+              <h3 className="text-lg font-semibold text-brand-100">Monthly subscription</h3>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-4xl font-extrabold">{MONTHLY_FEE}</span>
-                <span className="text-sm text-primary-200">/month</span>
+                <span className="text-sm text-brand-200">/month</span>
               </div>
               <ul className="mt-8 space-y-3">
                 {FEATURES.map((f) => (
                   <li key={f.title} className="flex items-start gap-2 text-sm">
-                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-primary-50">{f.title}</span>
+                    <span className="text-brand-50">{f.title}</span>
                   </li>
                 ))}
               </ul>
@@ -436,7 +440,7 @@ function PricingSection() {
             First payment: {SETUP_FEE} setup + {MONTHLY_FEE} first month = <strong>{FIRST_PAYMENT}</strong>. After that, {MONTHLY_FEE} each month.
           </p>
           <div className="mt-6 text-center">
-            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-primary-700 transition-all">
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-brand-800 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-brand-900 transition-all">
               Contact Us to Get Started
             </a>
           </div>
@@ -453,11 +457,11 @@ function FAQSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
 
   return (
-    <section id="faq" className="bg-gray-50 py-16 sm:py-24">
+    <section id="faq" className="bg-cream py-16 sm:py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+            <h2 className="text-3xl sm:text-4xl font-bold text-brand-800">
               Frequently Asked Questions
             </h2>
           </div>
@@ -465,12 +469,12 @@ function FAQSection() {
         <div className="space-y-3">
           {FAQS.map((faq, i) => (
             <FadeIn key={i}>
-              <div className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+              <div className="rounded-xl bg-white border border-brand-100 shadow-sm overflow-hidden">
                 <button
                   onClick={() => setOpenIdx(openIdx === i ? null : i)}
                   className="flex w-full items-center justify-between px-6 py-4 text-left"
                 >
-                  <span className="text-sm font-semibold text-gray-900">{faq.q}</span>
+                  <span className="text-sm font-semibold text-brand-800">{faq.q}</span>
                   <svg
                     className={`h-5 w-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${openIdx === i ? 'rotate-180' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -492,17 +496,17 @@ function FAQSection() {
 
 function CTABanner() {
   return (
-    <section className="bg-gradient-to-r from-primary-600 to-primary-800 py-16 sm:py-20">
+    <section className="bg-gradient-to-r from-brand-700 to-brand-900 py-16 sm:py-20">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
         <FadeIn>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Ready to Ditch the Notebooks?
           </h2>
-          <p className="mt-4 text-lg text-primary-100 max-w-2xl mx-auto">
+          <p className="mt-4 text-lg text-brand-100 max-w-2xl mx-auto">
             We set it up for you. {MONTHLY_FEE} a month. Cancel any time.
           </p>
           <div className="mt-8">
-            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-white px-10 py-4 text-base font-semibold text-primary-600 shadow-lg hover:bg-primary-50 hover:shadow-xl transition-all">
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-cream px-10 py-4 text-base font-semibold text-brand-800 shadow-lg hover:bg-brand-50 hover:shadow-xl transition-all">
               Contact Us on WhatsApp
             </a>
           </div>
@@ -526,27 +530,25 @@ function Footer() {
   }
 
   return (
-    <footer className="bg-gray-900 py-12 sm:py-16">
+    <footer className="bg-brand-900 py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid sm:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2 font-bold text-xl text-white">
-              <span className="text-2xl">{'\uD83C\uDF5B'}</span> Mess Manager
-            </div>
-            <p className="mt-3 text-sm text-gray-400">
-              The modern way to run your mess business.
+            <Logo light />
+            <p className="mt-3 text-sm text-brand-200">
+              Mess management software. Run your mess smarter.
             </p>
           </div>
 
           {/* Link columns */}
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">{title}</h4>
+              <h4 className="text-sm font-semibold text-brand-100 uppercase tracking-wider">{title}</h4>
               <ul className="mt-3 space-y-2">
                 {links.map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} className="text-sm text-gray-400 hover:text-white transition-colors">{l.label}</a>
+                    <a href={l.href} className="text-sm text-brand-200 hover:text-white transition-colors">{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -554,9 +556,9 @@ function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 border-t border-gray-800 pt-8 text-center">
-          <p className="text-sm text-gray-400">
-            Made with {'\u2764\uFE0F'} in India {'\uD83C\uDDEE\uD83C\uDDF3'} &middot; &copy; {new Date().getFullYear()} Mess Manager. All rights reserved.
+        <div className="mt-12 border-t border-brand-700 pt-8 text-center">
+          <p className="text-sm text-brand-200">
+            Made with {'\u2764\uFE0F'} in India {'\uD83C\uDDEE\uD83C\uDDF3'} &middot; &copy; {new Date().getFullYear()} MessDeck. All rights reserved.
           </p>
         </div>
       </div>

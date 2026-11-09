@@ -143,12 +143,8 @@ CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
 CELERY_TASK_ACKS_LATE = True
 CELERY_BEAT_SCHEDULE = {
-    "check-trial-expirations": {
-        "task": "apps.platform.tasks.check_trial_expirations",
-        "schedule": 86400,  # daily
-    },
-    "check-past-due-subscriptions": {
-        "task": "apps.platform.tasks.check_past_due_subscriptions",
+    "run-billing-checks": {
+        "task": "apps.platform.tasks.run_billing_checks",
         "schedule": 86400,  # daily
     },
 }

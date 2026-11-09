@@ -1,7 +1,10 @@
 """Platform billing business logic — thin views call these methods."""
 
+import calendar
 import logging
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import date, timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -10,6 +13,7 @@ from apps.businesses.models import Business
 from apps.platform.models import (
     PaymentStatus,
     SaasPayment,
+    SaasPlan,
     SaasStatus,
     SaasSubscription,
 )
@@ -17,21 +21,67 @@ from common.constants import Status
 
 logger = logging.getLogger(__name__)
 
-TRIAL_DAYS = 30
 MAX_PAYMENT_FAILURES = 3
+
+# Terms from docs/Monthly_Subscription_Plan.pdf
+MONTHLY_PLAN_NAME = "Monthly Plan"
+MONTHLY_PLAN_DEFAULTS = {
+    "price_monthly": Decimal("500.00"),
+    "setup_fee": Decimal("2500.00"),
+    "reactivation_fee": Decimal("1000.00"),
+    "max_customers": 0,
+    "max_staff": 0,
+    "features": [
+        "Customer management with full records",
+        "Meal and plan setup (breakfast, lunch, dinner, packed meals)",
+        "Subscription tracking with automatic expiry alerts",
+        "Payment recording with paid and pending balances",
+        "Daily delivery list and meal counts",
+        "Skip and pause handling",
+        "Dashboard with today's summary",
+        "Owner login plus staff logins",
+        "Daily data backup",
+        "WhatsApp and email support",
+    ],
+}
+GRACE_DAYS = 7  # unpaid this many days after the due date → suspended
+REACTIVATION_GAP_MONTHS = 3  # returning after MORE than this → reactivation fee
+DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+
+
+def add_months(d: date, months: int) -> date:
+    """Same day N months later, clamped to month end (31 Jan + 1 → 28/29 Feb)."""
+    month_index = d.month - 1 + months
+    year, month = d.year + month_index // 12, month_index % 12 + 1
+    return date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
+
+
+@dataclass(frozen=True)
+class AmountDue:
+    setup_fee: Decimal
+    reactivation_fee: Decimal
+    monthly_fee: Decimal
+    due_date: date
+
+    @property
+    def total(self) -> Decimal:
+        return self.setup_fee + self.reactivation_fee + self.monthly_fee
 
 
 class PlatformService:
     @staticmethod
+    def get_monthly_plan():
+        """The standard plan from the PDF — created with the PDF's prices if missing."""
+        plan, _ = SaasPlan.objects.get_or_create(name=MONTHLY_PLAN_NAME, defaults=MONTHLY_PLAN_DEFAULTS)
+        return plan
+
+    @staticmethod
     @transaction.atomic
-    def start_trial(business):
-        """Create SaasSubscription in TRIAL status with 30-day end date."""
+    def start_billing(business, plan=None):
+        """Create the SaasSubscription in PENDING — first payment (setup + first month) is due."""
         sub, created = SaasSubscription.objects.get_or_create(
             business=business,
-            defaults={
-                "status": SaasStatus.TRIAL,
-                "trial_end_date": timezone.now().date() + timedelta(days=TRIAL_DAYS),
-            },
+            defaults={"status": SaasStatus.PENDING, "plan": plan or PlatformService.get_monthly_plan()},
         )
         if not created:
             logger.info("SaasSubscription already exists for business %s", business.id)
@@ -39,15 +89,26 @@ class PlatformService:
 
     @staticmethod
     @transaction.atomic
-    def register_business(
-        *, name, owner_username, owner_password, owner_name="", owner_email="", owner_phone=""
+    def create_business(
+        *,
+        name,
+        owner_username,
+        owner_password,
+        owner_name="",
+        owner_email="",
+        owner_phone="",
+        phone="",
+        email="",
+        address="",
     ):
-        """Self-serve signup: create Business + Owner + default meals + start trial."""
+        """SUPER_ADMIN onboarding: Business + Owner + default meals + billing (first payment due)."""
         from apps.accounts.models import User
         from apps.meals.models import Meal
         from common.constants import Role
 
-        business = Business.objects.create(name=name, status=Status.ACTIVE)
+        business = Business.objects.create(
+            name=name, phone=phone, email=email, address=address, status=Status.ACTIVE
+        )
         user = User.objects.create_user(
             username=owner_username,
             password=owner_password,
@@ -58,10 +119,139 @@ class PlatformService:
             business=business,
             is_active=True,
         )
-        for meal_name in ["Breakfast", "Lunch", "Dinner", "Snacks"]:
+        for meal_name in DEFAULT_MEALS:
             Meal.objects.create(business=business, name=meal_name)
-        PlatformService.start_trial(business)
+        PlatformService.start_billing(business)
         return business, user
+
+    @staticmethod
+    def amount_due(subscription, today=None):
+        """What the business must pay next, per the PDF terms.
+
+        - First payment: setup fee + first month.
+        - After that: the monthly fee, due on current_period_end.
+        - Coming back more than 3 months after the paid period ended: + reactivation fee.
+        """
+        today = today or timezone.now().date()
+        plan = subscription.plan or PlatformService.get_monthly_plan()
+        zero = Decimal("0.00")
+        end = subscription.current_period_end
+
+        if not subscription.setup_fee_paid:
+            return AmountDue(plan.setup_fee, zero, plan.price_monthly, today)
+
+        lapsed = end is not None and today > add_months(end, REACTIVATION_GAP_MONTHS)
+        return AmountDue(
+            setup_fee=zero,
+            reactivation_fee=plan.reactivation_fee if lapsed else zero,
+            monthly_fee=plan.price_monthly,
+            due_date=today if lapsed or end is None else end,
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def record_manual_payment(subscription, *, amount, method, reference="", recorded_by=None, today=None):
+        """SUPER_ADMIN records a UPI/cash/bank payment. Amount must equal what is due.
+
+        Pays for one month. The month continues from the previous due date if the business
+        is still within the grace period; otherwise it starts today.
+        """
+        today = today or timezone.now().date()
+        subscription = (
+            SaasSubscription.objects.select_for_update().select_related("business").get(pk=subscription.pk)
+        )
+        due = PlatformService.amount_due(subscription, today)
+        amount = Decimal(str(amount))
+        if amount != due.total:
+            raise ValueError(f"Amount due is ₹{due.total}. Record exactly that amount.")
+
+        end = subscription.current_period_end
+        continuing = (
+            subscription.setup_fee_paid and end is not None and today < end + timedelta(days=GRACE_DAYS)
+        )
+        period_start = end if continuing else today
+        period_end = add_months(period_start, 1)
+
+        payment = SaasPayment.objects.create(
+            saas_subscription=subscription,
+            business=subscription.business,
+            plan=subscription.plan,
+            amount=amount,
+            setup_fee=due.setup_fee,
+            reactivation_fee=due.reactivation_fee,
+            status=PaymentStatus.PAID,
+            method=method,
+            reference=reference,
+            recorded_by=recorded_by,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        subscription.plan = subscription.plan or PlatformService.get_monthly_plan()
+        subscription.status = SaasStatus.ACTIVE
+        subscription.setup_fee_paid = True
+        subscription.cancelled_at = None
+        subscription.payment_failure_count = 0
+        subscription.current_period_start = period_start
+        subscription.current_period_end = period_end
+        subscription.save()
+
+        business = subscription.business
+        if business.status == Status.SUSPENDED:
+            business.status = Status.ACTIVE
+            business.save(update_fields=["status"])
+        return payment
+
+    @staticmethod
+    @transaction.atomic
+    def cancel_subscription(subscription, today=None):
+        """Cancel the monthly plan. Access continues until the paid month ends."""
+        today = today or timezone.now().date()
+        if subscription.status in (SaasStatus.CANCELLED, SaasStatus.SUSPENDED):
+            raise ValueError(f"Cannot cancel a {subscription.status.lower()} subscription.")
+
+        subscription.status = SaasStatus.CANCELLED
+        subscription.cancelled_at = timezone.now()
+        subscription.save(update_fields=["status", "cancelled_at", "updated_at"])
+
+        end = subscription.current_period_end
+        if end is None or end <= today:
+            PlatformService.suspend_business(subscription.business)
+        return subscription
+
+    @staticmethod
+    def run_billing_checks(today=None):
+        """Nightly: move overdue businesses along ACTIVE → PAST_DUE → SUSPENDED.
+
+        - ACTIVE on/after its due date → PAST_DUE (grace period starts)
+        - PAST_DUE for GRACE_DAYS → SUSPENDED
+        - CANCELLED once the paid month ends → business access suspended
+        - legacy TRIAL past its end date → SUSPENDED
+        """
+        today = today or timezone.now().date()
+        counts = {"past_due": 0, "suspended": 0}
+
+        counts["past_due"] = SaasSubscription.objects.filter(
+            status=SaasStatus.ACTIVE, current_period_end__lte=today
+        ).update(status=SaasStatus.PAST_DUE)
+
+        to_suspend = list(
+            SaasSubscription.objects.filter(
+                status=SaasStatus.PAST_DUE, current_period_end__lte=today - timedelta(days=GRACE_DAYS)
+            ).select_related("business")
+        )
+        to_suspend += SaasSubscription.objects.filter(
+            status=SaasStatus.CANCELLED, current_period_end__lte=today, business__status=Status.ACTIVE
+        ).select_related("business")
+        to_suspend += SaasSubscription.objects.filter(
+            status=SaasStatus.TRIAL, trial_end_date__lt=today
+        ).select_related("business")
+
+        for sub in to_suspend:
+            PlatformService.suspend_business(sub.business)
+            counts["suspended"] += 1
+
+        logger.info("Billing checks: %(past_due)d past due, %(suspended)d suspended", counts)
+        return counts
 
     @staticmethod
     @transaction.atomic
@@ -127,14 +317,15 @@ class PlatformService:
     @staticmethod
     @transaction.atomic
     def suspend_business(business):
-        """Suspend both SaasSubscription and Business."""
+        """Suspend the Business. A CANCELLED subscription stays CANCELLED (owner's choice)."""
         business.status = Status.SUSPENDED
         business.save(update_fields=["status"])
 
         try:
             sub = business.saas_subscription
-            sub.status = SaasStatus.SUSPENDED
-            sub.save(update_fields=["status"])
+            if sub.status != SaasStatus.CANCELLED:
+                sub.status = SaasStatus.SUSPENDED
+                sub.save(update_fields=["status"])
         except SaasSubscription.DoesNotExist:
             pass
 
@@ -142,25 +333,31 @@ class PlatformService:
 
     @staticmethod
     @transaction.atomic
-    def reactivate_business(business, *, extend_trial_days=0):
-        """SUPER_ADMIN reactivates a suspended business."""
+    def reactivate_business(business, today=None):
+        """SUPER_ADMIN override: restore access without a payment.
+
+        Billing status follows the dates — if the paid month is over, the business is
+        PAST_DUE again and the nightly check re-suspends it after the grace period.
+        To bring back a lapsed business properly, record a payment instead.
+        """
+        today = today or timezone.now().date()
         business.status = Status.ACTIVE
         business.save(update_fields=["status"])
 
         try:
             sub = business.saas_subscription
-            if extend_trial_days > 0:
-                sub.status = SaasStatus.TRIAL
-                sub.trial_end_date = timezone.now().date() + timedelta(days=extend_trial_days)
-            elif sub.plan:
+        except SaasSubscription.DoesNotExist:
+            PlatformService.start_billing(business)
+        else:
+            if sub.current_period_end and sub.current_period_end > today:
                 sub.status = SaasStatus.ACTIVE
+            elif sub.setup_fee_paid:
+                sub.status = SaasStatus.PAST_DUE
             else:
-                sub.status = SaasStatus.TRIAL
-                sub.trial_end_date = timezone.now().date() + timedelta(days=TRIAL_DAYS)
+                sub.status = SaasStatus.PENDING
+            sub.cancelled_at = None
             sub.payment_failure_count = 0
             sub.save()
-        except SaasSubscription.DoesNotExist:
-            PlatformService.start_trial(business)
 
         logger.info("Business %s reactivated", business.id)
 
@@ -173,6 +370,8 @@ class PlatformService:
         active = Business.objects.filter(status=Status.ACTIVE).count()
         suspended = Business.objects.filter(status=Status.SUSPENDED).count()
         trials = SaasSubscription.objects.filter(status=SaasStatus.TRIAL).count()
+        pending = SaasSubscription.objects.filter(status=SaasStatus.PENDING).count()
+        past_due = SaasSubscription.objects.filter(status=SaasStatus.PAST_DUE).count()
         paid = SaasSubscription.objects.filter(status=SaasStatus.ACTIVE).count()
 
         revenue = (
@@ -191,6 +390,8 @@ class PlatformService:
             "active_businesses": active,
             "suspended_businesses": suspended,
             "trial_businesses": trials,
+            "pending_businesses": pending,
+            "past_due_businesses": past_due,
             "paid_businesses": paid,
             "total_revenue": str(revenue),
             "plans_breakdown": list(plans_breakdown),

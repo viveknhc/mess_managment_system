@@ -21,3 +21,12 @@ class IsOwnerOrManager(BasePermission):
 
     def has_permission(self, request, view):
         return getattr(request.user, "role", None) in (Role.OWNER, Role.MANAGER)
+
+
+class IsOwner(BasePermission):
+    """Business owner only — e.g. cancelling the monthly plan."""
+
+    message = "Only the business owner can do this."
+
+    def has_permission(self, request, view):
+        return getattr(request.user, "role", None) == Role.OWNER

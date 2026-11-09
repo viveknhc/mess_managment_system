@@ -1,10 +1,13 @@
 """Platform billing serializers."""
 
+from datetime import timedelta
+
 from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.businesses.models import Business
-from apps.platform.models import SaasPayment, SaasPlan, SaasSubscription
+from apps.platform.models import PaymentMethod, SaasPayment, SaasPlan, SaasSubscription
+from apps.platform.services import GRACE_DAYS, PlatformService
 
 # ── SaasPlan ──────────────────────────────────────────────────────────────
 
@@ -16,6 +19,8 @@ class SaasPlanSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "price_monthly",
+            "setup_fee",
+            "reactivation_fee",
             "max_customers",
             "max_staff",
             "features",
@@ -29,19 +34,43 @@ class SaasPlanPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SaasPlan
-        fields = ["id", "name", "price_monthly", "max_customers", "max_staff", "features"]
+        fields = [
+            "id",
+            "name",
+            "price_monthly",
+            "setup_fee",
+            "reactivation_fee",
+            "max_customers",
+            "max_staff",
+            "features",
+        ]
 
 
 # ── SaasSubscription ──────────────────────────────────────────────────────
 
 
+def amount_due_data(sub):
+    due = PlatformService.amount_due(sub)
+    return {
+        "setup_fee": str(due.setup_fee),
+        "reactivation_fee": str(due.reactivation_fee),
+        "monthly_fee": str(due.monthly_fee),
+        "total": str(due.total),
+        "due_date": due.due_date.isoformat(),
+    }
+
+
 class SaasSubscriptionSerializer(serializers.ModelSerializer):
+    plan_details = SaasPlanPublicSerializer(source="plan", read_only=True, default=None)
     plan_name = serializers.CharField(source="plan.name", read_only=True, default=None)
     plan_price = serializers.DecimalField(
         source="plan.price_monthly", read_only=True, default=None, max_digits=10, decimal_places=2
     )
     business_name = serializers.CharField(source="business.name", read_only=True)
+    business_status = serializers.CharField(source="business.status", read_only=True)
     days_remaining = serializers.SerializerMethodField()
+    grace_ends = serializers.SerializerMethodField()
+    amount_due = serializers.SerializerMethodField()
 
     class Meta:
         model = SaasSubscription
@@ -49,14 +78,20 @@ class SaasSubscriptionSerializer(serializers.ModelSerializer):
             "id",
             "business_id",
             "business_name",
+            "business_status",
             "plan",
             "plan_name",
             "plan_price",
+            "plan_details",
             "status",
+            "setup_fee_paid",
+            "cancelled_at",
             "trial_end_date",
             "current_period_start",
             "current_period_end",
             "days_remaining",
+            "grace_ends",
+            "amount_due",
         ]
         read_only_fields = fields
 
@@ -69,6 +104,15 @@ class SaasSubscriptionSerializer(serializers.ModelSerializer):
         if obj.current_period_end:
             return max(0, (obj.current_period_end - today).days)
         return None
+
+    def get_grace_ends(self, obj):
+        """Last day before suspension when the monthly fee is overdue."""
+        if obj.status == "PAST_DUE" and obj.current_period_end:
+            return obj.current_period_end + timedelta(days=GRACE_DAYS)
+        return None
+
+    def get_amount_due(self, obj):
+        return amount_due_data(obj)
 
 
 # ── SaasPayment ───────────────────────────────────────────────────────────
@@ -86,7 +130,11 @@ class SaasPaymentSerializer(serializers.ModelSerializer):
             "business_name",
             "plan_name",
             "amount",
+            "setup_fee",
+            "reactivation_fee",
             "status",
+            "method",
+            "reference",
             "razorpay_payment_id",
             "period_start",
             "period_end",
@@ -105,6 +153,10 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
     trial_end_date = serializers.DateField(
         source="saas_subscription.trial_end_date", read_only=True, default=None
     )
+    paid_until = serializers.DateField(
+        source="saas_subscription.current_period_end", read_only=True, default=None
+    )
+    amount_due = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
     owner_email = serializers.SerializerMethodField()
     customer_count = serializers.SerializerMethodField()
@@ -121,6 +173,8 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
             "saas_status",
             "plan_name",
             "trial_end_date",
+            "paid_until",
+            "amount_due",
             "owner_name",
             "owner_email",
             "customer_count",
@@ -128,6 +182,10 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_amount_due(self, obj):
+        sub = getattr(obj, "saas_subscription", None)
+        return amount_due_data(sub) if sub else None
 
     def get_owner_name(self, obj):
         owner = obj.users.filter(role="OWNER").first()
@@ -146,16 +204,19 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
         return obj.users.exclude(role="CUSTOMER").count()
 
 
-# ── Signup ────────────────────────────────────────────────────────────────
+# ── Platform Admin: onboarding + payments ─────────────────────────────────
 
 
-class SignupSerializer(serializers.Serializer):
+class CreateBusinessSerializer(serializers.Serializer):
     business_name = serializers.CharField(max_length=200)
+    phone = serializers.CharField(max_length=20, required=False, default="", allow_blank=True)
+    email = serializers.EmailField(required=False, default="", allow_blank=True)
+    address = serializers.CharField(required=False, default="", allow_blank=True)
     owner_username = serializers.CharField(max_length=150)
     owner_password = serializers.CharField(min_length=8, write_only=True)
-    owner_name = serializers.CharField(max_length=150, required=False, default="")
-    owner_email = serializers.EmailField(required=False, default="")
-    owner_phone = serializers.CharField(max_length=20, required=False, default="")
+    owner_name = serializers.CharField(max_length=150, required=False, default="", allow_blank=True)
+    owner_email = serializers.EmailField(required=False, default="", allow_blank=True)
+    owner_phone = serializers.CharField(max_length=20, required=False, default="", allow_blank=True)
 
     def validate_owner_username(self, value):
         if User.objects.filter(username=value).exists():
@@ -163,13 +224,9 @@ class SignupSerializer(serializers.Serializer):
         return value
 
 
-# ── Billing Checkout ──────────────────────────────────────────────────────
-
-
-class CheckoutSerializer(serializers.Serializer):
-    plan_id = serializers.UUIDField()
-
-    def validate_plan_id(self, value):
-        if not SaasPlan.objects.filter(id=value, is_active=True).exists():
-            raise serializers.ValidationError("Invalid or inactive plan.")
-        return value
+class RecordPaymentSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+    method = serializers.ChoiceField(
+        choices=[PaymentMethod.UPI, PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER]
+    )
+    reference = serializers.CharField(max_length=100, required=False, default="", allow_blank=True)

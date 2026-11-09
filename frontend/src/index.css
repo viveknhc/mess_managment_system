@@ -13,6 +13,19 @@
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
 
+  /* MessDeck brand (landing page) — sampled from the logo artwork */
+  --color-cream: #fef9ed;
+  --color-brand-50: #f4f7ea;
+  --color-brand-100: #e6eed2;
+  --color-brand-200: #cddca8;
+  --color-brand-300: #a9c175;
+  --color-brand-400: #86a24c;
+  --color-brand-500: #678234;
+  --color-brand-600: #4b6a2c;
+  --color-brand-700: #2d5230;
+  --color-brand-800: #1d3f24;
+  --color-brand-900: #132b18;
+
   --color-success-50: #f0fdf4;
   --color-success-500: #22c55e;
   --color-success-700: #15803d;

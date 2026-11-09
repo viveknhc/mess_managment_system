@@ -139,6 +139,7 @@ class Command(BaseCommand):
             meals = self._get_meals(biz)
             plans = self._create_plans(biz, meals)
             self._create_subscriptions_and_data(biz, staff, customers, plans, meals)
+            self._create_billing(biz)
 
         self._print_summary(biz, staff)
 
@@ -170,6 +171,21 @@ class Command(BaseCommand):
             address="123, FC Road, Deccan Gymkhana, Pune 411004",
             status="ACTIVE",
         )
+
+    def _create_billing(self, biz):
+        """Demo business is a paying customer: setup + first month, then one renewal."""
+        from apps.platform.models import PaymentMethod
+        from apps.platform.services import PlatformService
+
+        sub = PlatformService.start_billing(biz)
+        today = datetime.date.today()
+        for days_ago in (40, 10):
+            pay_day = today - datetime.timedelta(days=days_ago)
+            due = PlatformService.amount_due(sub, pay_day)
+            PlatformService.record_manual_payment(
+                sub, amount=due.total, method=PaymentMethod.UPI, reference=f"DEMO-{days_ago}", today=pay_day
+            )
+            sub.refresh_from_db()
 
     def _create_settings(self, biz):
         return BusinessSettings.objects.create(

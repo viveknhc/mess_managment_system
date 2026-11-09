@@ -2,19 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 
 /* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface PricingPlan {
-  name: string
-  price: string
-  period: string
-  features: string[]
-  popular?: boolean
-  cta: string
-}
-
-/* ------------------------------------------------------------------ */
 /*  Intersection-observer fade-in hook                                 */
 /* ------------------------------------------------------------------ */
 
@@ -52,6 +39,14 @@ function FadeIn({ children, className = '' }: { children: React.ReactNode; class
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
+// TODO: replace with the real WhatsApp number (country code, no + or spaces) before going live.
+const CONTACT_WHATSAPP = '910000000000'
+const CONTACT_URL = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Hi, I want to set up Mess Manager for my mess.')}`
+
+const SETUP_FEE = '₹2,500'
+const MONTHLY_FEE = '₹500'
+const FIRST_PAYMENT = '₹3,000'
+
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
@@ -60,115 +55,84 @@ const NAV_LINKS = [
 
 const PAIN_POINTS = [
   {
-    emoji: '\uD83D\uDCD3',
+    emoji: '📓',
     title: 'Notebooks Get Lost',
-    desc: 'Handwritten registers fade, tear, and have zero search. One chai spill and your month is gone.',
+    desc: 'Handwritten registers fade, tear, and have zero search. One coffee spill and your month is gone.',
     accent: 'border-red-400',
   },
   {
-    emoji: '\uD83D\uDCF1',
+    emoji: '📱',
     title: 'WhatsApp Chaos',
-    desc: '"Bhaiya kal skip hai" buried in 200 messages. No way to track who paid and who didn\'t.',
+    desc: '"Please skip my meal tomorrow" buried in 200 messages. No way to track who paid and who didn\'t.',
     accent: 'border-red-400',
   },
   {
-    emoji: '\uD83E\uDD37',
+    emoji: '🤷',
     title: 'No Visibility',
     desc: 'How many meals today? Who\'s expiring this week? You\'re guessing instead of knowing.',
     accent: 'border-red-400',
   },
 ]
 
+// Mirrors "Monthly fee covers" in docs/Monthly_Subscription_Plan.pdf — keep the two in sync.
 const FEATURES = [
-  { emoji: '\uD83D\uDC65', title: 'Customer Management', desc: 'Add customers in seconds. Search, filter, and see everything at a glance.' },
-  { emoji: '\uD83D\uDCC5', title: 'Subscription Tracking', desc: 'Plans, start dates, renewals, expiry alerts — all automated.' },
-  { emoji: '\uD83D\uDCB0', title: 'Payment Recording', desc: 'Track every rupee. Partial payments, pending dues, payment history.' },
-  { emoji: '\uD83D\uDE9A', title: 'Delivery Management', desc: 'Daily delivery lists, mark delivered/skipped, route assignments.' },
-  { emoji: '\uD83C\uDF73', title: 'Kitchen Counts', desc: 'Real-time meal counts so your kitchen knows exactly how much to cook.' },
-  { emoji: '\uD83D\uDCCA', title: 'Reports & Insights', desc: 'Revenue, collections, expiring subs — beautiful charts, zero effort.' },
-  { emoji: '\uD83D\uDD14', title: 'Smart Notifications', desc: 'Auto-reminders for expiring subs, pending payments, and more.' },
-  { emoji: '\uD83D\uDC64', title: 'Customer Portal', desc: 'Customers check their own plan, skip meals, and view payment history.' },
+  { emoji: '👥', title: 'Customer Management', desc: 'Full records for every customer. Search, filter, and see everything at a glance.' },
+  { emoji: '🍽️', title: 'Meals & Plans', desc: 'Set up breakfast, lunch, dinner, and packed meal plans with your own prices.' },
+  { emoji: '📅', title: 'Subscription Tracking', desc: 'Start dates, renewals, and automatic alerts before a subscription expires.' },
+  { emoji: '💰', title: 'Payment Recording', desc: 'Record every payment and see paid and pending balances for each customer.' },
+  { emoji: '🚚', title: 'Deliveries & Meal Counts', desc: 'A daily delivery list for your staff and exact meal counts for your kitchen.' },
+  { emoji: '⏸️', title: 'Skip & Pause', desc: 'Customers skip a meal or pause for a few days without the back-and-forth.' },
+  { emoji: '📊', title: 'Daily Dashboard', desc: 'Today\'s meals, deliveries, collections, and pending dues on one screen.' },
+  { emoji: '🔑', title: 'Owner & Staff Logins', desc: 'Separate logins for you, your managers, delivery staff, and kitchen staff.' },
+  { emoji: '💾', title: 'Daily Data Backup', desc: 'Your data is backed up every day and kept private to your business.' },
+  { emoji: '💬', title: 'WhatsApp & Email Support', desc: 'Stuck on something? Message us and we\'ll help you sort it out.' },
 ]
 
 const STEPS = [
-  { num: 1, title: 'Sign Up Free', desc: 'Create your account in 30 seconds. No credit card needed.' },
-  { num: 2, title: 'Set Up Your Mess', desc: 'Add your meals, plans, and customers. We\'ll help you import.' },
-  { num: 3, title: 'Go Live!', desc: 'Start managing deliveries, tracking payments, and growing your business.' },
+  { num: 1, title: 'Contact Us', desc: 'Message us on WhatsApp. We\'ll answer your questions and show you around.' },
+  { num: 2, title: 'We Set It Up', desc: 'We create your account, add your meals, plans, staff, and up to 100 customers.' },
+  { num: 3, title: 'Start Using It', desc: 'A 30-minute walkthrough and you\'re live. Then just ₹500 a month.' },
 ]
 
-const FALLBACK_PLANS: PricingPlan[] = [
-  {
-    name: 'Starter',
-    price: 'Free',
-    period: 'forever',
-    features: ['Up to 50 customers', '1 staff member', 'Basic reports', 'Email support'],
-    cta: 'Start Free',
-  },
-  {
-    name: 'Professional',
-    price: '\u20B9499',
-    period: '/month',
-    features: ['Up to 500 customers', '5 staff members', 'Advanced reports', 'Customer portal', 'Priority support'],
-    popular: true,
-    cta: 'Start Free Trial',
-  },
-  {
-    name: 'Business',
-    price: '\u20B9999',
-    period: '/month',
-    features: ['Unlimited customers', 'Unlimited staff', 'Custom reports', 'API access', 'Dedicated support', 'White-label option'],
-    cta: 'Contact Sales',
-  },
+const SETUP_INCLUDES = [
+  'Creating your business account',
+  'Adding your owner and staff logins',
+  'Setting up your meals and plans',
+  'Importing your existing customer list (up to 100 customers)',
+  'A 30-minute walkthrough on how to use it',
 ]
 
-const TESTIMONIALS = [
-  {
-    name: 'Rajesh Sharma',
-    role: 'Sharma Tiffin Service, Pune',
-    quote: 'Before Mess Manager, I had 3 registers and still missed payments. Now everything is on my phone. My collections improved by 40% in the first month!',
-    stars: 5,
-    color: 'bg-orange-500',
-  },
-  {
-    name: 'Priya Nair',
-    role: 'Amma\'s Kitchen, Kochi',
-    quote: 'The kitchen counts feature alone saves me 30 minutes every morning. No more calling customers to confirm. It just works.',
-    stars: 5,
-    color: 'bg-emerald-500',
-  },
-  {
-    name: 'Arun Gupta',
-    role: 'Gupta Mess, Jaipur',
-    quote: 'My customers love the portal — they can skip meals themselves and I don\'t get 50 WhatsApp messages a day anymore. Game changer!',
-    stars: 5,
-    color: 'bg-blue-500',
-  },
+const TERMS = [
+  'Setup fee is non-refundable',
+  'Cancel the monthly plan any time',
+  'If you cancel and come back after more than 3 months, a ₹1,000 reactivation fee applies',
+  'Your data is private to your business',
 ]
 
 const FAQS = [
   {
-    q: 'Is there a free trial?',
-    a: 'Yes! You get a full 30-day free trial with all features. No credit card required to start.',
+    q: 'How much do I pay to start?',
+    a: `Your first payment is ${FIRST_PAYMENT}: the ${SETUP_FEE} one-time setup fee plus ${MONTHLY_FEE} for the first month. After that, it's ${MONTHLY_FEE} each month.`,
   },
   {
-    q: 'Can I import my existing customer data?',
-    a: 'Absolutely. You can import customers from Excel or CSV files. Our support team can also help you migrate for free.',
+    q: 'What does the setup fee include?',
+    a: 'We create your business account, add your owner and staff logins, set up your meals and plans, import up to 100 of your existing customers, and give you a 30-minute walkthrough.',
   },
   {
-    q: 'What payment methods do you accept?',
-    a: 'We accept UPI, credit/debit cards, net banking, and wallets via Razorpay. Your customers\' payment data stays between you and them.',
+    q: 'Do I need to install anything?',
+    a: 'No. We host everything for you. It works in the browser on your phone, tablet, or computer.',
   },
   {
     q: 'How does skip and pause work?',
-    a: 'Customers can skip individual meals or pause their entire subscription. You configure the rules — whether skipped days extend the plan, give credit, or no adjustment.',
+    a: 'Customers can skip individual meals or pause their subscription for a few days. Deliveries for those days are taken off the list automatically.',
+  },
+  {
+    q: 'Can I cancel?',
+    a: 'Yes, cancel the monthly plan any time. The setup fee is non-refundable. If you come back after more than 3 months, a ₹1,000 reactivation fee applies.',
   },
   {
     q: 'Is my data safe?',
-    a: 'Your data is encrypted at rest and in transit. We run on secure cloud infrastructure with daily backups. Each business\'s data is completely isolated.',
-  },
-  {
-    q: 'What happens after my trial ends?',
-    a: 'You can continue on the free Starter plan (up to 50 customers) or upgrade to a paid plan. No data is lost — everything is preserved.',
+    a: 'Your data is backed up every day and is private to your business. No other business can see it.',
   },
 ]
 
@@ -215,9 +179,9 @@ function Navbar() {
             <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors">
               Login
             </Link>
-            <Link to="/signup" className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors">
-              Start Free Trial
-            </Link>
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors">
+              Contact Us
+            </a>
           </div>
 
           {/* Mobile hamburger */}
@@ -239,9 +203,9 @@ function Navbar() {
               </a>
             ))}
             <Link to="/login" className="block text-sm font-medium text-gray-700">Login</Link>
-            <Link to="/signup" className="block rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white text-center">
-              Start Free Trial
-            </Link>
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white text-center">
+              Contact Us
+            </a>
           </div>
         </div>
       )}
@@ -263,17 +227,17 @@ function HeroSection() {
               <span className="text-gray-500 text-3xl sm:text-4xl lg:text-5xl">Ditch the Notebooks.</span>
             </h1>
             <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto lg:mx-0">
-              The all-in-one platform for mess &amp; tiffin businesses. Manage customers, subscriptions, payments, and deliveries — from your phone.
+              Manage customers, subscriptions, payments, and deliveries from your phone. We set everything up for you, and you pay just {MONTHLY_FEE} a month.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link to="/signup" className="rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/25 hover:bg-primary-700 hover:shadow-xl transition-all">
-                Start Free Trial
-              </Link>
-              <a href="#features" onClick={(e) => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }) }} className="rounded-xl border-2 border-gray-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-all">
-                See Features
+              <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/25 hover:bg-primary-700 hover:shadow-xl transition-all">
+                Contact Us on WhatsApp
+              </a>
+              <a href="#pricing" onClick={(e) => { e.preventDefault(); document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' }) }} className="rounded-xl border-2 border-gray-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-all">
+                See Pricing
               </a>
             </div>
-            <p className="mt-4 text-sm text-gray-400">No credit card required &middot; 30-day free trial</p>
+            <p className="mt-4 text-sm text-gray-400">{SETUP_FEE} one-time setup &middot; {MONTHLY_FEE}/month &middot; Cancel any time</p>
           </div>
 
           {/* Mock dashboard illustration */}
@@ -291,7 +255,7 @@ function HeroSection() {
                 {[
                   { label: 'Active Subs', val: '247', color: 'text-primary-600', bg: 'bg-primary-50' },
                   { label: 'Today\'s Meals', val: '189', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                  { label: 'Collected', val: '\u20B91.2L', color: 'text-amber-600', bg: 'bg-amber-50' },
+                  { label: 'Collected', val: '\u20B9120K', color: 'text-amber-600', bg: 'bg-amber-50' },
                 ].map((s) => (
                   <div key={s.label} className={`${s.bg} rounded-lg p-3`}>
                     <div className={`text-xl font-bold ${s.color}`}>{s.val}</div>
@@ -365,11 +329,11 @@ function FeaturesSection() {
               Everything You Need to Manage Your Mess
             </h2>
             <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
-              From onboarding customers to tracking deliveries — one platform, zero headaches.
+              Everything below is included in the {MONTHLY_FEE} monthly plan. No extra charges per feature.
             </p>
           </div>
         </FadeIn>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
           {FEATURES.map((f, i) => (
             <FadeIn key={i}>
               <div className="group rounded-xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
@@ -395,7 +359,7 @@ function HowItWorksSection() {
               Get Started in 3 Simple Steps
             </h2>
             <p className="mt-4 text-lg text-primary-100 max-w-2xl mx-auto">
-              You'll be up and running in under 10 minutes.
+              We do the setup work, so you can start using it right away.
             </p>
           </div>
         </FadeIn>
@@ -421,19 +385,6 @@ function HowItWorksSection() {
 }
 
 function PricingSection() {
-  const [plans, setPlans] = useState<PricingPlan[]>(FALLBACK_PLANS)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/v1/pricing/', { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: PricingPlan[]) => {
-        if (Array.isArray(data) && data.length > 0) setPlans(data)
-      })
-      .catch(() => { /* use fallback */ })
-    return () => controller.abort()
-  }, [])
-
   return (
     <section id="pricing" className="bg-gray-50 py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -443,84 +394,56 @@ function PricingSection() {
               Simple, Transparent Pricing
             </h2>
             <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
-              Start free. Upgrade when you grow. No hidden fees.
+              One plan with every feature. We host it, you use it.
             </p>
           </div>
         </FadeIn>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {plans.map((plan, i) => (
-            <FadeIn key={i}>
-              <div className={`relative rounded-2xl p-8 ${plan.popular ? 'bg-primary-600 text-white shadow-xl scale-105 border-0' : 'bg-white border border-gray-200 shadow-sm'} transition-all`}>
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-4 py-1 text-xs font-bold text-gray-900 uppercase tracking-wide shadow">
-                    Most Popular
-                  </div>
-                )}
-                <div className="text-center">
-                  <h3 className={`text-lg font-semibold ${plan.popular ? 'text-primary-100' : 'text-gray-500'}`}>{plan.name}</h3>
-                  <div className="mt-4 flex items-baseline justify-center gap-1">
-                    <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
-                    <span className={`text-sm ${plan.popular ? 'text-primary-200' : 'text-gray-400'}`}>{plan.period}</span>
-                  </div>
-                </div>
-                <ul className="mt-8 space-y-3">
-                  {plan.features.map((f, fi) => (
-                    <li key={fi} className="flex items-start gap-2 text-sm">
-                      <svg className={`mt-0.5 h-4 w-4 flex-shrink-0 ${plan.popular ? 'text-primary-200' : 'text-green-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className={plan.popular ? 'text-primary-50' : 'text-gray-600'}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/signup" className={`mt-8 block rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${plan.popular ? 'bg-white text-primary-600 hover:bg-primary-50 shadow-lg' : 'bg-primary-600 text-white hover:bg-primary-700'}`}>
-                  {plan.cta}
-                </Link>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TestimonialsSection() {
-  return (
-    <section className="bg-white py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              Trusted by Mess Owners Across India
-            </h2>
-          </div>
-        </FadeIn>
-        <div className="grid md:grid-cols-3 gap-8">
-          {TESTIMONIALS.map((t, i) => (
-            <FadeIn key={i}>
-              <div className="rounded-xl bg-gray-50 p-6 shadow-sm">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, si) => (
-                    <svg key={si} className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          <div className="mx-auto max-w-4xl grid md:grid-cols-2 gap-8">
+            <div className="rounded-2xl bg-white border border-gray-200 p-8 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-500">One-time setup</h3>
+              <div className="mt-4 text-4xl font-extrabold text-gray-900">{SETUP_FEE}</div>
+              <ul className="mt-8 space-y-3">
+                {SETUP_INCLUDES.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm">
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-6 italic">"{t.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-full ${t.color} flex items-center justify-center text-white font-bold text-sm`}>
-                    {t.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{t.name}</div>
-                    <div className="text-xs text-gray-500">{t.role}</div>
-                  </div>
-                </div>
+                    <span className="text-gray-600">{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl bg-primary-600 text-white p-8 shadow-xl">
+              <h3 className="text-lg font-semibold text-primary-100">Monthly subscription</h3>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-4xl font-extrabold">{MONTHLY_FEE}</span>
+                <span className="text-sm text-primary-200">/month</span>
               </div>
-            </FadeIn>
-          ))}
-        </div>
+              <ul className="mt-8 space-y-3">
+                {FEATURES.map((f) => (
+                  <li key={f.title} className="flex items-start gap-2 text-sm">
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-primary-50">{f.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mt-8 text-center text-sm text-gray-600">
+            First payment: {SETUP_FEE} setup + {MONTHLY_FEE} first month = <strong>{FIRST_PAYMENT}</strong>. After that, {MONTHLY_FEE} each month.
+          </p>
+          <div className="mt-6 text-center">
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-primary-700 transition-all">
+              Contact Us to Get Started
+            </a>
+          </div>
+          <ul className="mt-8 mx-auto max-w-2xl space-y-1 text-xs text-gray-500 list-disc pl-5">
+            {TERMS.map((t) => <li key={t}>{t}</li>)}
+          </ul>
+        </FadeIn>
       </div>
     </section>
   )
@@ -573,15 +496,15 @@ function CTABanner() {
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
         <FadeIn>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
-            Start Your Free 30-Day Trial
+            Ready to Ditch the Notebooks?
           </h2>
           <p className="mt-4 text-lg text-primary-100 max-w-2xl mx-auto">
-            No credit card needed. Set up in minutes. Cancel anytime.
+            We set it up for you. {MONTHLY_FEE} a month. Cancel any time.
           </p>
           <div className="mt-8">
-            <Link to="/signup" className="inline-block rounded-xl bg-white px-10 py-4 text-base font-semibold text-primary-600 shadow-lg hover:bg-primary-50 hover:shadow-xl transition-all">
-              Get Started Free
-            </Link>
+            <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-white px-10 py-4 text-base font-semibold text-primary-600 shadow-lg hover:bg-primary-50 hover:shadow-xl transition-all">
+              Contact Us on WhatsApp
+            </a>
           </div>
         </FadeIn>
       </div>
@@ -597,26 +520,15 @@ function Footer() {
       { label: 'FAQ', href: '#faq' },
     ],
     Support: [
-      { label: 'Help Center', href: '#' },
-      { label: 'Contact Us', href: '#' },
-      { label: 'Status', href: '#' },
-    ],
-    Legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
-      { label: 'Cookie Policy', href: '#' },
-    ],
-    Company: [
-      { label: 'About', href: '#' },
-      { label: 'Blog', href: '#' },
-      { label: 'Careers', href: '#' },
+      { label: 'WhatsApp Us', href: CONTACT_URL },
+      { label: 'Login', href: '/login' },
     ],
   }
 
   return (
     <footer className="bg-gray-900 py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid sm:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 font-bold text-xl text-white">
@@ -665,7 +577,6 @@ export function LandingPage() {
       <FeaturesSection />
       <HowItWorksSection />
       <PricingSection />
-      <TestimonialsSection />
       <FAQSection />
       <CTABanner />
       <Footer />

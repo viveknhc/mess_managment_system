@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Own Plan: What's Pending</title>
+<style>
+  :root {
+    --bg:#f6f8f7; --card:#ffffff; --text:#1c2421; --muted:#5d6b64; --line:#dfe7e2;
+    --brand:#1f6f4a; --brand-soft:#e6f2ec;
+    --red:#b42318; --red-soft:#fdecea;
+    --amber:#9a6700; --amber-soft:#fff4d6;
+    --green:#1a7f4b; --green-soft:#e3f5ea;
+    --blue:#1d4ed8; --blue-soft:#e6edff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f1512; --card:#171f1b; --text:#e6efe9; --muted:#9db0a6; --line:#2a352f;
+      --brand:#4ec58b; --brand-soft:#173126;
+      --red:#ff8a80; --red-soft:#3a1c19;
+      --amber:#f2c14e; --amber-soft:#35290e;
+      --green:#5fd394; --green-soft:#14301f;
+      --blue:#8ab0ff; --blue-soft:#17233f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; color: var(--brand); }
+  h2 { font-size: 19px; margin: 36px 0 12px; }
+  h3 { font-size: 15.5px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:12px; margin: 18px 0 8px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .stat b { display:block; font-size: 24px; line-height:1.2; }
+  .stat span { color:var(--muted); font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+  .card.red { border-left:4px solid var(--red); }
+  .card.amber { border-left:4px solid var(--amber); }
+  .card.blue { border-left:4px solid var(--blue); }
+  .head { display:flex; gap:10px; align-items:flex-start; }
+  .head input { margin-top:5px; width:18px; height:18px; accent-color: var(--brand); flex:none; }
+  .head label { flex:1; cursor:pointer; }
+  .tag { display:inline-block; font-size:11.5px; font-weight:600; border-radius:999px; padding:2px 9px; margin-left:6px; vertical-align:middle; }
+  .t-red { background:var(--red-soft); color:var(--red); }
+  .t-amber { background:var(--amber-soft); color:var(--amber); }
+  .t-green { background:var(--green-soft); color:var(--green); }
+  .t-blue { background:var(--blue-soft); color:var(--blue); }
+  .detail { margin: 8px 0 0 28px; color: var(--muted); }
+  .detail p { margin: 4px 0; }
+  .detail b { color: var(--text); }
+  .done .head label { text-decoration: line-through; opacity:.6; }
+  code { background:var(--brand-soft); color:var(--brand); padding:1px 6px; border-radius:5px; font-size:13px; }
+  table { width:100%; border-collapse: collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
+  th { background:var(--brand-soft); color:var(--brand); font-size:13px; }
+  tr:last-child td { border-bottom:0; }
+  .tbl-wrap { overflow-x:auto; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  .note { color:var(--muted); font-size:13px; }
+  .progress { height:10px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
+  .progress > i { display:block; height:100%; width:0; background:var(--brand); transition:width .25s; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Own Software Plans: What's Pending</h1>
+  <p class="sub">Checked against the code on 9 Nov 2026. Basic ₹35,000 · Standard ₹60,000 · Premium ₹1,00,000.</p>
+
+  <div class="stats">
+    <div class="stat"><b>381 / 381</b><span>backend tests pass</span></div>
+    <div class="stat"><b>Clean</b><span>ruff and TypeScript checks</span></div>
+    <div class="stat"><b>151 / 153</b><span>tracker tasks done</span></div>
+    <div class="stat"><b id="open-count">0</b><span>items open below</span></div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+  <p class="note">Tick the boxes as you finish items. Ticks are saved in this browser only. Time estimates are rough guesses, not measured.</p>
+
+  <h2>1. Fix before the first client goes live</h2>
+
+  <div class="card red" data-id="beat">
+    <div class="head"><input type="checkbox" id="c-beat"><label for="c-beat"><h3>Schedule the nightly jobs <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Three nightly tasks are written but never scheduled: mark subscriptions EXPIRED, generate next day's deliveries, and send "expiring soon" notifications. <code>CELERY_BEAT_SCHEDULE</code> in <code>config/settings/base.py</code> only has the two platform billing tasks. <code>docker-compose.yml</code> has no Celery worker or beat, and <code>render.yaml</code> only runs the web API.</p>
+      <p><b>Effect on the plans:</b> "Expiry tracking" and "In-app notifications (expiry)" would only half work. Old subscriptions stay ACTIVE past their end date, and no expiry alerts appear.</p>
+      <p><b>Fix:</b> Add the three tasks to the beat schedule. Run a worker and a beat process wherever you deploy. Rough estimate: half a day, plus a test.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="staff">
+    <div class="head"><input type="checkbox" id="c-staff"><label for="c-staff"><h3>Enforce the team-login limit <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Creating staff skips the quota check. <code>StaffViewSet.perform_create</code> in <code>apps/accounts/views.py</code> overrides the base method that calls <code>check_quota</code>. So "Up to 3 / Up to 10 team logins" is not enforced.</p>
+      <p><b>Careful:</b> <code>check_quota</code> counts every user of the business, including customer portal logins. Staff must be counted by staff roles only, or Premium portal customers would use up the limit.</p>
+      <p><b>Fix:</b> Call the check in staff creation with a staff-roles-only count, and add a test. Rough estimate: 2 to 3 hours.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="active">
+    <div class="head"><input type="checkbox" id="c-active"><label for="c-active"><h3>"Active customers" limit vs what the code counts <span class="tag t-amber">Decide</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The customer limit counts all customer records, including inactive and blocked ones. The plans say "Active customers".</p>
+      <p><b>Choose one:</b> change the plan wording to "Customers", or change the count to ACTIVE customers only. The second is friendlier to clients and takes about an hour.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="saasplans">
+    <div class="head"><input type="checkbox" id="c-saasplans"><label for="c-saasplans"><h3>Create the three plans in the system for each client <span class="tag t-amber">Setup step</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Limits only apply when a business has a plan assigned. With no plan (or in trial) everything is unlimited.</p>
+      <p><b>Fix:</b> Create Basic (50 customers, 3 logins), Standard (200, 10) and Premium (0 = unlimited, 0 = unlimited) as platform plans. Assign one to each client's business at setup. A small management command makes this repeatable.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="deploy">
+    <div class="head"><input type="checkbox" id="c-deploy"><label for="c-deploy"><h3>A production deployment package for the client's server <span class="tag t-red">Blocker</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> <code>docker-compose.yml</code> is for development only: Django <code>runserver</code>, the Vite dev server, no Celery, no HTTPS. <code>render.yaml</code> deploys only the API for Render.</p>
+      <p><b>Needed:</b> A production compose file with gunicorn, the built frontend served by Nginx or Caddy, PostgreSQL, Redis, Celery worker and beat, HTTPS, and an <code>.env</code> template. Plus a short "deploy to a new client server" checklist. Your plans promise "deployment on your server", so this is the core delivery.</p>
+    </div>
+  </div>
+
+  <div class="card red" data-id="audit">
+    <div class="head"><input type="checkbox" id="c-audit"><label for="c-audit"><h3>The audit log records nothing in real use <span class="tag t-red">Blocker (Premium)</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The audit log table and <code>AuditService.log()</code> exist, and there is an admin view. But no code in subscriptions, payments, deliveries or staff calls it. Only the demo seed command writes entries. The tracker marks AU-02 (write hooks) done, but it is not.</p>
+      <p><b>Fix:</b> Call <code>AuditService.log()</code> from the services on subscription changes, payments, delivery status changes and staff changes. Add tests. Otherwise take "Audit log" out of Premium. Rough estimate: half a day.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="settingsfx">
+    <div class="head"><input type="checkbox" id="c-settingsfx"><label for="c-settingsfx"><h3>Several settings do nothing yet <span class="tag t-amber">Needs work</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The settings page saves <b>skip rule</b> (extend / credit / none), <b>max skip days</b>, <b>delivery time window</b> and the <b>notification preferences</b>, but nothing reads them. A code comment says "Settings module will add EXTEND/CREDIT". Only min/max pause days are used (in the customer portal).</p>
+      <p><b>Fix:</b> Make a skip extend the end date or add a meal credit, enforce the max skip days, show the delivery window on the delivery list, and respect the notification switches. Or remove those fields from the plans and the screen until they work. Rough estimate: 1 to 2 days.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="notifs">
+    <div class="head"><input type="checkbox" id="c-notifs"><label for="c-notifs"><h3>Notifications: only some are sent <span class="tag t-amber">Needs work</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Only "subscription activated" and the nightly "expiring soon" (which needs the scheduler) are sent. "Payment received" is written but never called, and there is no delivery notification. Notifications go to the owner only.</p>
+      <p><b>Fix:</b> Call the payment-received notification when a payment is recorded, add a delivery update notification, or reword the plans to "activation and expiry alerts". Rough estimate: 2 to 3 hours.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="reports5">
+    <div class="head"><input type="checkbox" id="c-reports5"><label for="c-reports5"><h3>Reports page shows 3 of the 5 reports <span class="tag t-amber">Needs work</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> The API has customers, subscriptions, revenue, meals and payments reports. The screen only shows revenue, subscriptions and meals.</p>
+      <p><b>Fix:</b> Add the customers and payments reports to the page, or say "3 reports" in the plans. Rough estimate: 3 to 4 hours.</p>
+    </div>
+  </div>
+
+  <h2>2. Promised in the plans, but not yet ready</h2>
+
+  <div class="card amber" data-id="import">
+    <div class="head"><input type="checkbox" id="c-import"><label for="c-import"><h3>Data migration tool <span class="tag t-amber">Needed</span></h3></label></div>
+    <div class="detail">
+      <p><b>Problem:</b> Your delivery timeline says data migration takes about a month. The only commands are <code>bootstrap_business</code>, <code>seed_data</code>, <code>reset_data</code> and <code>ensure_superadmin</code>. There is no import for customers or subscriptions.</p>
+      <p><b>Fix:</b> A CSV import command for customers (with a dry-run mode and an error report). Then a similar one for active subscriptions if clients have them. Without it, every client's data is typed in by hand.</p>
+    </div>
+  </div>
+
+  <div class="card amber" data-id="backup">
+    <div class="head"><input type="checkbox" id="c-backup"><label for="c-backup"><h3>Automatic daily backup and a restore test <span class="tag t-amber">Open in tracker (SD-05)</span></h3></label></div>
+    <div class="detail">
+      <p><b>Status:</b> <code>docs/db_backup_restore.md</code> explains the manual commands. There is no scheduled backup and no restore rehearsal.</p>
+      <p><b>Fix:</b> A cron job running <code>pg_dump</code> daily with 14-day retention, an off-server copy, and one tested restore. The annual maintenance in your plans promises backups, so this should exist.</p>
+    </div>
+  </div>
+
+  <div class="card blue" data-id="gating">
+    <div class="head"><input type="checkbox" id="c-gating"><label for="c-gating"><h3>Features are not locked by plan in the code <span class="tag t-blue">Optional</span></h3></label></div>
+    <div class="detail">
+      <p><b>Status:</b> Only customer and staff counts are limited. Reports, settings, customer portal and audit log are available to every deployment.</p>
+      <p><b>Choices:</b> (a) keep it contractual, since each client gets their own deployment; (b) add feature flags per plan, which touches menu items and API permissions. Roughly 1 to 2 days. Option (a) is fine for the first clients.</p>
+    </div>
+  </div>
+
+  <h2>3. Still to verify (built, but not yet checked end to end)</h2>
+
+  <div class="card" data-id="verify1">
+    <div class="head"><input type="checkbox" id="c-verify1"><label for="c-verify1"><h3>Click through the owner flow in a browser <span class="tag t-amber">Verify</span></h3></label></div>
+    <div class="detail"><p>Customer → plan → subscription → payment → ACTIVE. Then the delivery staff screen, the kitchen counts screen, reports, settings and staff management. Backend tests cover them. I only clicked through the customer portal.</p></div>
+  </div>
+  <div class="card" data-id="verify2">
+    <div class="head"><input type="checkbox" id="c-verify2"><label for="c-verify2"><h3>Portal Pause and Renew in the browser <span class="tag t-amber">Verify</span></h3></label></div>
+    <div class="detail"><p>Skip Meal worked in the browser. Pause and Renew are covered by tests but I haven't clicked them.</p></div>
+  </div>
+  <div class="card" data-id="verify3">
+    <div class="head"><input type="checkbox" id="c-verify3"><label for="c-verify3"><h3>Run the Playwright end-to-end tests <span class="tag t-amber">Verify</span></h3></label></div>
+    <div class="detail"><p>Seven specs exist in <code>frontend/e2e/</code> (auth, billing, owner setup, golden path, portal, tables, regressions). Not run yet.</p></div>
+  </div>
+  <div class="card" data-id="verify4">
+    <div class="head"><input type="checkbox" id="c-verify4"><label for="c-verify4"><h3>Razorpay billing (only if you will use it) <span class="tag t-blue">Optional</span></h3></label></div>
+    <div class="detail"><p>Self-signup, trial and Razorpay billing exist for the ₹500/month SaaS. No keys are configured, so payments are untested. Your own-software clients don't need it.</p></div>
+  </div>
+  <div class="card" data-id="polish">
+    <div class="head"><input type="checkbox" id="c-polish"><label for="c-polish"><h3>Finish the last tracker task SD-06 and update CLAUDE.md <span class="tag t-blue">Tidy</span></h3></label></div>
+    <div class="detail"><p>Final responsive and docs pass, then tag <code>v0.1.0-mvp</code>. <code>CLAUDE.md</code> still says 128/153 and "Module 13 next", but <code>docs/tasks.md</code> shows 151/153 done. Update both <code>docs/progress.html</code> and <code>docs/tasks.md</code> as your rules require.</p></div>
+  </div>
+
+  <h2>4. Each plan feature: where it stands</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Feature in the plans</th><th>Status</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>Customers, meals, plans</td><td><span class="tag t-green">Ready</span></td><td>Backend tested.</td></tr>
+      <tr><td>Subscriptions: pause, resume, cancel, renew</td><td><span class="tag t-green">Ready</span></td><td>State machine and illegal-transition tests exist.</td></tr>
+      <tr><td>Record payments, paid and pending</td><td><span class="tag t-green">Ready</span></td><td>Cash, UPI, bank transfer, card.</td></tr>
+      <tr><td>Dashboard</td><td><span class="tag t-green">Ready</span></td><td>Customers, deliveries, revenue, pending.</td></tr>
+      <tr><td>Daily deliveries, delivery staff, kitchen counts</td><td><span class="tag t-green">Ready</span></td><td>Backend tested. Not browser-checked.</td></tr>
+      <tr><td>Skip and pause (customer side)</td><td><span class="tag t-green">Ready</span></td><td>Skip Meal checked in a browser.</td></tr>
+      <tr><td>Staff management</td><td><span class="tag t-green">Ready</span></td><td>Add and deactivate.</td></tr>
+      <tr><td>5 reports</td><td><span class="tag t-amber">Partly</span></td><td>All 5 in the API, but the screen shows 3.</td></tr>
+      <tr><td>Skip/pause rules, delivery window, notification settings</td><td><span class="tag t-red">Mostly inactive</span></td><td>Saved, but skip rule, max skip days, delivery window and notification switches are never used. Only min/max pause days work.</td></tr>
+      <tr><td>Business profile and logo</td><td><span class="tag t-green">Built</span></td><td>Logo is used in the layouts.</td></tr>
+      <tr><td>Customer portal</td><td><span class="tag t-green">Verified</span></td><td>28 tests and browser check.</td></tr>
+      <tr><td>Audit log (admin view)</td><td><span class="tag t-red">Records nothing</span></td><td>Table and admin view exist, but no action writes to it.</td></tr>
+      <tr><td>Automatic expiry tracking</td><td><span class="tag t-amber">Partly</span></td><td>"Expiring soon" is computed live. The nightly EXPIRED sweep is not scheduled.</td></tr>
+      <tr><td>In-app notifications</td><td><span class="tag t-amber">Partly</span></td><td>Only "activated" and nightly "expiring soon" are sent. Expiry needs the scheduler. No payment or delivery notification.</td></tr>
+      <tr><td>Active customers limit</td><td><span class="tag t-amber">Partly</span></td><td>Enforced, but counts all customers and needs a plan assigned.</td></tr>
+      <tr><td>Team logins limit</td><td><span class="tag t-red">Not enforced</span></td><td>See section 1.</td></tr>
+      <tr><td>Deployment on client's server</td><td><span class="tag t-red">Missing</span></td><td>No production package yet.</td></tr>
+      <tr><td>Data migration</td><td><span class="tag t-red">Missing</span></td><td>No import tool.</td></tr>
+      <tr><td>Backups</td><td><span class="tag t-amber">Manual only</span></td><td>Runbook, no schedule.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>5. Don't promise these (not in the code)</h2>
+  <div class="card">
+    <ul>
+      <li>Export to CSV, Excel or PDF</li>
+      <li>SMS or WhatsApp messages (notifications are in-app only)</li>
+      <li>Online payment by customers (payments are recorded by staff)</li>
+      <li>Multiple branches</li>
+      <li>An audit log screen inside the app</li>
+    </ul>
+    <p class="note">Each could be sold later as a paid add-on once built.</p>
+  </div>
+
+  <h2>6. Suggested order</h2>
+  <div class="card">
+    <ol style="margin:0;padding-left:20px">
+      <li>Schedule the nightly jobs.</li>
+      <li>Enforce the team-login limit and settle the "active customers" wording.</li>
+      <li>Build the production deployment package, including worker and beat.</li>
+      <li>Create the three plans and a setup command.</li>
+      <li>Build the CSV import and the daily backup.</li>
+      <li>Click through the owner flow and run the end-to-end tests.</li>
+      <li>Tag <code>v0.1.0-mvp</code> and update CLAUDE.md and the trackers.</li>
+    </ol>
+  </div>
+
+</div>
+<script>
+  (function () {
+    var KEY = "own-plan-pending-v1";
+    var boxes = document.querySelectorAll('.card[data-id] input[type="checkbox"]');
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+    function render() {
+      var done = 0;
+      boxes.forEach(function (b) {
+        var card = b.closest(".card");
+        card.classList.toggle("done", b.checked);
+        if (b.checked) done++;
+      });
+      document.getElementById("open-count").textContent = boxes.length - done;
+      document.getElementById("bar").style.width = Math.round(done / boxes.length * 100) + "%";
+    }
+    boxes.forEach(function (b) {
+      var id = b.closest(".card").getAttribute("data-id");
+      b.checked = !!state[id];
+      b.addEventListener("change", function () {
+        state[id] = b.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+        render();
+      });
+    });
+    render();
+  })();
+</script>
+</body>
+</html>

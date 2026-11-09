@@ -30,10 +30,8 @@ test('platform admin creates a SaaS plan', async ({ page }) => {
   await expect(planRow).toContainText('499')
 })
 
-test('new business signs up from the landing page and gets a trial', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Start Free Trial' }).first().click()
-  await expect(page).toHaveURL(/\/signup$/)
+test('new business signs up and gets a trial', async ({ page }) => {
+  await page.goto('/signup')
 
   await page.getByPlaceholder("e.g. Rahul's Mess").fill(BIZ)
   await page.getByPlaceholder('Rahul Kumar').fill('E2E Owner')

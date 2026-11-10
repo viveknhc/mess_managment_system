@@ -138,7 +138,7 @@ class PlatformService:
         - After that: the monthly fee, due on current_period_end.
         - Coming back more than 3 months after the paid period ended: + reactivation fee.
         """
-        today = today or timezone.now().date()
+        today = today or timezone.localdate()
         plan = subscription.plan or PlatformService.get_monthly_plan()
         zero = Decimal("0.00")
         end = subscription.current_period_end
@@ -172,7 +172,7 @@ class PlatformService:
         Pays for one month. The month continues from the previous due date if the business
         is still within the grace period; otherwise it starts today.
         """
-        today = today or timezone.now().date()
+        today = today or timezone.localdate()
         subscription = (
             SaasSubscription.objects.select_for_update().select_related("business").get(pk=subscription.pk)
         )
@@ -328,7 +328,7 @@ class PlatformService:
     @transaction.atomic
     def cancel_subscription(subscription, today=None):
         """Cancel the monthly plan. Access continues until the paid month ends."""
-        today = today or timezone.now().date()
+        today = today or timezone.localdate()
         if subscription.status in (SaasStatus.CANCELLED, SaasStatus.SUSPENDED):
             raise ValueError(f"Cannot cancel a {subscription.status.lower()} subscription.")
 
@@ -351,7 +351,7 @@ class PlatformService:
         - PENDING (first payment never made) for GRACE_DAYS after onboarding → SUSPENDED
         - legacy TRIAL past its end date → SUSPENDED
         """
-        today = today or timezone.now().date()
+        today = today or timezone.localdate()
         counts = {"past_due": 0, "suspended": 0}
 
         counts["past_due"] = SaasSubscription.objects.filter(
@@ -389,8 +389,8 @@ class PlatformService:
         """Transition to ACTIVE with a paid plan."""
         subscription.plan = plan
         subscription.status = SaasStatus.ACTIVE
-        subscription.current_period_start = timezone.now().date()
-        subscription.current_period_end = timezone.now().date() + timedelta(days=30)
+        subscription.current_period_start = timezone.localdate()
+        subscription.current_period_end = timezone.localdate() + timedelta(days=30)
         subscription.payment_failure_count = 0
         if razorpay_subscription_id:
             subscription.razorpay_subscription_id = razorpay_subscription_id
@@ -417,8 +417,8 @@ class PlatformService:
         subscription.payment_failure_count = 0
         subscription.status = SaasStatus.ACTIVE
         # Advance period
-        subscription.current_period_start = timezone.now().date()
-        subscription.current_period_end = timezone.now().date() + timedelta(days=30)
+        subscription.current_period_start = timezone.localdate()
+        subscription.current_period_end = timezone.localdate() + timedelta(days=30)
         subscription.save()
         return payment
 
@@ -471,7 +471,7 @@ class PlatformService:
         Otherwise billing status follows the dates: if the paid month is over, the business is
         PAST_DUE again and the nightly check re-suspends it after the grace period.
         """
-        today = today or timezone.now().date()
+        today = today or timezone.localdate()
         sub = getattr(business, "saas_subscription", None)
         if sub is not None:
             due = PlatformService.amount_due(sub, today)

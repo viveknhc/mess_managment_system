@@ -98,7 +98,7 @@ class SaasSubscriptionSerializer(serializers.ModelSerializer):
     def get_days_remaining(self, obj):
         from django.utils import timezone
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         if obj.status == "TRIAL" and obj.trial_end_date:
             return max(0, (obj.trial_end_date - today).days)
         if obj.current_period_end:

@@ -32,6 +32,7 @@ jobs:
     steps:
       - name: Check configuration
         id: cfg
+        working-directory: . # backend/ doesn't exist until checkout
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "PROD_DATABASE_URL secret not set — skipping."

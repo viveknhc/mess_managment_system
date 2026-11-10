@@ -9,6 +9,10 @@ import { defineConfig, devices } from '@playwright/test'
  *   npm run e2e:ui         Playwright UI mode
  *   npm run e2e:report     open the last HTML report
  */
+// Dates in specs (isoDate) and in the browser must match the backend's "today" (Asia/Kolkata),
+// otherwise runs between 00:00 and 05:30 IST on a UTC machine see yesterday.
+process.env.TZ = 'Asia/Kolkata'
+
 const API_PORT = process.env.E2E_API_PORT ?? '8765'
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '5190'
 
@@ -23,6 +27,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
+    timezoneId: 'Asia/Kolkata',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

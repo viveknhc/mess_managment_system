@@ -142,7 +142,7 @@ class TestSuspension:
         assert sub_a.status == SaasStatus.SUSPENDED
 
     def test_reactivate_business(self, biz_a, sub_a):
-        pay(sub_a, timezone.now().date())
+        pay(sub_a, timezone.localdate())
         PlatformService.suspend_business(biz_a)
         PlatformService.reactivate_business(biz_a)
         biz_a.refresh_from_db()
@@ -259,7 +259,7 @@ class TestPlatformAdmin:
         assert biz_a.status == Status.SUSPENDED
 
     def test_reactivate_business_endpoint(self, client_super, biz_a, sub_a):
-        pay(sub_a, timezone.now().date())
+        pay(sub_a, timezone.localdate())
         PlatformService.suspend_business(biz_a)
         resp = client_super.post(f"/api/v1/platform/businesses/{biz_a.id}/reactivate/")
         assert resp.status_code == 200
@@ -518,7 +518,7 @@ class TestBillingTimeline:
         assert biz_a.status == Status.SUSPENDED
 
     def test_unpaid_new_business_suspended_after_grace(self, sub_a, biz_a):
-        onboarded = timezone.now().date()
+        onboarded = timezone.localdate()
         PlatformService.run_billing_checks(onboarded + timedelta(days=6))
         biz_a.refresh_from_db()
         assert biz_a.status == Status.ACTIVE  # time to set up and pay
@@ -529,7 +529,7 @@ class TestBillingTimeline:
         assert sub_a.status == SaasStatus.SUSPENDED
 
     def test_first_payment_after_unpaid_suspension_restores_access(self, sub_a, biz_a):
-        onboarded = timezone.now().date()
+        onboarded = timezone.localdate()
         PlatformService.run_billing_checks(onboarded + timedelta(days=10))
         payment = pay(sub_a, onboarded + timedelta(days=12))
         biz_a.refresh_from_db()
@@ -561,7 +561,7 @@ class TestBillingTimeline:
         from apps.platform.tasks import run_billing_checks
 
         pay(sub_a, D0)
-        sub_a.current_period_end = timezone.now().date() - timedelta(days=GRACE)
+        sub_a.current_period_end = timezone.localdate() - timedelta(days=GRACE)
         sub_a.save()
         assert run_billing_checks() == {"past_due": 1, "suspended": 1}
 
@@ -642,13 +642,13 @@ class TestBillingEndpoints:
         assert resp.data["payments"] == []
 
     def test_owner_sees_only_own_payments(self, client_a, client_b, sub_a, biz_b):
-        pay(sub_a, timezone.now().date())
+        pay(sub_a, timezone.localdate())
         PlatformService.start_billing(biz_b)
         assert len(client_a.get("/api/v1/billing/").data["payments"]) == 1
         assert client_b.get("/api/v1/billing/").data["payments"] == []
 
     def test_owner_can_cancel(self, client_a, sub_a):
-        pay(sub_a, timezone.now().date())
+        pay(sub_a, timezone.localdate())
         resp = client_a.post("/api/v1/billing/cancel/")
         assert resp.status_code == 200
         assert resp.data["subscription"]["status"] == "CANCELLED"

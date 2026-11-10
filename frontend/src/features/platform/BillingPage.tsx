@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { billingApi, type BillingData, type SaasSubscription } from './platformApi'
 import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
@@ -103,7 +104,14 @@ export function BillingPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">MessDeck Billing</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          What {sub.business_name} pays MessDeck to use this app. It has nothing to do with your customers' meal
+          plans. Their payments are under{' '}
+          <Link to="/app/payments" className="text-blue-600 underline">Customer Payments</Link>.
+        </p>
+      </div>
 
       {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {notice && <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{notice}</div>}

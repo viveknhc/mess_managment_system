@@ -9,13 +9,13 @@ const navItems = [
   { to: '/app/meals', label: 'Meals', end: false },
   { to: '/app/plans', label: 'Plans', end: false },
   { to: '/app/subscriptions', label: 'Subscriptions', end: false },
-  { to: '/app/payments', label: 'Payments', end: false },
+  { to: '/app/payments', label: 'Customer Payments', end: false },
   { to: '/app/deliveries', label: 'Deliveries', end: false },
   { to: '/app/reports', label: 'Reports', end: false },
   { to: '/app/staff', label: 'Staff', end: false },
   { to: '/app/settings', label: 'Settings', end: false },
   { to: '/app/business', label: 'Business Profile', end: false },
-  { to: '/app/billing', label: 'Billing', end: false },
+  { to: '/app/billing', label: 'MessDeck Billing', end: false },
   { to: '/app/support', label: 'Help & Support', end: false },
 ]
 

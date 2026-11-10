@@ -49,6 +49,29 @@ def _close_window(subscription, pause, today):
 
 class SubscriptionService:
     @staticmethod
+    def ensure_no_overlap(customer, plan, start_date, end_date):
+        """One live subscription per customer per plan for any given day. A different plan
+        (e.g. lunch + dinner) may overlap; the same plan must start after the current one ends."""
+        clash = (
+            Subscription.objects.filter(
+                customer=customer,
+                plan=plan,
+                status__in=[SubStatus.PENDING, SubStatus.ACTIVE, SubStatus.PAUSED],
+                start_date__lte=end_date,
+                end_date__gte=start_date,
+            )
+            .order_by("-end_date")
+            .first()
+        )
+        if clash:
+            unpaid = " and isn't paid yet" if clash.status == SubStatus.PENDING else ""
+            raise ValueError(
+                f"{customer.name} already has {plan.name} from {clash.start_date:%d %b %Y} to "
+                f"{clash.end_date:%d %b %Y} ({clash.get_status_display().lower()}{unpaid}). "
+                f"Start the new one after {clash.end_date:%d %b %Y}, or cancel the existing one first."
+            )
+
+    @staticmethod
     @transaction.atomic
     def create_subscription(*, business_id, customer, plan, start_date):
         """Create a PENDING subscription from a plan.
@@ -63,6 +86,8 @@ class SubscriptionService:
             raise ValueError("Cannot subscribe to an inactive plan.")
 
         end_date = start_date + timedelta(days=plan.duration_days)
+
+        SubscriptionService.ensure_no_overlap(customer, plan, start_date, end_date)
 
         return Subscription.objects.create(
             business_id=business_id,
@@ -212,6 +237,7 @@ class SubscriptionService:
 
         new_start = start_date or datetime.date.today()
         new_end = new_start + timedelta(days=plan.duration_days)
+        SubscriptionService.ensure_no_overlap(subscription.customer, plan, new_start, new_end)
 
         return Subscription.objects.create(
             business_id=subscription.business_id,

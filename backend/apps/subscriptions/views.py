@@ -96,12 +96,18 @@ class SubscriptionViewSet(TenantScopedViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        sub = SubscriptionService.create_subscription(
-            business_id=request.user.business_id,
-            customer=serializer.validated_data["customer"],
-            plan=serializer.validated_data["plan"],
-            start_date=serializer.validated_data["start_date"],
-        )
+        try:
+            sub = SubscriptionService.create_subscription(
+                business_id=request.user.business_id,
+                customer=serializer.validated_data["customer"],
+                plan=serializer.validated_data["plan"],
+                start_date=serializer.validated_data["start_date"],
+            )
+        except ValueError as e:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": str(e), "fields": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
             SubscriptionDetailSerializer(sub).data,
             status=status.HTTP_201_CREATED,

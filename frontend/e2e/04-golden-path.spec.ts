@@ -129,14 +129,24 @@ test('pause → resume, cancel → renew', async ({ page }) => {
 
   // A second subscription for another seeded customer: cancel it, then renew
   await page.getByRole('button', { name: 'New Subscription' }).click()
-  await selectByText(page.getByLabel('Customer *'), 'Anita Kulkarni')
+  await selectByText(page.getByLabel('Customer *'), 'Kavita Ghosh')
   await selectByText(page.getByLabel('Plan *'), PLAN)
   await page.getByLabel('Start Date *').fill(isoDate(0))
   await page.getByRole('button', { name: 'Create Subscription' }).click()
   await tab(page, 'Pending').click()
-  await row(page, 'Anita Kulkarni').getByRole('button', { name: 'Cancel' }).click()
+  await row(page, 'Kavita Ghosh').getByRole('button', { name: 'Cancel' }).click()
   await tab(page, 'Cancelled').click()
-  await row(page, 'Anita Kulkarni').getByRole('button', { name: 'Renew' }).click()
+  await row(page, 'Kavita Ghosh').getByRole('button', { name: 'Renew' }).click()
   await tab(page, 'Pending').click()
-  await expect(row(page, 'Anita Kulkarni')).toContainText('PENDING')
+  await expect(row(page, 'Kavita Ghosh')).toContainText('PENDING')
+})
+
+test('a duplicate subscription for the same plan is refused with a clear message', async ({ page }) => {
+  await page.getByRole('link', { name: 'Subscriptions' }).click()
+  await page.getByRole('button', { name: 'New Subscription' }).click()
+  await selectByText(page.getByLabel('Customer *'), 'Anita Kulkarni') // seeded with an active Weekly Breakfast
+  await selectByText(page.getByLabel('Plan *'), PLAN)
+  await page.getByLabel('Start Date *').fill(isoDate(0))
+  await page.getByRole('button', { name: 'Create Subscription' }).click()
+  await expect(page.getByText(/Anita Kulkarni already has Weekly Breakfast .* Start the new one after/)).toBeVisible()
 })

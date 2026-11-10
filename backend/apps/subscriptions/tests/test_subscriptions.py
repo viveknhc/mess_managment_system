@@ -181,6 +181,81 @@ class TestCreateSubscription:
 
 
 @pytest.mark.django_db
+class TestNoDuplicateSubscriptions:
+    """Same customer + same plan can't have two live subscriptions covering the same day."""
+
+    TODAY = datetime.date.today()
+
+    def create(self, biz, cust, plan, start):
+        return SubscriptionService.create_subscription(
+            business_id=biz.id, customer=cust, plan=plan, start_date=start
+        )
+
+    def test_second_pending_same_plan_rejected(self, biz_a, cust_a, plan_a, sub_pending):
+        with pytest.raises(ValueError, match="already has Monthly .* isn't paid yet"):
+            self.create(biz_a, cust_a, plan_a, self.TODAY)
+
+    def test_overlapping_active_rejected(self, biz_a, cust_a, plan_a, sub_active):
+        with pytest.raises(ValueError, match="Start the new one after"):
+            self.create(biz_a, cust_a, plan_a, self.TODAY + datetime.timedelta(days=10))
+
+    def test_paused_counts_as_live(self, biz_a, cust_a, plan_a, sub_active):
+        sub_active.status = SubStatus.PAUSED
+        sub_active.save()
+        with pytest.raises(ValueError):
+            self.create(biz_a, cust_a, plan_a, self.TODAY)
+
+    def test_next_period_after_end_allowed(self, biz_a, cust_a, plan_a, sub_active):
+        sub = self.create(biz_a, cust_a, plan_a, sub_active.end_date + datetime.timedelta(days=1))
+        assert sub.status == SubStatus.PENDING
+
+    def test_cancelled_or_expired_do_not_block(self, biz_a, cust_a, plan_a, sub_pending):
+        sub_pending.status = SubStatus.CANCELLED
+        sub_pending.save()
+        assert self.create(biz_a, cust_a, plan_a, self.TODAY).status == SubStatus.PENDING
+
+    def test_different_plan_may_overlap(self, biz_a, cust_a, meal_a, sub_active):
+        dinner = Plan.objects.create(
+            business=biz_a,
+            name="Dinner",
+            meal=meal_a,
+            duration_days=30,
+            total_meals=30,
+            price=Decimal("2000"),
+        )
+        assert self.create(biz_a, cust_a, dinner, self.TODAY).status == SubStatus.PENDING
+
+    def test_other_customer_same_plan_allowed(self, biz_a, plan_a, sub_active):
+        other = Customer.objects.create(business=biz_a, name="Bob")
+        assert self.create(biz_a, other, plan_a, self.TODAY).status == SubStatus.PENDING
+
+    def test_renew_blocked_while_same_plan_is_live(self, biz_a, cust_a, plan_a, sub_active):
+        old = Subscription.objects.create(
+            business=biz_a,
+            customer=cust_a,
+            plan=plan_a,
+            start_date=self.TODAY - datetime.timedelta(days=60),
+            end_date=self.TODAY - datetime.timedelta(days=30),
+            status=SubStatus.EXPIRED,
+            total_amount=Decimal("2500.00"),
+            paid_amount=Decimal("2500.00"),
+            pending_amount=Decimal("0.00"),
+            remaining_meals=0,
+        )
+        with pytest.raises(ValueError, match="already has Monthly"):
+            SubscriptionService.renew(old)
+
+    def test_api_returns_friendly_400(self, owner_a, cust_a, plan_a, sub_pending):
+        res = auth_client(owner_a).post(
+            URL, {"customer": str(cust_a.id), "plan": str(plan_a.id), "start_date": str(self.TODAY)}
+        )
+        assert res.status_code == 400
+        assert res.data["error"]["code"] == "VALIDATION_ERROR"
+        assert "Start the new one after" in res.data["error"]["message"]
+        assert Subscription.objects.filter(customer=cust_a).count() == 1
+
+
+@pytest.mark.django_db
 class TestLegalTransitions:
     def test_pending_to_active(self, sub_pending):
         sub_pending.transition_to(SubStatus.ACTIVE)

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { RecordPaymentForm } from './RecordPaymentForm'
@@ -114,7 +115,13 @@ export function PaymentsPage() {
   return (
     <div className="mx-auto max-w-5xl p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Payments</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Customer Payments</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Money your customers pay you for their meal plans. What you pay MessDeck is under{' '}
+            <Link to="/app/billing" className="text-blue-600 underline">MessDeck Billing</Link>.
+          </p>
+        </div>
         {canWrite && (
           <button
             onClick={() => setShowForm(true)}

@@ -2,6 +2,8 @@
 
 from rest_framework import serializers
 
+from apps.customization.registry import ONLINE_PAYMENTS, SKIP
+from apps.customization.services import FeatureService, PolicyService
 from apps.settings_app.models import BusinessSettings
 
 
@@ -11,15 +13,16 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_blank=True, max_length=128, trim_whitespace=True
     )
     razorpay_configured = serializers.BooleanField(read_only=True)
+    # Workflow policies are chosen by SUPER_ADMIN (customization); owners see them read-only.
+    skip_policy = serializers.SerializerMethodField()
 
     class Meta:
         model = BusinessSettings
         fields = [
             "id",
-            "max_skip_days",
             "min_pause_days",
             "max_pause_days",
-            "skip_rule",
+            "skip_policy",
             "delivery_start_time",
             "delivery_end_time",
             "notify_on_payment",
@@ -32,6 +35,19 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "updated_at"]
+
+    def get_skip_policy(self, obj):
+        policy = PolicyService.get(obj.business_id, SKIP)
+        return {"key": policy.key, "label": policy.label, "description": policy.description}
+
+    def validate_online_payments_enabled(self, value):
+        """Switching on needs the feature. An already-on flag may be re-sent (whole-form saves) —
+        it does nothing while the feature is off: OnlinePaymentService checks the feature too."""
+        inst = self.instance
+        turning_on = value and not (inst and inst.online_payments_enabled)
+        if turning_on and inst and not FeatureService.has(inst.business_id, ONLINE_PAYMENTS):
+            raise serializers.ValidationError("Online payments are not included in your MessDeck plan.")
+        return value
 
     def validate_razorpay_key_id(self, value):
         value = value.strip()

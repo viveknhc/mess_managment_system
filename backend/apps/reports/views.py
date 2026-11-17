@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.customization.permissions import requires_feature
+from apps.customization.registry import REPORTS
 from apps.reports.selectors import (
     customer_report,
     meal_report,
@@ -19,7 +21,7 @@ from common.constants import Role
 class ReportBaseView(APIView):
     """Base: owner/manager only."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, requires_feature(REPORTS)]
 
     def check_role(self, request):
         role = getattr(request.user, "role", None)

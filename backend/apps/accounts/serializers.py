@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.accounts.models import User
+from apps.customization.services import FeatureService
 from common.constants import BUSINESS_STAFF_ROLES, Role
 
 
@@ -20,6 +21,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source="business.name", read_only=True, default=None)
     business_status = serializers.CharField(source="business.status", read_only=True, default=None)
+    features = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -34,8 +36,13 @@ class UserSerializer(serializers.ModelSerializer):
             "business_id",
             "business_name",
             "business_status",
+            "features",
         ]
         read_only_fields = fields
+
+    def get_features(self, obj):
+        """Feature keys the user's business has — the frontend hides what's missing."""
+        return sorted(FeatureService.enabled(obj.business_id))
 
 
 # ── Staff management serializers (U-01) ──────────────────────────────────

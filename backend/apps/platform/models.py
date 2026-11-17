@@ -70,6 +70,11 @@ class SaasPlan(UUIDModel, TimeStampedModel):
     max_customers = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
     max_staff = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
     features = models.JSONField(default=list, blank=True, help_text="Human-readable feature list")
+    feature_keys = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Feature keys (customization.registry) this plan includes; null = every default feature",
+    )
     razorpay_plan_id = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True)
 

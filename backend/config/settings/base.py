@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.settings_app",
     "apps.audit",
     "apps.platform",
+    "apps.customization",
 ]
 
 MIDDLEWARE = [

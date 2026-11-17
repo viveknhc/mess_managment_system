@@ -13,6 +13,8 @@ export interface User {
   business_id: string | null
   business_name: string | null
   business_status: string | null
+  /** Feature keys the business has (backend customization.registry) — see useFeature(). */
+  features: string[]
 }
 
 interface AuthState {

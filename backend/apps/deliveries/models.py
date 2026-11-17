@@ -86,6 +86,19 @@ class Delivery(TenantScopedModel):
         return new_status in DELIVERY_TRANSITIONS.get(self.status, [])
 
 
+class SkipAdjustment:
+    """What the business's skip policy did for this skip (customization/policies/skip.py)."""
+
+    NONE = "NONE"
+    EXTEND = "EXTEND"  # end_date +1 day; the meal is re-delivered and doesn't use up the quota
+
+
+SKIP_ADJUSTMENT_CHOICES = [
+    (SkipAdjustment.NONE, "No adjustment"),
+    (SkipAdjustment.EXTEND, "End date extended"),
+]
+
+
 class MealSkip(TenantScopedModel):
     """Record of a skipped meal."""
 
@@ -96,6 +109,7 @@ class MealSkip(TenantScopedModel):
     delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE, related_name="skip_record")
     skip_date = models.DateField()
     reason = models.TextField(blank=True)
+    adjustment = models.CharField(max_length=10, choices=SKIP_ADJUSTMENT_CHOICES, default=SkipAdjustment.NONE)
 
     class Meta:
         ordering = ["-skip_date"]

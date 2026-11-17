@@ -44,25 +44,29 @@ class TestBusinessSettings:
     def test_owner_can_read(self, owner_a):
         resp = auth_client(owner_a).get(URL)
         assert resp.status_code == 200
-        assert "skip_rule" in resp.json()
-        assert resp.json()["skip_rule"] == "NONE"
+        assert resp.json()["skip_policy"]["key"] == "NONE"
 
     def test_auto_creates_on_first_read(self, owner_a):
         resp = auth_client(owner_a).get(URL)
         assert resp.status_code == 200
 
     def test_owner_can_update(self, owner_a):
-        resp = auth_client(owner_a).put(URL, {"skip_rule": "EXTEND", "max_skip_days": 5}, format="json")
+        resp = auth_client(owner_a).put(URL, {"max_pause_days": 5}, format="json")
         assert resp.status_code == 200
-        assert resp.json()["skip_rule"] == "EXTEND"
-        assert resp.json()["max_skip_days"] == 5
+        assert resp.json()["max_pause_days"] == 5
+
+    def test_owner_cannot_change_skip_policy(self, owner_a):
+        """Workflow policies belong to SUPER_ADMIN — the field is read-only here."""
+        resp = auth_client(owner_a).put(URL, {"skip_policy": {"key": "EXTEND"}}, format="json")
+        assert resp.status_code == 200
+        assert resp.json()["skip_policy"]["key"] == "NONE"
 
     def test_manager_can_read(self, manager_a):
         resp = auth_client(manager_a).get(URL)
         assert resp.status_code == 200
 
     def test_manager_cannot_update(self, manager_a):
-        resp = auth_client(manager_a).put(URL, {"skip_rule": "EXTEND"}, format="json")
+        resp = auth_client(manager_a).put(URL, {"max_pause_days": 5}, format="json")
         assert resp.status_code == 403
 
     def test_delivery_staff_denied(self, delivery_a):

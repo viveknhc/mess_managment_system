@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 interface Settings {
-  max_skip_days: number
   min_pause_days: number
   max_pause_days: number
-  skip_rule: string
+  /** Chosen by MessDeck (SUPER_ADMIN) per business — read-only here. */
+  skip_policy: { key: string; label: string; description: string }
   delivery_start_time: string | null
   delivery_end_time: string | null
   notify_on_payment: boolean
@@ -18,12 +19,6 @@ interface Settings {
   razorpay_configured: boolean
 }
 
-const SKIP_RULES = [
-  { value: 'NONE', label: 'No adjustment' },
-  { value: 'EXTEND', label: 'Extend subscription end date' },
-  { value: 'CREDIT', label: 'Meal credit' },
-]
-
 export function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +28,7 @@ export function SettingsPage() {
   const [keySecret, setKeySecret] = useState('') // write-only; never loaded back
   const user = useAuthStore((s) => s.user)
   const isOwner = user?.role === 'OWNER'
+  const onlinePayments = useFeature(FEATURES.ONLINE_PAYMENTS)
 
   useEffect(() => {
     apiClient.get('/settings/').then((res) => {
@@ -83,19 +79,13 @@ export function SettingsPage() {
           <h2 className="mb-4 text-sm font-semibold text-gray-900 uppercase tracking-wide">Skip & Pause Rules</h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Skip Rule</label>
-              <select value={settings.skip_rule} onChange={(e) => setSettings({ ...settings, skip_rule: e.target.value })}
-                disabled={!isOwner} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50">
-                {SKIP_RULES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
+              <p className="mb-1 text-sm font-medium text-gray-700">When a meal is skipped</p>
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                <span className="font-medium">{settings.skip_policy.label}</span>: {settings.skip_policy.description}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">Set up by MessDeck for your mess. Contact support to change it.</p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Max Skip Days</label>
-                <input type="number" min="0" value={settings.max_skip_days}
-                  onChange={(e) => setSettings({ ...settings, max_skip_days: Number(e.target.value) })}
-                  disabled={!isOwner} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50" />
-              </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Min Pause Days</label>
                 <input type="number" min="1" value={settings.min_pause_days}
@@ -132,6 +122,12 @@ export function SettingsPage() {
         </div>
 
         {/* Online payments */}
+        {!onlinePayments ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold text-gray-900 uppercase tracking-wide">Online Payments</h2>
+            <p className="text-sm text-gray-500">Not included for your mess. Contact MessDeck support to enable it.</p>
+          </div>
+        ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-1 text-sm font-semibold text-gray-900 uppercase tracking-wide">Online Payments</h2>
           <p className="mb-4 text-sm text-gray-500">
@@ -169,6 +165,7 @@ export function SettingsPage() {
             )}
           </div>
         </div>
+        )}
 
         {isOwner && (
           <button type="submit" disabled={saving}

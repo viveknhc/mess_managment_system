@@ -12,6 +12,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
+from apps.customization.permissions import requires_feature
+from apps.customization.registry import CUSTOMER_PORTAL
 from apps.deliveries.models import Delivery, DeliveryStatus
 from apps.deliveries.serializers import DeliveryListSerializer
 from apps.deliveries.services import DeliveryService
@@ -49,6 +51,9 @@ def _error(code, message, status_code):
     return Response({"error": {"code": code, "message": message, "fields": {}}}, status=status_code)
 
 
+PORTAL_PERMISSIONS = [IsAuthenticated, requires_feature(CUSTOMER_PORTAL)]
+
+
 class PortalPermission:
     """Check that user is a CUSTOMER with a linked customer profile."""
 
@@ -80,7 +85,7 @@ class PortalDashboardView(APIView):
     """GET /api/v1/portal/dashboard/ — greeting, current plan, days remaining,
     today's meal status (PT-03)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     def get(self, request):
@@ -121,7 +126,7 @@ class PortalDashboardView(APIView):
 class PortalSubscriptionsView(APIView):
     """GET /api/v1/portal/subscriptions/ — my subscriptions only."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     def get(self, request):
@@ -139,7 +144,7 @@ class PortalSubscriptionsView(APIView):
 class PortalOnlinePaymentView(APIView):
     """GET /api/v1/portal/online-payment/ — can this customer pay online?"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     def get(self, request):
@@ -153,7 +158,7 @@ class PortalPayView(APIView):
     """POST /api/v1/portal/subscriptions/<id>/pay/ — open Razorpay Checkout for the pending amount.
     POST .../pay/verify/ — Checkout success: verify the signature and record the payment."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalWriteThrottle]
 
     def post(self, request, sub_id=None, step="start"):
@@ -210,7 +215,7 @@ class PortalSubscriptionActionsView(APIView):
     POST /api/v1/portal/subscriptions/{id}/renew/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalWriteThrottle]
 
     def _dispatch(self, request, sub_id, action):
@@ -306,7 +311,7 @@ class PortalSubscriptionActionsView(APIView):
 class PortalPaymentsView(APIView):
     """GET /api/v1/portal/payments/ — my payment history (PT-05)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     def get(self, request):
@@ -320,7 +325,7 @@ class PortalPaymentsView(APIView):
 class PortalDeliveriesView(APIView):
     """GET /api/v1/portal/deliveries/ — my delivery history (PT-05)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     def get(self, request):
@@ -338,7 +343,7 @@ class PortalDeliveriesView(APIView):
 class PortalProfileView(APIView):
     """GET/PUT /api/v1/portal/profile/ — view/edit limited fields (PT-06)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
 
     EDITABLE_FIELDS = ("phone", "email", "address", "location")

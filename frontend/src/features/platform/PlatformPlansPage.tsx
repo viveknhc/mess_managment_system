@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { platformApi, type SaasPlan } from './platformApi'
+import { platformApi, type CatalogFeature, type SaasPlan } from './platformApi'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 
@@ -13,6 +13,7 @@ const emptyPlan: Partial<PlanWithAdmin> = {
   max_customers: 0,
   max_staff: 0,
   features: [],
+  feature_keys: null,
   razorpay_plan_id: '',
   is_active: true,
 }
@@ -26,6 +27,7 @@ export function PlatformPlansPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [featuresText, setFeaturesText] = useState('')
+  const [catalogFeatures, setCatalogFeatures] = useState<CatalogFeature[]>([])
   const table = useServerTable()
   const { params: tableParams } = table
 
@@ -45,6 +47,18 @@ export function PlatformPlansPage() {
   useEffect(() => {
     fetchPlans()
   }, [fetchPlans])
+
+  useEffect(() => {
+    platformApi.getCustomizationCatalog().then((c) => setCatalogFeatures(c.features)).catch(() => {})
+  }, [])
+
+  const featureKeys = editingPlan.feature_keys ?? null
+  function toggleFeatureKey(key: string, on: boolean) {
+    const keys = new Set(featureKeys ?? [])
+    if (on) keys.add(key)
+    else keys.delete(key)
+    setEditingPlan({ ...editingPlan, feature_keys: [...keys] })
+  }
 
   function openCreate() {
     setEditId(null)
@@ -294,6 +308,41 @@ export function PlatformPlansPage() {
                 rows={3}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
+              <fieldset className="rounded-lg border border-gray-200 p-3">
+                <legend className="px-1 text-xs font-medium text-gray-600">Features included</legend>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={featureKeys === null}
+                    onChange={(e) =>
+                      setEditingPlan({
+                        ...editingPlan,
+                        feature_keys: e.target.checked
+                          ? null
+                          : catalogFeatures.filter((f) => f.default).map((f) => f.key),
+                      })
+                    }
+                  />
+                  All standard features
+                </label>
+                {featureKeys !== null && (
+                  <div className="mt-2 space-y-1 pl-6">
+                    {catalogFeatures.map((f) => (
+                      <label key={f.key} className="flex items-center gap-2 text-sm" title={f.description}>
+                        <input
+                          type="checkbox"
+                          checked={featureKeys.includes(f.key)}
+                          onChange={(e) => toggleFeatureKey(f.key, e.target.checked)}
+                        />
+                        {f.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  A mess can be given more or fewer features under Businesses → Customize.
+                </p>
+              </fieldset>
               <input
                 type="text"
                 placeholder="Razorpay Plan ID (optional)"

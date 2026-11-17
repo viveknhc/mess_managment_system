@@ -25,9 +25,11 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.businesses.models import Business
 from apps.customers.models import Customer
+from apps.customization.registry import SKIP
+from apps.customization.services import PolicyService
 from apps.meals.models import Meal
 from apps.plans.models import Plan
-from apps.settings_app.models import BusinessSettings, SkipRule
+from apps.settings_app.models import BusinessSettings
 from common.constants import Role
 
 
@@ -38,9 +40,9 @@ def biz(db):
 
 @pytest.fixture()
 def settings_row(biz):
+    PolicyService.set_policy(biz.id, SKIP, "EXTEND")
     return BusinessSettings.objects.create(
         business=biz,
-        skip_rule=SkipRule.EXTEND,
         min_pause_days=1,
         max_pause_days=7,
     )

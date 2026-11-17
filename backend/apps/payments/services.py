@@ -10,6 +10,8 @@ from decimal import Decimal
 from django.db import models, transaction
 from django.utils import timezone
 
+from apps.customization.registry import ONLINE_PAYMENTS
+from apps.customization.services import FeatureService
 from apps.payments.models import OrderStatus, Payment, PaymentMethod, PaymentOrder, PaymentStatus
 from apps.subscriptions.models import Subscription
 from common import razorpay_checkout
@@ -105,14 +107,15 @@ class OnlinePaymentService:
     @staticmethod
     def is_enabled(business_id):
         s = _business_settings(business_id)
-        return bool(s and s.razorpay_credentials())
+        return bool(s and s.razorpay_credentials()) and FeatureService.has(business_id, ONLINE_PAYMENTS)
 
     @staticmethod
     def start_checkout(subscription):
         """Return (order, key_id) to open Checkout with, or (None, None) if nothing is left to pay
         (e.g. an earlier payment the browser never confirmed was just found and applied)."""
         s = _business_settings(subscription.business_id)
-        creds = s.razorpay_credentials() if s else None
+        enabled = s and FeatureService.has(subscription.business_id, ONLINE_PAYMENTS)
+        creds = s.razorpay_credentials() if enabled else None
         if not creds:
             raise ValueError("Online payment isn't set up for this mess. Please pay at the mess.")
         if subscription.status not in PAYABLE_STATUSES:

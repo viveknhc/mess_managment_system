@@ -343,7 +343,7 @@ class TestOwnerRazorpaySettings:
 
     def test_blank_secret_keeps_the_saved_one(self, owner_a, online_a):
         res = client_for(owner_a).put(
-            self.URL, {"razorpay_key_secret": "", "max_skip_days": 5}, format="json"
+            self.URL, {"razorpay_key_secret": "", "max_pause_days": 5}, format="json"
         )
         assert res.status_code == 200
         online_a.refresh_from_db()

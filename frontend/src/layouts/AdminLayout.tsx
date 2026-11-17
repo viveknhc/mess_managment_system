@@ -2,8 +2,9 @@ import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react
 import { useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
+import { FEATURES, type FeatureKey } from '../hooks/useFeature'
 
-const navItems = [
+const navItems: { to: string; label: string; end: boolean; feature?: FeatureKey }[] = [
   { to: '/app', label: 'Dashboard', end: true },
   { to: '/app/customers', label: 'Customers', end: false },
   { to: '/app/meals', label: 'Meals', end: false },
@@ -11,7 +12,7 @@ const navItems = [
   { to: '/app/subscriptions', label: 'Subscriptions', end: false },
   { to: '/app/payments', label: 'Customer Payments', end: false },
   { to: '/app/deliveries', label: 'Deliveries', end: false },
-  { to: '/app/reports', label: 'Reports', end: false },
+  { to: '/app/reports', label: 'Reports', end: false, feature: FEATURES.REPORTS },
   { to: '/app/staff', label: 'Staff', end: false },
   { to: '/app/settings', label: 'Settings', end: false },
   { to: '/app/business', label: 'Business Profile', end: false },
@@ -41,7 +42,7 @@ export function AdminLayout() {
           <h1 className="text-lg font-bold text-blue-600">Mess Manager</h1>
         </div>
         <nav className="space-y-1 p-4">
-          {navItems.map((item) => (
+          {navItems.filter((item) => !item.feature || user?.features?.includes(item.feature)).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

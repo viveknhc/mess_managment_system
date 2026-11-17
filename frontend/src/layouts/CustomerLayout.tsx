@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
+import { FeatureGate } from '../components/FeatureGate'
+import { FEATURES } from '../hooks/useFeature'
 
 const NAV_ITEMS = [
   { to: '/portal', label: 'Dashboard', end: true },
@@ -52,7 +54,16 @@ export function CustomerLayout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-0 py-4 sm:px-4">
-        {suspended ? <SuspendedNotice /> : <Outlet />}
+        {suspended ? (
+          <SuspendedNotice />
+        ) : (
+          <FeatureGate
+            feature={FEATURES.CUSTOMER_PORTAL}
+            message="Online access isn't available for your mess. Please contact your mess directly."
+          >
+            <Outlet />
+          </FeatureGate>
+        )}
       </main>
       <footer className="border-t border-gray-200 bg-white py-3 text-center text-xs text-gray-400">
         Powered by Mess Management

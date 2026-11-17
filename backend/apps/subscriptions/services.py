@@ -110,7 +110,7 @@ class SubscriptionService:
     # subscription is PAUSED only while today is inside the window; a future
     # window leaves it ACTIVE until process_pause_windows() flips it.
     #
-    # End-date rule: BusinessSettings has no pause rule (only skip_rule), so
+    # End-date rule: there is no pause extension point yet (only ``skip``), so
     # paused days always EXTEND the subscription — when a window closes,
     # end_date = max(end_date, last paused day) + number of meals the window
     # actually cancelled, and the replacement deliveries are generated.
@@ -211,6 +211,15 @@ class SubscriptionService:
                 started += 1
 
         return {"started": started, "ended": ended}
+
+    @staticmethod
+    @transaction.atomic
+    def extend_end_date(subscription, *, days):
+        """Push end_date out by ``days`` (e.g. a skip policy compensating a meal)."""
+        _lock(subscription)
+        subscription.end_date += timedelta(days=days)
+        subscription.save(update_fields=["end_date", "updated_at"])
+        return subscription
 
     @staticmethod
     @transaction.atomic

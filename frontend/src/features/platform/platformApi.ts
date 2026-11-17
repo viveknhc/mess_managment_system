@@ -13,6 +13,57 @@ export interface SaasPlan {
   max_customers: number
   max_staff: number
   features: string[]
+  /** Feature keys the plan includes; null = every default feature. SUPER_ADMIN only. */
+  feature_keys?: string[] | null
+}
+
+// Customization: what each business gets (features) and how its workflows run (policies)
+
+export interface CatalogFeature {
+  key: string
+  label: string
+  description: string
+  default: boolean
+}
+
+export interface PolicyParam {
+  name: string
+  type: string // integer | boolean | char | decimal | ...
+  label: string
+  required: boolean
+  default: unknown
+}
+
+export interface CatalogPolicy {
+  key: string
+  label: string
+  description: string
+  params: PolicyParam[]
+}
+
+export interface CatalogExtensionPoint {
+  key: string
+  label: string
+  description: string
+  default: string
+  policies: CatalogPolicy[]
+}
+
+export interface CustomizationCatalog {
+  features: CatalogFeature[]
+  extension_points: CatalogExtensionPoint[]
+}
+
+export interface BusinessCustomization {
+  /** inherited = the value without this business's override (from its plan, or the default) */
+  features: { key: string; enabled: boolean; source: 'default' | 'plan' | 'override'; inherited: boolean }[]
+  policies: { point: string; policy: string; params: Record<string, unknown> }[]
+}
+
+export interface BusinessCustomizationUpdate {
+  /** true/false = override for this business; null = back to the plan's setting */
+  features?: Record<string, boolean | null>
+  policies?: Record<string, { policy: string; params?: Record<string, unknown> }>
 }
 
 export type SaasStatus = 'PENDING' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED'
@@ -259,5 +310,24 @@ export const platformApi = {
   async getStats() {
     const { data } = await apiClient.get<PlatformStats>('/platform/stats/')
     return data
+  },
+
+  async getCustomizationCatalog() {
+    const { data } = await apiClient.get<CustomizationCatalog>('/platform/customization/catalog/')
+    return data
+  },
+
+  async getBusinessCustomization(id: string) {
+    const { data } = await apiClient.get<BusinessCustomization>(`/platform/businesses/${id}/customization/`)
+    return data
+  },
+
+  async updateBusinessCustomization(id: string, update: BusinessCustomizationUpdate) {
+    try {
+      const { data } = await apiClient.put<BusinessCustomization>(`/platform/businesses/${id}/customization/`, update)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
   },
 }

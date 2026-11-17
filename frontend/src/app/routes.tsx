@@ -6,6 +6,8 @@ import { StaffLayout } from '../layouts/StaffLayout'
 import { PlatformLayout } from '../layouts/PlatformLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
+import { FeatureGate } from '../components/FeatureGate'
+import { FEATURES } from '../hooks/useFeature'
 import { LandingPage } from '../features/landing/LandingPage'
 import { PortalDashboard } from '../features/portal/PortalDashboard'
 import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
@@ -75,7 +77,14 @@ export function AppRoutes() {
           <Route path="subscriptions" element={<SubscriptionsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="deliveries" element={<TodayDeliveriesPage />} />
-          <Route path="reports" element={<ReportsPage />} />
+          <Route
+            path="reports"
+            element={
+              <FeatureGate feature={FEATURES.REPORTS}>
+                <ReportsPage />
+              </FeatureGate>
+            }
+          />
           <Route path="staff" element={<StaffPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="business" element={<BusinessProfilePage />} />

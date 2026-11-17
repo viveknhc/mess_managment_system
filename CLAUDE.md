@@ -101,6 +101,10 @@ mess management/
 6. **EXPIRING is never stored** — Always computed: `status=ACTIVE AND end_date <= today+3`. Single predicate definition.
 7. **UUID PKs on all models** — Non-enumerable, safe for URL exposure.
 8. **Money as NUMERIC(10,2)** — Never float. `DecimalField(max_digits=10, decimal_places=2)`.
+9. **Per-mess differences go through `apps/customization/` only** — Never branch on a specific business in code, never fork. SUPER_ADMIN chooses per business (Platform → Businesses → Customize):
+   - **Feature** (module on/off): add a key to `registry.FEATURES`, gate views with `requires_feature(KEY)`, gate UI with `useFeature()` / `<FeatureGate>`. A business gets its SaaS plan's `feature_keys` (null = all defaults), then per-business overrides.
+   - **Workflow variant**: add a `Policy` subclass registered on an `ExtensionPoint` (`policies/*.py`); services call `PolicyService.get(business_id, POINT).apply(...)`. Params are validated by the policy's `params_serializer`. New extension points go in `registry.EXTENSION_POINTS`.
+   - Simple numeric/toggle knobs a mess owner may change themselves stay in `BusinessSettings`.
 
 ### Code Rules
 

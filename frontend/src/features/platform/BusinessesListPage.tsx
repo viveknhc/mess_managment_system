@@ -3,6 +3,7 @@ import { platformApi, type CreateBusinessInput, type ManualPaymentMethod, type P
 import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { CustomizeBusinessModal } from './CustomizeBusinessModal'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm'
@@ -163,6 +164,7 @@ export function BusinessesListPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [paying, setPaying] = useState<PlatformBusiness | null>(null)
+  const [customizing, setCustomizing] = useState<PlatformBusiness | null>(null)
   const [actionError, setActionError] = useState('')
   const table = useServerTable()
   const { params: tableParams } = table
@@ -298,6 +300,12 @@ export function BusinessesListPage() {
             >
               Record Payment
             </button>
+            <button
+              onClick={() => setCustomizing(biz)}
+              className="rounded bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
+            >
+              Customize
+            </button>
             {biz.status === 'SUSPENDED' ? (
               <button
                 onClick={() => handleReactivate(biz.id)}
@@ -374,6 +382,7 @@ export function BusinessesListPage() {
           }}
         />
       )}
+      {customizing && <CustomizeBusinessModal biz={customizing} onClose={() => setCustomizing(null)} />}
       {paying && (
         <RecordPaymentModal
           biz={paying}

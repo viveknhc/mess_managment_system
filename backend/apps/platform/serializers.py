@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.businesses.models import Business
+from apps.customization.serializers import validate_feature_keys
 from apps.platform.models import PaymentMethod, SaasPayment, SaasPlan, SaasSubscription
 from apps.platform.services import GRACE_DAYS, PlatformService
 
@@ -24,9 +25,13 @@ class SaasPlanSerializer(serializers.ModelSerializer):
             "max_customers",
             "max_staff",
             "features",
+            "feature_keys",
             "razorpay_plan_id",
             "is_active",
         ]
+
+    def validate_feature_keys(self, value):
+        return validate_feature_keys(value)
 
 
 class SaasPlanPublicSerializer(serializers.ModelSerializer):

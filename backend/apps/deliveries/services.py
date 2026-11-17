@@ -6,10 +6,13 @@ from datetime import timedelta
 from django.db import models, transaction
 from django.utils import timezone
 
+from apps.customization.registry import SKIP
+from apps.customization.services import PolicyService
 from apps.deliveries.models import (
     Delivery,
     DeliveryStatus,
     MealSkip,
+    SkipAdjustment,
     SubscriptionPause,
 )
 from apps.subscriptions.models import Subscription
@@ -28,19 +31,25 @@ class DeliveryService:
 
         Idempotent — skips dates that already have a delivery row. Dates inside
         any pause window are never generated. Rows CANCELLED by a *closed* pause
-        don't consume the plan's meal quota (they were compensated by extending
-        end_date), so the replacement meals land after the original schedule.
+        and SKIPPED rows the skip policy extended for don't consume the plan's
+        meal quota (they were compensated by extending end_date), so the
+        replacement meals land after the original schedule.
         """
         if subscription.status not in (SubStatus.ACTIVE, SubStatus.PENDING):
             return []
 
         rows = list(
             Delivery.objects.filter(subscription=subscription).values_list(
-                "delivery_date", "status", "pause__is_closed"
+                "delivery_date", "status", "pause__is_closed", "skip_record__adjustment"
             )
         )
         existing_dates = {r[0] for r in rows}
-        compensated = sum(1 for _d, st, closed in rows if st == DeliveryStatus.CANCELLED and closed)
+        compensated = sum(
+            1
+            for _d, st, closed, adj in rows
+            if (st == DeliveryStatus.CANCELLED and closed)
+            or (st == DeliveryStatus.SKIPPED and adj == SkipAdjustment.EXTEND)
+        )
         remaining_to_create = subscription.plan.total_meals - (len(rows) - compensated)
         windows = list(SubscriptionPause.objects.filter(subscription=subscription))
 
@@ -81,10 +90,8 @@ class DeliveryService:
     @staticmethod
     @transaction.atomic
     def skip_meal(delivery, *, reason=""):
-        """Skip a specific delivery. Creates a MealSkip record.
-
-        Default rule: NONE (no adjustment). Settings module will add EXTEND/CREDIT.
-        """
+        """Skip a specific delivery. Creates a MealSkip record, then applies the
+        business's skip policy (customization extension point ``skip``)."""
         if delivery.status != DeliveryStatus.PENDING:
             raise ValueError(f"Can only skip PENDING deliveries, got {delivery.status}")
 
@@ -99,6 +106,7 @@ class DeliveryService:
             skip_date=delivery.delivery_date,
             reason=reason,
         )
+        PolicyService.get(delivery.business_id, SKIP).apply(skip)
         return skip
 
     @staticmethod

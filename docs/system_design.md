@@ -178,8 +178,8 @@ notifications.Notification
                       id, business_id, user_id, type, title, message, is_read, sent_at, ts
 
 settings.BusinessSettings
-                      id, business_id (unique), max_skip_days, min_pause_days, skip_rule,
-                      pause_rule, delivery_window, notification_prefs(JSONB), ts
+                      id, business_id (unique), min_pause_days,
+                      max_pause_days, delivery_window, notification_prefs(JSONB), ts
 
 audit.AuditLog        id, business_id, user_id, action, entity_type, entity_id, description, created_at
 
@@ -353,9 +353,9 @@ Failure semantics: TX rollback on any inline step → API 500, user retries, not
 
 ```text
 POST /api/v1/subscriptions/{id}/skips/  {date, meal_type, reason}
-→ service: validate (date >= today, plan.skip_allowed, within max_skip_days setting)
+→ service: validate (date >= today, plan.skip_allowed, no skip-count limit)
 → TX: MealSkip row + Delivery(status→SKIPPED) for that slot
-→ apply business skip_rule (settings): EXTEND → end_date += 1 (remaining_meals unchanged)
+→ apply business skip policy (customization, set by SUPER_ADMIN): EXTEND → end_date += 1 (remaining_meals unchanged)
                                         | CREDIT   → credit note (MVP: notes field)
                                         | NONE     → no adjustment
 → AuditLog + emit DELIVERY_UPDATE

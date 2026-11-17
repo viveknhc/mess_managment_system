@@ -23,6 +23,8 @@ from apps.audit.models import AuditLog
 from apps.audit.services import AuditService
 from apps.businesses.models import Business
 from apps.customers.models import Customer
+from apps.customization.registry import SKIP
+from apps.customization.services import PolicyService
 from apps.deliveries.models import Delivery, DeliveryStatus, MealSkip, SubscriptionPause
 from apps.meals.models import Meal
 from apps.notifications.models import Notification
@@ -30,7 +32,7 @@ from apps.notifications.services import NotificationService
 from apps.payments.models import Payment, PaymentMethod
 from apps.payments.services import PaymentService
 from apps.plans.models import Plan
-from apps.settings_app.models import BusinessSettings, SkipRule
+from apps.settings_app.models import BusinessSettings
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.services import SubscriptionService
 from common.constants import Role, Status, SubStatus
@@ -187,12 +189,11 @@ class Command(BaseCommand):
             sub.refresh_from_db()
 
     def _create_settings(self, biz):
+        PolicyService.set_policy(biz.id, SKIP, "EXTEND")
         return BusinessSettings.objects.create(
             business=biz,
-            skip_rule=SkipRule.EXTEND,
             min_pause_days=1,
             max_pause_days=7,
-            max_skip_days=3,
             delivery_start_time=datetime.time(11, 0),
             delivery_end_time=datetime.time(14, 0),
             notify_on_payment=True,

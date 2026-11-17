@@ -1,8 +1,10 @@
 """Auth views (Module 1) + Staff management (Module 3)."""
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -13,11 +15,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from apps.accounts.models import User
 from apps.accounts.serializers import (
     CustomTokenObtainPairSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     StaffCreateSerializer,
     StaffListSerializer,
     StaffUpdateSerializer,
     UserSerializer,
 )
+from apps.accounts.services import InvalidResetLink, PasswordResetService
 from common.constants import BUSINESS_STAFF_ROLES, Role
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
@@ -27,12 +32,12 @@ class LoginThrottle(AnonRateThrottle):
     rate = "5/min"
 
 
-class LoginView(TokenObtainPairView):
-    """POST /auth/login/ — returns access, refresh, user + business."""
+class PasswordResetThrottle(AnonRateThrottle):
+    scope = "password_reset"  # own counter, separate from login attempts
+    rate = "5/hour"
 
-    serializer_class = CustomTokenObtainPairSerializer
-    throttle_classes = [LoginThrottle]
 
+class ThrottleUnlessDisabledMixin:
     def get_throttles(self):
         """Skip throttling when rates are disabled (tests)."""
         from django.conf import settings
@@ -40,6 +45,13 @@ class LoginView(TokenObtainPairView):
         if not settings.REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES"):
             return []
         return super().get_throttles()
+
+
+class LoginView(ThrottleUnlessDisabledMixin, TokenObtainPairView):
+    """POST /auth/login/ — returns access, refresh, user + business."""
+
+    serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginThrottle]
 
 
 class RefreshView(TokenRefreshView):
@@ -69,6 +81,50 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
+
+
+RESET_REQUESTED_MESSAGE = (
+    "If an account with that username or email has an email address, we've sent it a reset link."
+)
+
+
+class PasswordResetRequestView(ThrottleUnlessDisabledMixin, APIView):
+    """POST /auth/password-reset/ {identifier} — email a reset link.
+
+    Always the same 200 response, so it can't be used to find out which accounts exist.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [PasswordResetThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        PasswordResetService.request_reset(serializer.validated_data["identifier"])
+        return Response({"detail": RESET_REQUESTED_MESSAGE})
+
+
+class PasswordResetConfirmView(ThrottleUnlessDisabledMixin, APIView):
+    """POST /auth/password-reset/confirm/ {uid, token, new_password} — set the new password."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [PasswordResetThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            PasswordResetService.reset_password(data["uid"], data["token"], data["new_password"])
+        except InvalidResetLink:
+            raise ValidationError(
+                {"detail": "This reset link is invalid or has expired. Ask for a new one."}
+            ) from None
+        except DjangoValidationError as e:
+            raise ValidationError({"new_password": e.messages}) from None
+        return Response({"detail": "Password changed. You can now sign in."})
 
 
 class MeView(APIView):

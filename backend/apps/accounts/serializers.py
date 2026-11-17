@@ -45,6 +45,16 @@ class UserSerializer(serializers.ModelSerializer):
         return sorted(FeatureService.enabled(obj.business_id))
 
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    identifier = serializers.CharField(max_length=254, help_text="Username or email")
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField(max_length=64)
+    token = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
 # ── Staff management serializers (U-01) ──────────────────────────────────
 
 STAFF_ROLE_CHOICES = [(r, r) for r in BUSINESS_STAFF_ROLES]

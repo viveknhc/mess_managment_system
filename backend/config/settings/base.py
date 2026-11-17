@@ -168,7 +168,12 @@ RAZORPAY_WEBHOOK_SECRET = env.str("RAZORPAY_WEBHOOK_SECRET", default="")
 # Encrypts per-business secrets (owners' Razorpay key secret). Empty = derived from SECRET_KEY.
 FIELD_ENCRYPTION_KEY = env.str("FIELD_ENCRYPTION_KEY", default="")
 
-# --- Email (expiry alerts; see apps/notifications) ---
+# --- Password reset (apps/accounts/services.py) ---
+# Where reset links point: the React app's origin, no trailing slash.
+FRONTEND_URL = env.str("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds a reset link stays valid
+
+# --- Email (expiry alerts, password reset) ---
 # Default: console backend (prints emails). production.py switches to SMTP when
 # EMAIL_HOST is set. Tests get Django's locmem backend automatically.
 EMAIL_BACKEND = env.str("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

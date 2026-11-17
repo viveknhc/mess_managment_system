@@ -6,6 +6,8 @@ import { StaffLayout } from '../layouts/StaffLayout'
 import { PlatformLayout } from '../layouts/PlatformLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { LoginPage } from '../features/auth/LoginPage'
+import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
 import { FeatureGate } from '../components/FeatureGate'
 import { FEATURES } from '../hooks/useFeature'
 import { LandingPage } from '../features/landing/LandingPage'
@@ -65,6 +67,8 @@ export function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingOrDashboard />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Admin routes — Owner + Manager (not SUPER_ADMIN — they use /platform) */}
       <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER']} />}>

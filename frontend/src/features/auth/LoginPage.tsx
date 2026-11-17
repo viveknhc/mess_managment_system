@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 
 export function LoginPage() {
@@ -55,9 +55,14 @@ export function LoginPage() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
-              Password
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <Link to="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"

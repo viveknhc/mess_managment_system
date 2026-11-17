@@ -26,6 +26,9 @@ if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
 # Frontend origin(s), e.g. https://mess-manager.vercel.app
 CORS_ALLOWED_ORIGINS = _csv("CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = _csv("CSRF_TRUSTED_ORIGINS") or CORS_ALLOWED_ORIGINS
+# Password reset links point here; defaults to the first frontend origin.
+if not os.environ.get("FRONTEND_URL") and CORS_ALLOWED_ORIGINS:
+    FRONTEND_URL = CORS_ALLOWED_ORIGINS[0].rstrip("/")
 
 # Keep DB connections open between requests (Neon/Postgres)
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405

@@ -51,7 +51,7 @@ function ParamInput({ param, value, onChange }: { param: PolicyParam; value: unk
   )
 }
 
-export function CustomizeBusinessModal({ biz, onClose }: { biz: PlatformBusiness; onClose: () => void }) {
+export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBusiness, 'id' | 'name'>; onClose: () => void }) {
   const [catalog, setCatalog] = useState<CustomizationCatalog | null>(null)
   const [current, setCurrent] = useState<BusinessCustomization | null>(null)
   const [features, setFeatures] = useState<Record<string, FeatureChoice>>({})

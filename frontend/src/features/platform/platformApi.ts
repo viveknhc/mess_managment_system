@@ -172,6 +172,78 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
+// Mess overview (SUPER_ADMIN): GET /platform/businesses/{id}/overview/
+
+export interface MessOverview {
+  business: { id: string; name: string; phone: string; email: string; address: string; status: string; created_at: string }
+  billing: SaasSubscription & {
+    plan_details: (SaasPlan & { razorpay_plan_id: string; is_active: boolean }) | null
+    recent_payments: SaasPayment[]
+  }
+  features: {
+    key: string
+    label: string
+    description: string
+    enabled: boolean
+    source: 'default' | 'plan' | 'override'
+    inherited: boolean
+  }[]
+  policies: {
+    point: string
+    point_label: string
+    policy: string
+    policy_label: string
+    description: string
+    is_default: boolean
+    params: Record<string, unknown>
+  }[]
+  settings: {
+    min_pause_days: number
+    max_pause_days: number
+    delivery_start_time: string | null
+    delivery_end_time: string | null
+    notify_on_payment: boolean
+    notify_on_expiring: boolean
+    notify_on_delivery: boolean
+    online_payments_enabled: boolean
+    razorpay_configured: boolean
+  } | null
+  team: {
+    id: string
+    name: string
+    username: string
+    role: string
+    email: string
+    phone: string
+    is_active: boolean
+    last_login: string | null
+  }[]
+  customers: { total: number; by_status: Record<string, number>; portal_logins: number }
+  subscriptions: { by_status: Record<string, number>; expiring: number; amount_pending: string }
+  payments: { total_collected: string; last_30_days: string; count: number }
+  deliveries_today: {
+    total: number
+    pending: number
+    delivered: number
+    not_delivered: number
+    skipped: number
+    cancelled: number
+  }
+  meal_plans: {
+    id: string
+    name: string
+    meal: string
+    duration_days: number
+    total_meals: number
+    price: string
+    skip_allowed: boolean
+    pause_allowed: boolean
+    is_active: boolean
+    active_subscriptions: number
+  }[]
+  recent_activity: { action: string; entity_type: string; description: string; user: string | null; created_at: string }[]
+}
+
 // ── Helper ───────────────────────────────────────────────────────────────
 
 function errMsg(e: unknown): string {
@@ -309,6 +381,11 @@ export const platformApi = {
 
   async getStats() {
     const { data } = await apiClient.get<PlatformStats>('/platform/stats/')
+    return data
+  },
+
+  async getMessOverview(id: string) {
+    const { data } = await apiClient.get<MessOverview>(`/platform/businesses/${id}/overview/`)
     return data
   },
 

@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 from apps.businesses.models import Business
 from apps.platform.models import SaasCheckoutOrder, SaasPayment, SaasPlan, SaasSubscription
 from apps.platform.permissions import IsOwner, IsOwnerOrManager, IsSuperAdmin
+from apps.platform.selectors import business_overview
 from apps.platform.serializers import (
     CreateBusinessSerializer,
     PlatformBusinessSerializer,
@@ -267,6 +268,21 @@ class PlatformBusinessViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelVie
             return business.saas_subscription
         except SaasSubscription.DoesNotExist:
             return PlatformService.start_billing(business)
+
+    @action(detail=True, methods=["get"])
+    def overview(self, request, pk=None):
+        """GET /platform/businesses/{id}/overview/ — plan, features, workflows, team, activity, numbers."""
+        business = self.get_object()
+        sub = self._subscription(business)
+        data = business_overview(business)
+        data["billing"] = {
+            **SaasSubscriptionSerializer(sub).data,
+            "plan_details": SaasPlanSerializer(sub.plan).data if sub.plan else None,
+            "recent_payments": SaasPaymentSerializer(
+                sub.payments.order_by("-created_at")[:5], many=True
+            ).data,
+        }
+        return Response(data)
 
     @action(detail=True, methods=["post"], url_path="record-payment")
     def record_payment(self, request, pk=None):

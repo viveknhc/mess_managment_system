@@ -34,6 +34,7 @@ import { BillingPage } from '../features/platform/BillingPage'
 import { HelpSupportPage } from '../features/platform/HelpSupportPage'
 import { PlatformDashboardPage } from '../features/platform/PlatformDashboardPage'
 import { BusinessesListPage } from '../features/platform/BusinessesListPage'
+import { MessDetailsPage } from '../features/platform/MessDetailsPage'
 import { PlatformPlansPage } from '../features/platform/PlatformPlansPage'
 import { PlatformPaymentsPage } from '../features/platform/PlatformPaymentsPage'
 
@@ -102,6 +103,8 @@ export function AppRoutes() {
         <Route path="/platform" element={<PlatformLayout />}>
           <Route index element={<PlatformDashboardPage />} />
           <Route path="businesses" element={<BusinessesListPage />} />
+          <Route path="messes" element={<MessDetailsPage />} />
+          <Route path="messes/:id" element={<MessDetailsPage />} />
           <Route path="plans" element={<PlatformPlansPage />} />
           <Route path="payments" element={<PlatformPaymentsPage />} />
         </Route>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { platformApi, type CreateBusinessInput, type ManualPaymentMethod, type PlatformBusiness } from './platformApi'
 import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { DataTable, type Column } from '../../components/ui/DataTable'
@@ -219,7 +220,9 @@ export function BusinessesListPage() {
         sortable: true,
         render: (biz) => (
           <>
-            <p className="font-medium text-gray-900">{biz.name}</p>
+            <Link to={`/platform/messes/${biz.id}`} className="font-medium text-gray-900 hover:text-purple-700 hover:underline">
+              {biz.name}
+            </Link>
             <p className="text-xs text-gray-500">{biz.email || biz.phone}</p>
           </>
         ),

@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore'
 const navItems = [
   { to: '/platform', label: 'Dashboard', end: true },
   { to: '/platform/businesses', label: 'Businesses', end: false },
+  { to: '/platform/messes', label: 'Mess Details', end: false },
   { to: '/platform/plans', label: 'Plans', end: false },
   { to: '/platform/payments', label: 'Payments', end: false },
 ]

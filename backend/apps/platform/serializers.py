@@ -201,9 +201,9 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
         return owner.email if owner else None
 
     def get_customer_count(self, obj):
-        if hasattr(obj, "customers"):
-            return obj.customers.count()
-        return 0
+        from apps.customers.models import Customer
+
+        return Customer.objects.filter(business=obj).count()
 
     def get_staff_count(self, obj):
         return obj.users.exclude(role="CUSTOMER").count()

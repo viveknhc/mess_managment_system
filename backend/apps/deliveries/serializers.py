@@ -29,6 +29,7 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "assigned_staff_name",
             "delivered_at",
             "notes",
+            "updated_at",  # lets the app hide Undo once UNDO_WINDOW has passed
         ]
         read_only_fields = fields
 

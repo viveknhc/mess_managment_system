@@ -3,19 +3,9 @@ import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
-
-interface DeliveryItem {
-  id: string
-  customer_name: string
-  customer_phone: string
-  customer_address: string
-  meal_name: string
-  delivery_date: string
-  status: string
-  assigned_staff_name: string | null
-  delivered_at: string | null
-  notes: string
-}
+import { confirmDialog, promptDialog } from '../../components/ui/dialog'
+import { notify } from '../../utils/notify'
+import { NOT_DELIVERED_REASONS, deliveryApi, isOpen, type DeliveryItem } from './deliveryApi'
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-50 text-yellow-700',
@@ -26,17 +16,9 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'bg-gray-100 text-gray-400',
 }
 
-function isOpen(status: string) {
-  return status === 'PENDING' || status === 'OUT_FOR_DELIVERY'
-}
-
 function formatTime(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function errorMessage(err: unknown) {
-  return (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Failed'
 }
 
 export function TodayDeliveriesPage() {
@@ -44,7 +26,6 @@ export function TodayDeliveriesPage() {
   const [count, setCount] = useState(0)
   const [summary, setSummary] = useState({ pending: 0, completed: 0 })
   const [loading, setLoading] = useState(true)
-  const [actionError, setActionError] = useState('')
   const table = useServerTable()
   const { params: tableParams } = table
   const user = useAuthStore((s) => s.user)
@@ -74,28 +55,58 @@ export function TodayDeliveriesPage() {
     fetchToday()
   }, [fetchToday])
 
-  function showError(err: unknown) {
-    setActionError(errorMessage(err))
-    setTimeout(() => setActionError(''), 3000)
-  }
-
-  async function handleStatus(id: string, status: string) {
-    setActionError('')
+  async function handleUndo(d: DeliveryItem) {
     try {
-      await apiClient.patch(`/deliveries/${id}/status/`, { status })
+      await deliveryApi.undo(d.id)
+      notify.info(`${d.customer_name} moved back to pending`)
       await fetchToday()
     } catch (err: unknown) {
-      showError(err)
+      notify.error(err, 'Could not undo')
     }
   }
 
-  async function handleSkip(id: string) {
-    setActionError('')
+  async function handleDelivered(d: DeliveryItem) {
     try {
-      await apiClient.post(`/deliveries/${id}/skip/`)
+      await deliveryApi.setStatus(d.id, 'DELIVERED')
+      notify.undoable(`Delivered to ${d.customer_name}`, () => handleUndo(d))
       await fetchToday()
     } catch (err: unknown) {
-      showError(err)
+      notify.error(err, 'Could not update the delivery')
+    }
+  }
+
+  async function handleNotDelivered(d: DeliveryItem) {
+    const reason = await promptDialog({
+      title: `Couldn't deliver to ${d.customer_name}?`,
+      message: 'Pick a reason or type one.',
+      options: NOT_DELIVERED_REASONS,
+      placeholder: 'Reason',
+      confirmText: 'Mark not delivered',
+      tone: 'danger',
+    })
+    if (reason === null) return
+    try {
+      await deliveryApi.setStatus(d.id, 'NOT_DELIVERED', reason)
+      notify.undoable(`Marked not delivered: ${d.customer_name}`, () => handleUndo(d), reason)
+      await fetchToday()
+    } catch (err: unknown) {
+      notify.error(err, 'Could not update the delivery')
+    }
+  }
+
+  async function handleSkip(d: DeliveryItem) {
+    const ok = await confirmDialog({
+      title: `Skip ${d.customer_name}'s ${d.meal_name.toLowerCase()} today?`,
+      message: "The meal won't be delivered. Your mess's skip rule decides whether the subscription is extended.",
+      confirmText: 'Skip meal',
+    })
+    if (!ok) return
+    try {
+      await deliveryApi.skip(d.id)
+      notify.success(`Skipped ${d.customer_name}'s meal`)
+      await fetchToday()
+    } catch (err: unknown) {
+      notify.error(err, 'Could not skip the meal')
     }
   }
 
@@ -165,14 +176,14 @@ export function TodayDeliveriesPage() {
           <div className="flex justify-end gap-2 whitespace-nowrap">
             <button
               type="button"
-              onClick={() => handleStatus(d.id, 'DELIVERED')}
+              onClick={() => handleDelivered(d)}
               className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
             >
               Delivered
             </button>
             <button
               type="button"
-              onClick={() => handleStatus(d.id, 'NOT_DELIVERED')}
+              onClick={() => handleNotDelivered(d)}
               className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200"
             >
               Not Delivered
@@ -180,7 +191,7 @@ export function TodayDeliveriesPage() {
             {d.status === 'PENDING' && canSkip && (
               <button
                 type="button"
-                onClick={() => handleSkip(d.id)}
+                onClick={() => handleSkip(d)}
                 className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
               >
                 Skip
@@ -199,8 +210,6 @@ export function TodayDeliveriesPage() {
           {summary.pending} pending · {summary.completed} completed · {count} total
         </p>
       </div>
-
-      {actionError && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>}
 
       {!loading && count === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">

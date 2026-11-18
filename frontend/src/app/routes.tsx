@@ -16,7 +16,7 @@ import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
 import { PortalPaymentsPage } from '../features/portal/PortalPaymentsPage'
 import { PortalProfilePage } from '../features/portal/PortalProfilePage'
 import { PortalSubscriptionPage } from '../features/portal/PortalSubscriptionPage'
-import { CompletedDeliveriesPage } from '../features/deliveries/CompletedDeliveriesPage'
+import { DeliveryRunPage } from '../features/deliveries/DeliveryRunPage'
 import { KitchenCountsPage } from '../features/deliveries/KitchenCountsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
@@ -53,7 +53,7 @@ function RoleRedirect() {
 /** /staff home — delivery and kitchen staff share the /staff area but see different pages. */
 function StaffHome() {
   const user = useAuthStore((s) => s.user)
-  return user?.role === 'KITCHEN_STAFF' ? <KitchenCountsPage /> : <TodayDeliveriesPage />
+  return user?.role === 'KITCHEN_STAFF' ? <KitchenCountsPage /> : <DeliveryRunPage />
 }
 
 function LandingOrDashboard() {
@@ -128,7 +128,7 @@ export function AppRoutes() {
         <Route path="/staff" element={<StaffLayout />}>
           <Route index element={<StaffHome />} />
           <Route element={<ProtectedRoute allowedRoles={['DELIVERY_STAFF']} />}>
-            <Route path="completed" element={<CompletedDeliveriesPage />} />
+            <Route path="completed" element={<DeliveryRunPage initialTab="done" />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['KITCHEN_STAFF']} />}>
             <Route path="kitchen/summary" element={<KitchenCountsPage showSummary />} />

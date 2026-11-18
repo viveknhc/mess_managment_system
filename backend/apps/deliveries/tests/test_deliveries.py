@@ -353,3 +353,53 @@ class TestDeliveryIsolation:
         d = deliveries.first()
         resp = auth_client(owner_b).patch(f"{URL}{d.id}/status/", {"status": "DELIVERED"}, format="json")
         assert resp.status_code == 404
+
+
+class TestUndoStatus:
+    def _today(self, deliveries):
+        return deliveries.get(delivery_date=TODAY)
+
+    def test_staff_can_undo_delivered(self, delivery_staff_a, deliveries):
+        d = self._today(deliveries)
+        DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        resp = auth_client(delivery_staff_a).post(f"/api/v1/deliveries/{d.id}/undo/")
+        assert resp.status_code == 200
+        d.refresh_from_db()
+        assert d.status == DeliveryStatus.PENDING
+        assert d.delivered_at is None
+
+    def test_undo_not_delivered(self, delivery_staff_a, deliveries):
+        d = self._today(deliveries)
+        DeliveryService.update_status(d, DeliveryStatus.NOT_DELIVERED, notes="Door locked")
+        assert auth_client(delivery_staff_a).post(f"/api/v1/deliveries/{d.id}/undo/").status_code == 200
+
+    def test_cannot_undo_pending(self, delivery_staff_a, deliveries):
+        d = self._today(deliveries)
+        resp = auth_client(delivery_staff_a).post(f"/api/v1/deliveries/{d.id}/undo/")
+        assert resp.status_code == 400
+
+    def test_cannot_undo_after_window(self, deliveries):
+        from django.utils import timezone
+
+        from apps.deliveries.services import UNDO_WINDOW
+
+        d = self._today(deliveries)
+        DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        with pytest.raises(ValueError, match="Too late"):
+            DeliveryService.undo_status(d, now=timezone.now() + UNDO_WINDOW + timedelta(seconds=1))
+
+    def test_cannot_undo_other_day(self, deliveries):
+        d = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        with pytest.raises(ValueError, match="Too late"):
+            DeliveryService.undo_status(d)
+
+    def test_kitchen_cannot_undo(self, kitchen_a, deliveries):
+        d = self._today(deliveries)
+        DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        assert auth_client(kitchen_a).post(f"/api/v1/deliveries/{d.id}/undo/").status_code == 403
+
+    def test_other_business_gets_404(self, owner_b, deliveries):
+        d = self._today(deliveries)
+        DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        assert auth_client(owner_b).post(f"/api/v1/deliveries/{d.id}/undo/").status_code == 404

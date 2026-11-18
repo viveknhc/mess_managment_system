@@ -58,6 +58,7 @@ class DeliveryViewSet(TenantScopedViewSet):
         "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
         "today": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "update_status": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
+        "undo": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "skip": [Role.OWNER, Role.MANAGER, Role.CUSTOMER],
         "kitchen_counts": [Role.OWNER, Role.MANAGER, Role.KITCHEN_STAFF],
         "today_summary": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
@@ -93,6 +94,19 @@ class DeliveryViewSet(TenantScopedViewSet):
                 serializer.validated_data["status"],
                 notes=serializer.validated_data.get("notes", ""),
             )
+        except ValueError as e:
+            return Response(
+                {"error": {"code": "INVALID_TRANSITION", "message": str(e), "fields": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(DeliveryListSerializer(delivery).data)
+
+    @action(detail=True, methods=["post"])
+    def undo(self, request, pk=None):
+        """POST /deliveries/{id}/undo/ — back to PENDING shortly after a mis-tap."""
+        delivery = self.get_object()
+        try:
+            delivery = DeliveryService.undo_status(delivery)
         except ValueError as e:
             return Response(
                 {"error": {"code": "INVALID_TRANSITION", "message": str(e), "fields": {}}},

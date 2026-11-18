@@ -22,6 +22,8 @@ from common.constants import SubStatus
 # (the customer isn't expecting a meal; delivery staff shouldn't see them).
 PAUSED_DELIVERY_Q = models.Q(status=DeliveryStatus.CANCELLED, pause__isnull=False)
 
+UNDO_WINDOW = timedelta(minutes=10)  # how long delivery staff can undo a Delivered / Not delivered tap
+
 
 class DeliveryService:
     @staticmethod
@@ -85,6 +87,23 @@ class DeliveryService:
         if new_status == DeliveryStatus.DELIVERED:
             delivery.delivered_at = timezone.now()
         delivery.save(update_fields=["status", "notes", "delivered_at", "updated_at"])
+        return delivery
+
+    @staticmethod
+    @transaction.atomic
+    def undo_status(delivery, *, now=None):
+        """Put a just-marked DELIVERED / NOT_DELIVERED delivery back to PENDING (a mis-tap).
+
+        Only today's deliveries, and only within UNDO_WINDOW of being marked.
+        """
+        now = now or timezone.now()
+        if delivery.status not in (DeliveryStatus.DELIVERED, DeliveryStatus.NOT_DELIVERED):
+            raise ValueError(f"Nothing to undo for a {delivery.status} delivery")
+        if delivery.delivery_date != timezone.localdate() or now - delivery.updated_at > UNDO_WINDOW:
+            raise ValueError("Too late to undo. Ask the owner to correct it.")
+        delivery.status = DeliveryStatus.PENDING
+        delivery.delivered_at = None
+        delivery.save(update_fields=["status", "delivered_at", "updated_at"])
         return delivery
 
     @staticmethod

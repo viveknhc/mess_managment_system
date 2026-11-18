@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { notify } from '../../utils/notify'
 
 interface CustomerData {
   id: string
@@ -44,6 +45,7 @@ export function CustomerForm({ customer, onClose, onSaved }: Props) {
       } else {
         await apiClient.post('/customers/', form)
       }
+      notify.success(isEdit ? 'Customer updated' : 'Customer added', form.name)
       onSaved()
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { error?: { message?: string; fields?: Record<string, string[]> } } } })

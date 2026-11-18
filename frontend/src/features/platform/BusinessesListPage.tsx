@@ -5,6 +5,8 @@ import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, rupees } from './bil
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { CustomizeBusinessModal } from './CustomizeBusinessModal'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm'
@@ -47,6 +49,7 @@ function AddBusinessModal({ onClose, onCreated }: { onClose: () => void; onCreat
       setError(result.error)
       return
     }
+    notify.success('Business created', form.business_name)
     onCreated()
   }
 
@@ -107,6 +110,7 @@ function RecordPaymentModal({ biz, onClose, onRecorded }: { biz: PlatformBusines
       setError(result.error)
       return
     }
+    notify.success(`Payment of ${rupees(amount)} recorded`, biz.name)
     onRecorded()
   }
 
@@ -166,7 +170,6 @@ export function BusinessesListPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [paying, setPaying] = useState<PlatformBusiness | null>(null)
   const [customizing, setCustomizing] = useState<PlatformBusiness | null>(null)
-  const [actionError, setActionError] = useState('')
   const table = useServerTable()
   const { params: tableParams } = table
 
@@ -188,29 +191,57 @@ export function BusinessesListPage() {
   }, [fetchBusinesses])
 
   const columns = useMemo<Column<PlatformBusiness>[]>(() => {
-    async function handleSuspend(id: string) {
-      if (!confirm('Suspend this business?')) return
-      setActionError('')
-      const result = await platformApi.suspendBusiness(id)
-      if (result.ok) fetchBusinesses()
-      else setActionError(result.error)
+    async function handleSuspend(biz: PlatformBusiness) {
+      const ok = await confirmDialog({
+        title: `Suspend ${biz.name}?`,
+        message: 'The owner, staff and customers lose access until the business is reactivated.',
+        confirmText: 'Suspend',
+        tone: 'danger',
+      })
+      if (!ok) return
+      const result = await platformApi.suspendBusiness(biz.id)
+      if (!result.ok) {
+        notify.error(result.error)
+        return
+      }
+      notify.success('Business suspended', biz.name)
+      fetchBusinesses()
     }
 
-    async function handleReactivate(id: string) {
-      if (!confirm('Restore access without a payment? To bring back a lapsed business, use Record Payment instead.')) return
-      setActionError('')
-      const result = await platformApi.reactivateBusiness(id)
+    async function handleReactivate(biz: PlatformBusiness) {
+      const ok = await confirmDialog({
+        title: `Reactivate ${biz.name}?`,
+        message: 'This restores access without a payment. To bring back a lapsed business, use Record Payment instead.',
+        confirmText: 'Reactivate',
+        tone: 'success',
+      })
+      if (!ok) return
+      const result = await platformApi.reactivateBusiness(biz.id)
       // 400 when money is owed (setup unpaid / reactivation fee) — the message says to record a payment instead.
-      if (result.ok) fetchBusinesses()
-      else setActionError(result.error)
+      if (!result.ok) {
+        notify.error(result.error)
+        return
+      }
+      notify.success('Business reactivated', biz.name)
+      fetchBusinesses()
     }
 
     async function handleCancel(biz: PlatformBusiness) {
-      if (!confirm(`Cancel the monthly plan for ${biz.name}? They keep access until the paid month ends.`)) return
-      setActionError('')
+      const ok = await confirmDialog({
+        title: `Cancel the monthly plan for ${biz.name}?`,
+        message: 'They keep access until the paid month ends.',
+        confirmText: 'Cancel plan',
+        cancelText: 'Keep plan',
+        tone: 'danger',
+      })
+      if (!ok) return
       const result = await platformApi.cancelBusiness(biz.id)
-      if (result.ok) fetchBusinesses()
-      else setActionError(result.error)
+      if (!result.ok) {
+        notify.error(result.error)
+        return
+      }
+      notify.success('Plan cancelled', biz.name)
+      fetchBusinesses()
     }
 
     return [
@@ -311,14 +342,14 @@ export function BusinessesListPage() {
             </button>
             {biz.status === 'SUSPENDED' ? (
               <button
-                onClick={() => handleReactivate(biz.id)}
+                onClick={() => handleReactivate(biz)}
                 className="rounded bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
               >
                 Reactivate
               </button>
             ) : (
               <button
-                onClick={() => handleSuspend(biz.id)}
+                onClick={() => handleSuspend(biz)}
                 className="rounded bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
               >
                 Suspend
@@ -349,15 +380,6 @@ export function BusinessesListPage() {
           Add Business
         </button>
       </div>
-
-      {actionError && (
-        <div role="alert" className="mb-4 flex items-start justify-between gap-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          <span>{actionError}</span>
-          <button onClick={() => setActionError('')} className="text-red-500 hover:text-red-700" aria-label="Dismiss">
-            ✕
-          </button>
-        </div>
-      )}
 
       <DataTable
         columns={columns}

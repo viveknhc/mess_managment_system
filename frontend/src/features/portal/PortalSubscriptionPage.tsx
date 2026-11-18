@@ -3,6 +3,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import type { PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
 import { payOnline } from '../../utils/razorpay'
+import { notify } from '../../utils/notify'
 
 type DialogKind = 'skip' | 'pause' | 'renew' | null
 
@@ -68,7 +69,6 @@ const historyColumns: Column<PortalSubscription>[] = [
 export function PortalSubscriptionPage() {
   const [subs, setSubs] = useState<PortalSubscription[]>([])
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
   const [dialog, setDialog] = useState<DialogKind>(null)
   const [busy, setBusy] = useState(false)
   const [onlineEnabled, setOnlineEnabled] = useState(false)
@@ -81,18 +81,13 @@ export function PortalSubscriptionPage() {
   const [pauseEnd, setPauseEnd] = useState('')
   const [pauseReason, setPauseReason] = useState('')
 
-  const flash = (kind: 'ok' | 'err', msg: string) => {
-    setToast({ kind, msg })
-    setTimeout(() => setToast(null), 3500)
-  }
-
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const { data } = await portalApi.subscriptions()
       setSubs(data)
-    } catch {
-      flash('err', 'Failed to load subscriptions')
+    } catch (err) {
+      notify.error(err, 'Failed to load subscriptions')
     } finally {
       setLoading(false)
     }
@@ -110,8 +105,8 @@ export function PortalSubscriptionPage() {
       (result) => portalApi.verifyPayment(sub.id, result),
     )
     setPayingId(null)
-    if (res.outcome === 'paid') flash('ok', 'Payment received. Thank you!')
-    if (res.outcome === 'error') flash('err', res.error)
+    if (res.outcome === 'paid') notify.success('Payment received', 'Thank you!')
+    if (res.outcome === 'error') notify.error(res.error)
     load()
   }
 
@@ -139,10 +134,10 @@ export function PortalSubscriptionPage() {
     setBusy(false)
     if (res.ok) {
       setDialog(null)
-      flash('ok', 'Meal skipped successfully')
+      notify.success('Meal skipped', skipDate ? `For ${skipDate}` : 'For today')
       load()
     } else {
-      flash('err', res.error)
+      notify.error(res.error)
     }
   }
 
@@ -154,10 +149,11 @@ export function PortalSubscriptionPage() {
     if (res.ok) {
       setDialog(null)
       // A future window keeps the subscription ACTIVE until its start date
-      flash('ok', res.data?.status === 'PAUSED' ? 'Subscription paused' : `Pause scheduled from ${pauseStart}`)
+      if (res.data?.status === 'PAUSED') notify.success('Subscription paused')
+      else notify.success(`Pause scheduled from ${pauseStart}`)
       load()
     } else {
-      flash('err', res.error)
+      notify.error(res.error)
     }
   }
 
@@ -168,10 +164,10 @@ export function PortalSubscriptionPage() {
     setBusy(false)
     if (res.ok) {
       setDialog(null)
-      flash('ok', 'Renewal requested — your new subscription is pending payment')
+      notify.success('Renewal requested', 'Your new subscription is pending payment')
       load()
     } else {
-      flash('err', res.error)
+      notify.error(res.error)
     }
   }
 
@@ -186,16 +182,6 @@ export function PortalSubscriptionPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
       <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Subscription</h1>
-
-      {toast && (
-        <div
-          className={`rounded-lg px-4 py-3 text-sm ${
-            toast.kind === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
 
       {subs.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">

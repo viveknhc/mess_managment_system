@@ -4,6 +4,8 @@ import { useAuthStore } from '../../store/authStore'
 import { SubscriptionForm } from './SubscriptionForm'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 interface Subscription {
   id: string
@@ -33,6 +35,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Cancelled',
 }
 
+const ACTION_TOAST: Record<string, string> = {
+  pause: 'Subscription paused',
+  resume: 'Subscription resumed',
+  cancel: 'Subscription cancelled',
+  renew: 'Subscription renewed',
+}
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-50 text-yellow-700',
   ACTIVE: 'bg-green-50 text-green-700',
@@ -47,7 +56,6 @@ export function SubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [actionError, setActionError] = useState('')
   const table = useServerTable()
   const { params: tableParams, setPage } = table
   const user = useAuthStore((s) => s.user)
@@ -71,16 +79,23 @@ export function SubscriptionsPage() {
   useEffect(() => { fetchSubs() }, [fetchSubs])
   useEffect(() => { setPage(1) }, [statusFilter, setPage])
 
-  async function handleAction(subId: string, action: string) {
-    setActionError('')
+  async function handleAction(sub: Subscription, action: string) {
+    if (action === 'cancel') {
+      const ok = await confirmDialog({
+        title: `Cancel ${sub.customer_name}'s subscription?`,
+        message: `${sub.plan_name} will stop and upcoming deliveries will not be made. This cannot be undone.`,
+        confirmText: 'Cancel subscription',
+        cancelText: 'Keep it',
+        tone: 'danger',
+      })
+      if (!ok) return
+    }
     try {
-      await apiClient.post(`/subscriptions/${subId}/${action}/`)
+      await apiClient.post(`/subscriptions/${sub.id}/${action}/`)
+      notify.success(ACTION_TOAST[action] ?? 'Subscription updated', `${sub.customer_name} — ${sub.plan_name}`)
       await fetchSubs()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || `Failed to ${action}`
-      setActionError(msg)
-      setTimeout(() => setActionError(''), 4000)
+      notify.error(err, `Failed to ${action} subscription`)
     }
   }
 
@@ -157,18 +172,18 @@ export function SubscriptionsPage() {
         <div className="flex justify-end gap-1">
           {s.status === 'ACTIVE' && (
             <>
-              <button onClick={() => handleAction(s.id, 'pause')} className={`${actionBtn} text-blue-600 hover:bg-blue-50`}>Pause</button>
-              <button onClick={() => handleAction(s.id, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+              <button onClick={() => handleAction(s, 'pause')} className={`${actionBtn} text-blue-600 hover:bg-blue-50`}>Pause</button>
+              <button onClick={() => handleAction(s, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
             </>
           )}
           {s.status === 'PAUSED' && (
-            <button onClick={() => handleAction(s.id, 'resume')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Resume</button>
+            <button onClick={() => handleAction(s, 'resume')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Resume</button>
           )}
           {s.status === 'PENDING' && (
-            <button onClick={() => handleAction(s.id, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+            <button onClick={() => handleAction(s, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
           )}
           {(s.status === 'EXPIRED' || s.status === 'CANCELLED') && (
-            <button onClick={() => handleAction(s.id, 'renew')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Renew</button>
+            <button onClick={() => handleAction(s, 'renew')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Renew</button>
           )}
         </div>
       ),
@@ -191,10 +206,6 @@ export function SubscriptionsPage() {
           </button>
         )}
       </div>
-
-      {actionError && (
-        <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>
-      )}
 
       {/* Status tabs */}
       <div className="mb-4 flex gap-1 overflow-x-auto">

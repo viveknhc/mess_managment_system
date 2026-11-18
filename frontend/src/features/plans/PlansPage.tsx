@@ -3,6 +3,8 @@ import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 interface Meal {
   id: string
@@ -58,11 +60,21 @@ export function PlansPage() {
   }, [fetchData])
 
   async function handleToggleActive(plan: Plan) {
+    if (plan.is_active) {
+      const ok = await confirmDialog({
+        title: `Deactivate ${plan.name}?`,
+        message: 'New subscriptions can no longer use this plan. Existing subscriptions are not affected.',
+        confirmText: 'Deactivate',
+        tone: 'danger',
+      })
+      if (!ok) return
+    }
     try {
       await apiClient.patch(`/plans/${plan.id}/`, { is_active: !plan.is_active })
+      notify.success(plan.is_active ? 'Plan deactivated' : 'Plan activated', plan.name)
       await fetchData()
-    } catch {
-      setError('Failed to update plan')
+    } catch (err) {
+      notify.error(err, 'Failed to update plan')
     }
   }
 
@@ -263,6 +275,7 @@ function PlanForm({
       } else {
         await apiClient.post('/plans/', payload)
       }
+      notify.success(isEdit ? 'Plan updated' : 'Plan created', form.name)
       onSaved()
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { error?: { message?: string; fields?: Record<string, string[]> } } } })

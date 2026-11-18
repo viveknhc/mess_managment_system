@@ -3,6 +3,8 @@ import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 interface Meal {
   id: string
@@ -42,11 +44,21 @@ export function MealsPage() {
   }, [fetchMeals])
 
   async function handleToggleActive(meal: Meal) {
+    if (meal.is_active) {
+      const ok = await confirmDialog({
+        title: `Deactivate ${meal.name}?`,
+        message: 'It will no longer be offered in new plans. You can activate it again any time.',
+        confirmText: 'Deactivate',
+        tone: 'danger',
+      })
+      if (!ok) return
+    }
     try {
       await apiClient.patch(`/meals/${meal.id}/`, { is_active: !meal.is_active })
+      notify.success(meal.is_active ? 'Meal deactivated' : 'Meal activated', meal.name)
       await fetchMeals()
-    } catch {
-      setError('Failed to update meal')
+    } catch (err) {
+      notify.error(err, 'Failed to update meal')
     }
   }
 
@@ -227,6 +239,7 @@ function MealForm({
       } else {
         await apiClient.post('/meals/', payload)
       }
+      notify.success(isEdit ? 'Meal updated' : 'Meal added', form.name)
       onSaved()
     } catch (err: unknown) {
       const msg =

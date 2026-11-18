@@ -43,9 +43,8 @@ test('staff form explains why a duplicate username was rejected', async ({ page 
 
 test('delivery staff record outcomes but cannot skip; owner can', async ({ page, browser }) => {
   await login(page, USERS.delivery, '/staff')
-  const pending = page.getByRole('row').filter({ hasText: 'PENDING' }).first()
-  await expect(pending.getByRole('button', { name: 'Delivered', exact: true })).toBeVisible()
-  await expect(pending.getByRole('button', { name: 'Not Delivered' })).toBeVisible()
+  const card = page.locator('main li').filter({ has: page.getByRole('button', { name: 'Delivered', exact: true }) }).first()
+  await expect(card.getByRole('button', { name: /^Not delivered to / })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0)
 
   const owner = await (await browser.newContext()).newPage()
@@ -54,6 +53,7 @@ test('delivery staff record outcomes but cannot skip; owner can', async ({ page,
   const ownerPending = owner.getByRole('row').filter({ hasText: 'PENDING' }).first()
   const name = (await ownerPending.locator('td').first().innerText()).trim()
   await ownerPending.getByRole('button', { name: 'Skip', exact: true }).click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Skip meal' }).click()
   await expect(row(owner, name).filter({ hasText: 'SKIPPED' }).first()).toBeVisible()
 })
 

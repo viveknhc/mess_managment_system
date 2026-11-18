@@ -4,6 +4,8 @@ import { useAuthStore } from '../../store/authStore'
 import { StaffForm } from './StaffForm'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 interface Staff {
   id: string
@@ -73,12 +75,22 @@ export function StaffPage() {
   }
 
   async function handleToggleActive(s: Staff) {
+    if (s.is_active) {
+      const ok = await confirmDialog({
+        title: `Deactivate ${s.name || s.username}?`,
+        message: 'They will no longer be able to log in. You can activate them again any time.',
+        confirmText: 'Deactivate',
+        tone: 'danger',
+      })
+      if (!ok) return
+    }
     try {
       const action = s.is_active ? 'deactivate' : 'activate'
       await apiClient.post(`/staff/${s.id}/${action}/`)
+      notify.success(s.is_active ? 'Staff member deactivated' : 'Staff member activated', s.name || s.username)
       await fetchStaff()
-    } catch {
-      setError(`Failed to ${s.is_active ? 'deactivate' : 'activate'} staff member`)
+    } catch (err) {
+      notify.error(err, `Failed to ${s.is_active ? 'deactivate' : 'activate'} staff member`)
     }
   }
 

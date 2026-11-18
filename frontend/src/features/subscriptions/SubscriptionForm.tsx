@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { notify } from '../../utils/notify'
 
 interface Customer { id: string; name: string; customer_code: string }
 interface Plan { id: string; name: string; price: string; duration_days: number; total_meals: number; meal_name: string }
@@ -42,6 +43,8 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
         plan: planId,
         start_date: startDate,
       })
+      const customer = customers.find((c) => c.id === customerId)
+      notify.success('Subscription created', customer ? `${customer.name} — awaiting payment` : 'Awaiting payment')
       onSaved()
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { error?: { message?: string; fields?: Record<string, string[]> } } } })

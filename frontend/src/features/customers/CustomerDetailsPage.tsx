@@ -3,6 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { CustomerForm } from './CustomerForm'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
+
+const STATUS_TOAST: Record<string, string> = {
+  ACTIVE: 'Customer set active',
+  BLOCKED: 'Customer blocked',
+  INACTIVE: 'Customer set inactive',
+}
 
 interface CustomerDetail {
   id: string
@@ -47,11 +55,21 @@ export function CustomerDetailsPage() {
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleStatusChange(newStatus: string) {
+    if (newStatus === 'BLOCKED') {
+      const ok = await confirmDialog({
+        title: `Block ${customer?.name ?? 'this customer'}?`,
+        message: 'Blocked customers cannot be given new subscriptions until you set them active again.',
+        confirmText: 'Block',
+        tone: 'danger',
+      })
+      if (!ok) return
+    }
     try {
       const { data } = await apiClient.patch(`/customers/${id}/`, { status: newStatus })
       setCustomer(data as CustomerDetail)
-    } catch {
-      setError('Failed to update status')
+      notify.success(STATUS_TOAST[newStatus] ?? 'Status updated', (data as CustomerDetail).name)
+    } catch (err) {
+      notify.error(err, 'Failed to update status')
     }
   }
 

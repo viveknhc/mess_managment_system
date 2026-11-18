@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { notify } from '../../utils/notify'
 
 interface Staff {
   id: string
@@ -64,6 +65,7 @@ export function StaffForm({ staff, onClose, onSaved }: Props) {
           role: form.role,
         })
       }
+      notify.success(isEdit ? 'Staff member updated' : 'Staff member added', form.name || form.username)
       onSaved()
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to save'))

@@ -3,6 +3,7 @@ import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { notify } from '../../utils/notify'
 
 interface Settings {
   min_pause_days: number
@@ -23,7 +24,6 @@ export function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [keySecret, setKeySecret] = useState('') // write-only; never loaded back
   const user = useAuthStore((s) => s.user)
@@ -47,10 +47,11 @@ export function SettingsPage() {
       const { data } = await apiClient.put('/settings/', body)
       setSettings(data)
       setKeySecret('')
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      notify.success('Settings saved')
     } catch (e) {
+      // Inline banner sits at the top of a long form; the toast makes sure it's noticed.
       setError(getApiErrorMessage(e, 'Failed to save settings'))
+      notify.error(e, 'Failed to save settings')
     } finally {
       setSaving(false)
     }
@@ -71,7 +72,6 @@ export function SettingsPage() {
       <h1 className="mb-6 text-xl font-bold text-gray-900">Business Settings</h1>
 
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-      {success && <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">Settings saved</div>}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Skip/Pause rules */}

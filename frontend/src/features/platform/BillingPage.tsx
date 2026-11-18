@@ -5,6 +5,8 @@ import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees
 import { useAuthStore } from '../../store/authStore'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../../config/support'
 import { payOnline } from '../../utils/razorpay'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 
@@ -36,7 +38,6 @@ export function BillingPage() {
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [paying, setPaying] = useState(false)
-  const [notice, setNotice] = useState('')
 
   const fetchBilling = useCallback(async () => {
     setLoading(true)
@@ -79,22 +80,27 @@ export function BillingPage() {
     const fee = plan && Number(plan.reactivation_fee) > 0
       ? `If you come back more than 3 months after that, a ${rupees(plan.reactivation_fee)} reactivation fee applies.`
       : ''
-    if (!confirm(`Cancel the monthly plan?\n\n${until}The setup fee is non-refundable. ${fee}`)) return
+    const ok = await confirmDialog({
+      title: 'Cancel the monthly plan?',
+      message: `${until}The setup fee is non-refundable. ${fee}`.trim(),
+      confirmText: 'Cancel plan',
+      cancelText: 'Keep plan',
+      tone: 'danger',
+    })
+    if (!ok) return
     setCancelling(true)
-    setError('')
     const result = await billingApi.cancel()
-    if (!result.ok) setError(result.error)
+    if (result.ok) notify.success('Plan cancelled')
+    else notify.error(result.error)
     await fetchBilling()
     setCancelling(false)
   }
 
   async function handlePay() {
     setPaying(true)
-    setError('')
-    setNotice('')
     const res = await payOnline(billingApi.startPayment, billingApi.verifyPayment)
-    if (res.outcome === 'error') setError(res.error)
-    if (res.outcome === 'paid') setNotice('Payment received. Thank you!')
+    if (res.outcome === 'error') notify.error(res.error)
+    if (res.outcome === 'paid') notify.success('Payment received', 'Thank you!')
     await fetchBilling()
     setPaying(false)
   }
@@ -114,7 +120,6 @@ export function BillingPage() {
       </div>
 
       {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {notice && <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{notice}</div>}
 
       {/* Current status */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">

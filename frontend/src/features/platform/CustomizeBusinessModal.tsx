@@ -8,6 +8,7 @@ import {
   type PlatformBusiness,
   type PolicyParam,
 } from './platformApi'
+import { notify } from '../../utils/notify'
 
 /** Per-feature choice: follow the plan, or force on/off for this business only. */
 type FeatureChoice = 'inherit' | 'on' | 'off'
@@ -58,7 +59,6 @@ export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBus
   const [policies, setPolicies] = useState<Record<string, PolicyChoice>>({})
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     Promise.all([platformApi.getCustomizationCatalog(), platformApi.getBusinessCustomization(biz.id)])
@@ -94,8 +94,7 @@ export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBus
     setCurrent(result.data)
     setFeatures(featureChoices(result.data))
     setPolicies(policyChoices(result.data))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    notify.success('Customization saved', biz.name)
   }
 
   const inherited = Object.fromEntries((current?.features ?? []).map((f) => [f.key, f]))
@@ -109,7 +108,6 @@ export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBus
           effect the next time its users load the app.
         </p>
         {error && <div role="alert" className="mt-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
-        {saved && <div className="mt-3 rounded bg-green-50 p-2 text-sm text-green-700">Saved</div>}
 
         {!catalog || !current ? (
           !error && <p className="mt-6 text-sm text-gray-500">Loading...</p>

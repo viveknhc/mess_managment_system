@@ -6,6 +6,7 @@ import { CustomerForm } from './CustomerForm'
 import { CustomerImportModal } from './CustomerImportModal'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
 
 interface Customer {
   id: string
@@ -76,7 +77,6 @@ export function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [importMessage, setImportMessage] = useState('')
   const table = useServerTable()
   const { params: tableParams, setPage } = table
   const navigate = useNavigate()
@@ -131,15 +131,6 @@ export function CustomersPage() {
           </div>
         )}
       </div>
-
-      {importMessage && (
-        <div className="mb-4 flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-          <span>{importMessage}</span>
-          <button onClick={() => setImportMessage('')} className="font-medium hover:underline">
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* Search + filters */}
       <div className="mb-4 flex gap-3">
@@ -210,7 +201,7 @@ export function CustomersPage() {
           onClose={() => setShowImport(false)}
           onImported={(created) => {
             setShowImport(false)
-            setImportMessage(`Imported ${created} customer${created !== 1 ? 's' : ''} successfully.`)
+            notify.success(`Imported ${created} customer${created !== 1 ? 's' : ''}`)
             fetchCustomers()
           }}
         />

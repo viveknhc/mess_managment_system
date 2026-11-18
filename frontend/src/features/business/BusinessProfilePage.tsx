@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { useBusinessStore } from '../../store/businessStore'
 import { useAuthStore } from '../../store/authStore'
+import { notify } from '../../utils/notify'
 
 export function BusinessProfilePage() {
   const { business, isLoading, error, fetchBusiness, updateBusiness, uploadLogo } =
@@ -10,7 +11,6 @@ export function BusinessProfilePage() {
 
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '' })
-  const [saveSuccess, setSaveSuccess] = useState(false)
 
   useEffect(() => {
     fetchBusiness()
@@ -34,9 +34,10 @@ export function BusinessProfilePage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     await updateBusiness(form)
+    // The store swallows request errors into `error` (shown in the banner below), so check it here.
+    if (useBusinessStore.getState().error) return
     setEditing(false)
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    notify.success('Business profile updated')
   }
 
   function handleCancel() {
@@ -55,6 +56,7 @@ export function BusinessProfilePage() {
     const file = e.target.files?.[0]
     if (file) {
       await uploadLogo(file)
+      if (!useBusinessStore.getState().error) notify.success('Logo updated')
     }
   }
 
@@ -92,12 +94,6 @@ export function BusinessProfilePage() {
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-      )}
-
-      {saveSuccess && (
-        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-          Business profile updated successfully
-        </div>
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">

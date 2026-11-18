@@ -73,3 +73,8 @@ export async function apiToken(page: Page, user: Creds): Promise<string> {
   expect(res.ok()).toBeTruthy()
   return (await res.json()).access
 }
+
+/** Click the confirm button in the app's popup (components/ui/DialogHost.tsx). */
+export async function confirmPopup(page: Page, button: string) {
+  await page.getByRole('dialog').getByRole('button', { name: button, exact: true }).click()
+}

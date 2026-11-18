@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { PortalProfile } from './portalApi'
 import { portalApi } from './portalApi'
+import { notify } from '../../utils/notify'
 
 export function PortalProfilePage() {
   const [profile, setProfile] = useState<PortalProfile | null>(null)
   const [form, setForm] = useState({ phone: '', email: '', address: '', location: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
-
-  const flash = (kind: 'ok' | 'err', msg: string) => {
-    setToast({ kind, msg })
-    setTimeout(() => setToast(null), 3500)
-  }
 
   useEffect(() => {
     portalApi
@@ -26,7 +21,7 @@ export function PortalProfilePage() {
           location: res.data.location ?? '',
         })
       })
-      .catch(() => flash('err', 'Failed to load profile'))
+      .catch((err) => notify.error(err, 'Failed to load profile'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -36,9 +31,9 @@ export function PortalProfilePage() {
     try {
       const { data } = await portalApi.updateProfile(form)
       setProfile(data)
-      flash('ok', 'Profile updated')
-    } catch {
-      flash('err', 'Could not update profile')
+      notify.success('Profile updated')
+    } catch (err) {
+      notify.error(err, 'Could not update profile')
     } finally {
       setSaving(false)
     }
@@ -55,16 +50,6 @@ export function PortalProfilePage() {
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="mb-6 text-xl font-bold text-gray-900 sm:text-2xl">My Profile</h1>
-
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg px-4 py-3 text-sm ${
-            toast.kind === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
 
       <form onSubmit={handleSave} className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div>

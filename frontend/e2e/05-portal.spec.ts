@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { USERS, field, isoDate, login, modal, row, tab } from './helpers'
+import { USERS, confirmPopup, field, isoDate, login, modal, row, tab } from './helpers'
 
 /** Customer self-service: skip, pause (incl. rule violations), profile, renew. */
 
@@ -23,7 +23,7 @@ test('skip tomorrow\'s meal; past date is rejected', async ({ page }) => {
   await field(modal(page), 'Date (optional — defaults to today)').fill(isoDate(1))
   await field(modal(page), 'Reason (optional)').fill('E2E test')
   await modal(page).getByRole('button', { name: 'Skip Meal' }).click()
-  await expect(page.getByText('Meal skipped successfully')).toBeVisible()
+  await expect(page.getByText('Meal skipped', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'My Meals' }).click()
   await expect(row(page, isoDate(1))).toContainText(/SKIPPED/i)
@@ -88,6 +88,7 @@ test('renew after the owner cancels', async ({ page, browser }) => {
   await owner.getByRole('link', { name: 'Subscriptions' }).click()
   await tab(owner, 'Active').click()
   await row(owner, 'Vikram Joshi').getByRole('button', { name: 'Cancel' }).click()
+  await confirmPopup(owner, 'Cancel subscription')
   await tab(owner, 'Cancelled').click()
   await expect(row(owner, 'Vikram Joshi')).toBeVisible()
 

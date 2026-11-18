@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { USERS, apiToken, login, logout, modal, row, uniq } from './helpers'
+import { USERS, apiToken, confirmPopup, login, logout, modal, row, uniq } from './helpers'
 
 /**
  * Monthly plan billing (docs/Monthly_Subscription_Plan.pdf) — no self-signup, no trial, no online checkout:
@@ -111,8 +111,8 @@ test('platform admin suspends the business → owner is blocked → reactivate',
   const admin = await (await browser.newContext()).newPage()
   await login(admin, USERS.superadmin, '/platform')
   await admin.getByRole('link', { name: 'Businesses' }).click()
-  admin.once('dialog', (d) => d.accept())
   await row(admin, BIZ).getByRole('button', { name: 'Suspend' }).click()
+  await confirmPopup(admin, 'Suspend')
   await expect(row(admin, BIZ)).toContainText('Suspended')
 
   const owner = await (await browser.newContext()).newPage()
@@ -123,8 +123,8 @@ test('platform admin suspends the business → owner is blocked → reactivate',
   const res = await owner.request.get('/api/v1/customers/', { headers: { Authorization: `Bearer ${await apiToken(owner, OWNER)}` } })
   expect(res.status()).toBe(403)
 
-  admin.once('dialog', (d) => d.accept())
   await row(admin, BIZ).getByRole('button', { name: 'Reactivate' }).click()
+  await confirmPopup(admin, 'Reactivate')
   await expect(row(admin, BIZ)).toContainText('Active')
 
   await owner.reload()
@@ -142,21 +142,21 @@ test('reactivate is refused while money is owed — admin must record a payment'
   await form.getByPlaceholder('Owner password (min 8)').fill('e2eunpaid123')
   await form.getByRole('button', { name: 'Create Business' }).click()
 
-  page.once('dialog', (d) => d.accept())
   await row(page, UNPAID_BIZ).getByRole('button', { name: 'Suspend' }).click()
+  await confirmPopup(page, 'Suspend')
   await expect(row(page, UNPAID_BIZ)).toContainText('Suspended')
 
-  page.once('dialog', (d) => d.accept())
   await row(page, UNPAID_BIZ).getByRole('button', { name: 'Reactivate' }).click()
-  await expect(page.getByRole('alert')).toContainText(/Record the payment/i)
+  await confirmPopup(page, 'Reactivate')
+  await expect(page.getByText(/Record the payment/i)).toBeVisible()
   await expect(row(page, UNPAID_BIZ)).toContainText('Suspended')
 })
 
 test('owner cancels the monthly plan and keeps access until the paid month ends', async ({ page }) => {
   await login(page, OWNER, '/app')
   await page.getByRole('link', { name: 'Billing' }).click()
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Cancel monthly plan' }).click()
+  await confirmPopup(page, 'Cancel plan')
   await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()
   await expect(page.getByText(/You can keep using MessDeck until/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cancel monthly plan' })).toHaveCount(0)

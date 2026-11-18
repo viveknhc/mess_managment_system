@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { apiClient } from '../services/apiClient'
+import { notify } from '../utils/notify'
 
 interface Notification {
   id: string
@@ -43,13 +44,22 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Marking read is self-evident in the list, so only failures get a toast.
   async function handleMarkAllRead() {
-    await apiClient.post('/notifications/mark_all_read/')
+    try {
+      await apiClient.post('/notifications/mark_all_read/')
+    } catch (err) {
+      notify.error(err, 'Could not mark notifications as read')
+    }
     await fetchData()
   }
 
   async function handleMarkRead(id: string) {
-    await apiClient.post(`/notifications/${id}/mark_read/`)
+    try {
+      await apiClient.post(`/notifications/${id}/mark_read/`)
+    } catch (err) {
+      notify.error(err, 'Could not mark notification as read')
+    }
     await fetchData()
   }
 

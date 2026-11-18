@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { USERS, isoDate, login, modal, row, selectByText, tab, uniq } from './helpers'
+import { USERS, confirmPopup, isoDate, login, modal, row, selectByText, tab, uniq } from './helpers'
 
 /**
  * The core flow: customer → subscription (PENDING) → part payment → full payment →
@@ -108,13 +108,13 @@ test('full payment → ACTIVE, notification, delivery scheduled today', async ({
 test('delivery staff marks it delivered; it shows under Completed', async ({ page }) => {
   await page.getByRole('button', { name: 'Logout' }).click()
   await login(page, USERS.delivery, '/staff')
-  const r = row(page, CUSTOMER)
-  await r.getByRole('button', { name: 'Delivered', exact: true }).click()
-  await expect(r).toContainText('DELIVERED')
-  await expect(r.getByRole('button')).toHaveCount(0)
+  const card = page.locator('main li').filter({ hasText: CUSTOMER }) // main: not the toast
+  await card.getByRole('button', { name: 'Delivered', exact: true }).click()
+  await expect(page.getByText(`Delivered to ${CUSTOMER}`)).toBeVisible()
+  await expect(card).toHaveCount(0) // left the "To deliver" tab
 
-  await page.getByRole('link', { name: 'Completed' }).click()
-  await expect(row(page, CUSTOMER)).toContainText('DELIVERED')
+  await page.getByRole('tab', { name: /Done/ }).click()
+  await expect(page.locator('main li').filter({ hasText: CUSTOMER })).toBeVisible()
 })
 
 test('pause → resume, cancel → renew', async ({ page }) => {
@@ -135,6 +135,7 @@ test('pause → resume, cancel → renew', async ({ page }) => {
   await page.getByRole('button', { name: 'Create Subscription' }).click()
   await tab(page, 'Pending').click()
   await row(page, 'Kavita Ghosh').getByRole('button', { name: 'Cancel' }).click()
+  await confirmPopup(page, 'Cancel subscription')
   await tab(page, 'Cancelled').click()
   await row(page, 'Kavita Ghosh').getByRole('button', { name: 'Renew' }).click()
   await tab(page, 'Pending').click()

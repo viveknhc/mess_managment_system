@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../services/apiClient'
+import { notify } from '../../utils/notify'
 
 const MAX_ROWS = 100
 
@@ -28,7 +29,6 @@ function extractError(err: unknown): ImportErrorBody {
 export function CustomerImportModal({ onClose, onImported }: Props) {
   const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
-  const [templateError, setTemplateError] = useState('')
 
   const mutation = useMutation({
     mutationFn: async (f: File) => {
@@ -46,7 +46,6 @@ export function CustomerImportModal({ onClose, onImported }: Props) {
   })
 
   async function downloadTemplate() {
-    setTemplateError('')
     try {
       const { data } = await apiClient.get<Blob>('/customers/import-template/', { responseType: 'blob' })
       const url = URL.createObjectURL(data)
@@ -55,8 +54,8 @@ export function CustomerImportModal({ onClose, onImported }: Props) {
       a.download = 'customers_import_template.csv'
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      setTemplateError('Could not download the template.')
+    } catch (err) {
+      notify.error(err, 'Could not download the template')
     }
   }
 
@@ -85,7 +84,6 @@ export function CustomerImportModal({ onClose, onImported }: Props) {
         >
           Download CSV template
         </button>
-        {templateError && <p className="mb-4 text-sm text-red-600">{templateError}</p>}
 
         {error && (
           <div className="mb-4 overflow-y-auto rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">

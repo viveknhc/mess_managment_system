@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { notify } from '../../utils/notify'
 
 interface Sub {
   id: string
@@ -60,6 +61,10 @@ export function RecordPaymentForm({ onClose, onSaved }: Props) {
         transaction_reference: reference,
         notes,
       })
+      notify.success(
+        `Payment of ₹${Number(amount).toLocaleString('en-IN')} recorded`,
+        selectedSub ? `${selectedSub.customer_name} — ${selectedSub.plan_name}` : undefined,
+      )
       onSaved()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: { message?: string } } } })

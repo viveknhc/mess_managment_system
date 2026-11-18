@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { platformApi, type CatalogFeature, type SaasPlan } from './platformApi'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { notify } from '../../utils/notify'
+import { confirmDialog } from '../../components/ui/dialog'
 
 type PlanWithAdmin = SaasPlan & { razorpay_plan_id: string; is_active: boolean }
 
@@ -84,6 +86,7 @@ export function PlatformPlansPage() {
       return
     }
 
+    notify.success(editId ? 'Plan updated' : 'Plan created', payload.name)
     setShowForm(false)
     fetchPlans()
   }
@@ -96,9 +99,17 @@ export function PlatformPlansPage() {
       setShowForm(true)
     }
 
-    async function handleDelete(id: string) {
-      if (!confirm('Delete this plan?')) return
-      await platformApi.deletePlan(id)
+    async function handleDelete(plan: PlanWithAdmin) {
+      const ok = await confirmDialog({
+        title: `Delete the ${plan.name} plan?`,
+        message: 'This cannot be undone.',
+        confirmText: 'Delete',
+        tone: 'danger',
+      })
+      if (!ok) return
+      const result = await platformApi.deletePlan(plan.id)
+      if (result.ok) notify.success('Plan deleted', plan.name)
+      else notify.error(result.error, 'Could not delete the plan')
       fetchPlans()
     }
 
@@ -189,7 +200,7 @@ export function PlatformPlansPage() {
               Edit
             </button>
             <button
-              onClick={() => handleDelete(plan.id)}
+              onClick={() => handleDelete(plan)}
               className="rounded bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
             >
               Delete

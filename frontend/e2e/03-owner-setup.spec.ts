@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { USERS, field, login, logout, modal, row, uniq } from './helpers'
+import { USERS, confirmPopup, field, login, logout, modal, row, uniq } from './helpers'
 
 /** Owner configures the business: meals, plans, staff, settings, profile. Manager restrictions. */
 const u = uniq()
@@ -29,6 +29,7 @@ test('add a meal, then deactivate and reactivate it', async ({ page }) => {
   await expect(r).toContainText('₹60.00')
   await expect(r).toContainText('Active')
   await r.getByRole('button', { name: 'Deactivate' }).click()
+  await confirmPopup(page, 'Deactivate')
   await expect(r).toContainText('Inactive')
   await r.getByRole('button', { name: 'Activate' }).click()
   await expect(r).toContainText('Active')
@@ -68,7 +69,7 @@ test('add delivery staff who can then log in', async ({ page, browser }) => {
 
   const rider = await (await browser.newContext()).newPage()
   await login(rider, { username, password: 'e2erider123' }, '/staff')
-  await expect(rider.getByText("Today's Deliveries").first()).toBeVisible()
+  await expect(rider.getByText(/left to deliver|No deliveries today|All done for today/).first()).toBeVisible()
 })
 
 test('settings: change max pause days, persists after reload, then restore', async ({ page }) => {
@@ -90,7 +91,7 @@ test('edit business profile', async ({ page }) => {
   await page.getByRole('button', { name: 'Edit' }).click()
   await field(page, 'Phone').fill('020-25559999')
   await page.getByRole('button', { name: 'Save Changes' }).click()
-  await expect(page.getByText('Business profile updated successfully')).toBeVisible()
+  await expect(page.getByText('Business profile updated')).toBeVisible()
   await expect(page.getByText('020-25559999')).toBeVisible()
 })
 

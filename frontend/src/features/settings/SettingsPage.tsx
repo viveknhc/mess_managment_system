@@ -29,6 +29,19 @@ export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
   const isOwner = user?.role === 'OWNER'
   const onlinePayments = useFeature(FEATURES.ONLINE_PAYMENTS)
+  // Razorpay calls this when a customer pays, so payments are recorded even if they close the app first
+  const webhookUrl = user?.business_id
+    ? new URL(`${apiClient.defaults.baseURL}/webhooks/razorpay/mess/${user.business_id}/`, window.location.origin).href
+    : ''
+
+  async function copyWebhookUrl() {
+    try {
+      await navigator.clipboard.writeText(webhookUrl)
+      notify.success('Webhook URL copied')
+    } catch {
+      notify.error('Could not copy. Select the URL and copy it yourself.')
+    }
+  }
 
   useEffect(() => {
     apiClient.get('/settings/').then((res) => {
@@ -158,6 +171,24 @@ export function SettingsPage() {
                 disabled={!isOwner} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
               Customers can pay online
             </label>
+            {isOwner && webhookUrl && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-700">Webhook (recommended)</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Records a payment even if the customer closes the app before it finishes. In the Razorpay Dashboard →
+                  Account &amp; Settings → Webhooks, add this URL with the events <b>payment.captured</b> and{' '}
+                  <b>order.paid</b>. Leave the secret blank.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <input readOnly value={webhookUrl} onFocus={(e) => e.target.select()} aria-label="Webhook URL"
+                    className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs" />
+                  <button type="button" onClick={copyWebhookUrl}
+                    className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            )}
             {settings.razorpay_key_id.startsWith('rzp_test_') && settings.online_payments_enabled && (
               <p className="rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
                 Test keys: payments are simulated and no real money is collected.

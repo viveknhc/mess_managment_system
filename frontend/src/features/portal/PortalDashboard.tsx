@@ -1,19 +1,27 @@
-import { useEffect, useState } from 'react'
-import type { PortalDashboardData } from './portalApi'
+import { useCallback, useEffect, useState } from 'react'
+import type { PortalDashboardData, PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
+import { PaymentDueList } from './PaymentDueList'
 
 export function PortalDashboard() {
   const [data, setData] = useState<PortalDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [subs, setSubs] = useState<PortalSubscription[]>([])
 
-  useEffect(() => {
+  const load = useCallback(() => {
     portalApi
       .dashboard()
       .then((res) => setData(res.data))
       .catch(() => setError('Failed to load your dashboard. Please try again.'))
       .finally(() => setLoading(false))
+    // Also lists renewals waiting for payment, which the dashboard card doesn't show
+    portalApi.subscriptions().then((res) => setSubs(res.data)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   if (loading) {
     return (
@@ -36,6 +44,8 @@ export function PortalDashboard() {
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Hello, {data.customer_name} 👋</h1>
         <p className="mt-1 text-sm text-gray-500">Your subscription overview</p>
       </div>
+
+      <PaymentDueList subs={subs} onChange={load} />
 
       {sub ? (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

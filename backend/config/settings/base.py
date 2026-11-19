@@ -150,6 +150,7 @@ CELERY_TIMEZONE = TIME_ZONE
 # (e.g. Render free tier) `python manage.py run_daily_jobs` runs them from a cron.
 DAILY_JOBS = [
     "apps.platform.tasks.run_billing_checks",  # overdue → past due → suspended
+    "apps.payments.tasks.reconcile_online_payments_task",  # online payments never confirmed
     "apps.deliveries.tasks.expire_subscriptions_task",  # ACTIVE past end_date → EXPIRED
     "apps.subscriptions.tasks.process_pause_windows_task",  # start/end pause windows
     "apps.deliveries.tasks.generate_next_day_deliveries_task",

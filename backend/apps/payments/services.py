@@ -174,10 +174,9 @@ class OnlinePaymentService:
         still_open = []
         cutoff = timezone.now() - OPEN_ORDER_WINDOW
         for order in open_orders:
-            payment_id = razorpay_checkout.fetch_captured_payment_id(*keys, order.razorpay_order_id)
-            if payment_id:
-                OnlinePaymentService._complete(order.id, payment_id)
-            elif order.created_at < cutoff:
+            if OnlinePaymentService._apply_if_captured(order, keys):
+                continue
+            if order.created_at < cutoff:
                 PaymentOrder.objects.filter(id=order.id, status=OrderStatus.CREATED).update(
                     status=OrderStatus.EXPIRED
                 )
@@ -195,6 +194,46 @@ class OnlinePaymentService:
         ).distinct()
         for sub in subs:
             OnlinePaymentService.reconcile(sub)
+
+    @staticmethod
+    def handle_webhook(business_id, order_id):
+        """Razorpay says an order of this business was paid. The payload is only a hint:
+        the payment is applied only if Razorpay's API, asked with the owner's keys, confirms it.
+        Returns True if a payment was applied."""
+        order = PaymentOrder.objects.filter(
+            business_id=business_id,
+            razorpay_order_id=order_id,
+            status__in=[OrderStatus.CREATED, OrderStatus.EXPIRED],
+        ).first()
+        s = _business_settings(business_id)
+        keys = s.razorpay_keys() if s else None
+        if not order or not keys:
+            return False
+        return OnlinePaymentService._apply_if_captured(order, keys)
+
+    @staticmethod
+    def reconcile_all():
+        """Daily safety net: reconcile every recent open order across businesses.
+        Catches payments whose Checkout success and webhook both never arrived."""
+        subs = Subscription.objects.filter(
+            payment_orders__status=OrderStatus.CREATED,
+        ).distinct()
+        count = 0
+        for sub in subs:
+            try:
+                OnlinePaymentService.reconcile(sub)
+                count += 1
+            except Exception:
+                logger.exception("Online payment reconcile failed for subscription %s", sub.id)
+        return count
+
+    @staticmethod
+    def _apply_if_captured(order, keys):
+        payment_id = razorpay_checkout.fetch_captured_payment_id(*keys, order.razorpay_order_id)
+        if not payment_id:
+            return False
+        OnlinePaymentService._complete(order.id, payment_id)
+        return True
 
     @staticmethod
     def _complete(order_id, payment_id):

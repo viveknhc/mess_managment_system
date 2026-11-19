@@ -293,6 +293,102 @@ class TestReconcile:
         assert Payment.objects.count() == 1  # only the cash
 
 
+def webhook_url(business):
+    return f"/api/v1/webhooks/razorpay/mess/{business.id}/"
+
+
+def webhook_body(order_id, event="payment.captured"):
+    return {"event": event, "payload": {"payment": {"entity": {"id": "pay_hook", "order_id": order_id}}}}
+
+
+@pytest.mark.django_db
+class TestWebhook:
+    """Razorpay calls the mess's webhook when a customer pays; the API confirms before applying."""
+
+    def test_captured_payment_activates_subscription(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        rz.fetch.return_value = "pay_hook"
+        res = APIClient().post(webhook_url(biz_a), webhook_body(order_id), format="json")
+        assert res.status_code == 200 and res.data["status"] == "ok"
+        sub_a.refresh_from_db()
+        assert sub_a.status == SubStatus.ACTIVE
+        assert Payment.objects.get().transaction_reference == "pay_hook"
+        assert rz.fetch.call_args.args == (KEY_ID, KEY_SECRET, order_id)
+
+    def test_order_paid_event_also_works(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        rz.fetch.return_value = "pay_hook"
+        APIClient().post(webhook_url(biz_a), webhook_body(order_id, "order.paid"), format="json")
+        assert Payment.objects.count() == 1
+
+    def test_forged_webhook_records_nothing(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        """Razorpay's API says nothing was captured → the payload is not trusted."""
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        res = APIClient().post(webhook_url(biz_a), webhook_body(order_id), format="json")
+        assert res.data["status"] == "ignored"
+        assert not Payment.objects.exists()
+        sub_a.refresh_from_db()
+        assert sub_a.status == SubStatus.PENDING
+
+    def test_repeated_webhook_records_once(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        rz.fetch.return_value = "pay_hook"
+        for _ in range(3):
+            APIClient().post(webhook_url(biz_a), webhook_body(order_id), format="json")
+        assert Payment.objects.count() == 1
+
+    def test_after_checkout_confirmed_records_once(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        c = client_for(cust_user_a)
+        order_id = c.post(pay_url(sub_a)).data["order_id"]
+        c.post(
+            pay_url(sub_a) + "verify/",
+            {
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": "pay_1",
+                "razorpay_signature": sign(order_id, "pay_1"),
+            },
+        )
+        rz.fetch.return_value = "pay_1"
+        res = APIClient().post(webhook_url(biz_a), webhook_body(order_id), format="json")
+        assert res.data["status"] == "ignored"
+        assert Payment.objects.count() == 1
+
+    def test_unknown_order_and_other_events_ignored(self, biz_a, online_a, rz):
+        assert APIClient().post(webhook_url(biz_a), webhook_body("order_x"), format="json").data == {
+            "status": "ignored"
+        }
+        res = APIClient().post(webhook_url(biz_a), webhook_body("order_x", "refund.created"), format="json")
+        assert res.data == {"status": "ignored"}
+        rz.fetch.assert_not_called()
+
+    def test_bad_json_rejected(self, biz_a):
+        res = APIClient().post(webhook_url(biz_a), "not json", content_type="application/json")
+        assert res.status_code == 400
+
+    def test_other_mess_url_cannot_apply_this_order(self, biz_a, biz_b, cust_user_a, sub_a, online_a, rz):
+        """Tenant isolation: an order is only looked up under its own business."""
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        rz.fetch.return_value = "pay_hook"
+        res = APIClient().post(webhook_url(biz_b), webhook_body(order_id), format="json")
+        assert res.data["status"] == "ignored"
+        assert not Payment.objects.exists()
+
+    def test_razorpay_error_asks_for_retry(self, biz_a, cust_user_a, sub_a, online_a, rz):
+        order_id = client_for(cust_user_a).post(pay_url(sub_a)).data["order_id"]
+        rz.fetch.side_effect = RuntimeError("boom")
+        res = APIClient().post(webhook_url(biz_a), webhook_body(order_id), format="json")
+        assert res.status_code == 503
+
+    def test_daily_sweep_applies_missed_payments(self, cust_user_a, sub_a, online_a, rz):
+        from apps.payments.tasks import reconcile_online_payments_task
+
+        client_for(cust_user_a).post(pay_url(sub_a))
+        rz.fetch.return_value = "pay_late"
+        assert reconcile_online_payments_task() == 1
+        sub_a.refresh_from_db()
+        assert sub_a.status == SubStatus.ACTIVE
+
+
 @pytest.mark.django_db
 class TestIsolation:
     def test_customer_cannot_pay_another_customers_subscription(

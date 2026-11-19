@@ -11,6 +11,11 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
 import { FeatureGate } from '../components/FeatureGate'
 import { FEATURES } from '../hooks/useFeature'
 import { LandingPage } from '../features/landing/LandingPage'
+import { TermsPage } from '../features/legal/TermsPage'
+import { PrivacyPage } from '../features/legal/PrivacyPage'
+import { RefundPolicyPage } from '../features/legal/RefundPolicyPage'
+import { ShippingPolicyPage } from '../features/legal/ShippingPolicyPage'
+import { ContactPage } from '../features/legal/ContactPage'
 import { PortalDashboard } from '../features/portal/PortalDashboard'
 import { PortalDeliveriesPage } from '../features/portal/PortalDeliveriesPage'
 import { PortalPaymentsPage } from '../features/portal/PortalPaymentsPage'
@@ -70,6 +75,11 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/refund-policy" element={<RefundPolicyPage />} />
+      <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+      <Route path="/contact" element={<ContactPage />} />
 
       {/* Admin routes — Owner + Manager (not SUPER_ADMIN — they use /platform) */}
       <Route element={<ProtectedRoute allowedRoles={['OWNER', 'MANAGER']} />}>

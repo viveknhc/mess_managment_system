@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from './Logo'
 import { whatsappLink } from '../../config/support'
+import { FIRST_PAYMENT, MONTHLY_FEE, SETUP_FEE } from './pricing'
+import { LEGAL_LINKS } from '../legal/links'
 
 /* ------------------------------------------------------------------ */
 /*  Intersection-observer fade-in hook                                 */
@@ -43,9 +45,6 @@ function FadeIn({ children, className = '' }: { children: React.ReactNode; class
 
 const CONTACT_URL = whatsappLink('Hi, I want to set up MessDeck for my mess.')
 
-const SETUP_FEE = '₹2,500'
-const MONTHLY_FEE = '₹500'
-const FIRST_PAYMENT = '₹3,000'
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -526,14 +525,15 @@ function Footer() {
       { label: 'WhatsApp Us', href: CONTACT_URL },
       { label: 'Login', href: '/login' },
     ],
+    Legal: LEGAL_LINKS.map((l) => ({ label: l.label, href: l.to })),
   }
 
   return (
     <footer className="bg-brand-900 py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid sm:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
           {/* Brand */}
-          <div className="lg:col-span-1">
+          <div className="col-span-2 sm:col-span-1">
             <Logo light />
             <p className="mt-3 text-sm text-brand-200">
               Mess management software. Run your mess smarter.

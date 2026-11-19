@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MessDeck User Guide</title>
+<style>
+  :root { --bg:#fef9ed; --card:#fff; --text:#1d3f24; --muted:#4b6a2c; --line:#e6eed2; --accent:#678234; --soft:#f4f7ea;
+          --info:#eef4ff; --info-line:#2563eb; --warn:#fff7e6; --warn-line:#d97706; --shadow:0 1px 3px rgba(29,63,36,.12); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#101a12; --card:#16231a; --text:#e6eed2; --muted:#a9c175; --line:#2d5230; --accent:#a9c175; --soft:#1d3f24;
+      --info:#14213d; --info-line:#60a5fa; --warn:#2a2112; --warn-line:#f59e0b; --shadow:none; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15.5px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .layout { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr; gap: 32px; }
+  @media (min-width: 1000px) { .layout { grid-template-columns: 250px 1fr; } }
+  nav.toc { display: none; }
+  @media (min-width: 1000px) {
+    nav.toc { display: block; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 32px 0; font-size: 14px; }
+  }
+  nav.toc p { margin: 14px 0 4px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  nav.toc a { display: block; padding: 3px 10px; border-radius: 6px; color: var(--text); text-decoration: none; }
+  nav.toc a:hover { background: var(--soft); }
+  main { padding: 32px 0 80px; min-width: 0; max-width: 860px; }
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 8px; }
+  h1 { font-size: 32px; margin: 0; line-height: 1.2; }
+  .sub { color: var(--muted); margin: 6px 0 0; font-size: 16px; }
+  h2 { font-size: 24px; margin: 56px 0 6px; padding-top: 16px; border-top: 2px solid var(--line); }
+  h2 .num { color: var(--muted); font-weight: 600; margin-right: 6px; }
+  h3 { font-size: 18px; margin: 32px 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  .card { background: var(--card); border:1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 12px 0; box-shadow: var(--shadow); }
+  .roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 18px 0; }
+  .roles a { display: block; background: var(--card); border:1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--text); box-shadow: var(--shadow); }
+  .roles a:hover { border-color: var(--accent); }
+  .roles b { display: block; font-size: 15px; }
+  .roles span { font-size: 13px; color: var(--muted); }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  li { margin: 5px 0; }
+  ol.steps { counter-reset: s; list-style: none; padding-left: 0; }
+  ol.steps > li { counter-increment: s; position: relative; padding-left: 40px; margin: 10px 0; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  b.ui { background: var(--soft); border:1px solid var(--line); border-radius: 6px; padding: 0 6px; font-weight: 600; white-space: nowrap; }
+  .then { border-left: 4px solid var(--accent); background: var(--soft); border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 12px 0; }
+  .then::before { content: "What happens next"; display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 2px; }
+  .tip, .warn { border-radius: 10px; padding: 10px 14px; margin: 12px 0; border-left: 4px solid; }
+  .tip { background: var(--info); border-color: var(--info-line); }
+  .warn { background: var(--warn); border-color: var(--warn-line); }
+  .tip::before, .warn::before { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+  .tip::before { content: "Tip"; color: var(--info-line); }
+  .warn::before { content: "Watch out"; color: var(--warn-line); }
+  figure { margin: 14px 0 20px; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.08); cursor: zoom-in; background: #fff; }
+  figure.phone img { max-width: 320px; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+  .pair figure.phone img { max-width: 100%; }
+  .tbl { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border:1px solid var(--line); font-size: 14.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--soft); }
+  .badge { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+  .b-green { background:#dcfce7; color:#166534; } .b-blue { background:#dbeafe; color:#1e40af; } .b-yellow { background:#fef3c7; color:#92400e; }
+  .b-gray { background:#e5e7eb; color:#374151; } .b-red { background:#fee2e2; color:#991b1b; }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 12px 0; font-size: 14px; }
+  .flow span { background: var(--card); border:1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+  .flow i { font-style: normal; color: var(--muted); }
+  #zoom { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; cursor: zoom-out; }
+  #zoom.open { display: flex; }
+  #zoom img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  .top { font-size: 13px; }
+  @media print {
+    body { background:#fff; color:#000; } nav.toc, .top { display:none; } .layout { display:block; }
+    h2 { break-before: page; } figure, .card { break-inside: avoid; } figure img { box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc" aria-label="Contents">
+  <p>Start</p>
+  <a href="#roles">Who does what</a>
+  <a href="#login">Logging in</a>
+  <a href="#popups">Messages &amp; popups</a>
+  <p>Super admin (MessDeck)</p>
+  <a href="#sa-dashboard">Platform dashboard</a>
+  <a href="#sa-plans">MessDeck plans</a>
+  <a href="#sa-add">Adding a new mess</a>
+  <a href="#sa-pay">Recording a mess's payment</a>
+  <a href="#sa-customize">Customizing a mess</a>
+  <a href="#sa-details">Mess details</a>
+  <a href="#sa-suspend">Suspend, reactivate, cancel</a>
+  <p>Mess owner</p>
+  <a href="#ow-first">First login</a>
+  <a href="#ow-setup">Setting up your mess</a>
+  <a href="#ow-customer">Adding customers</a>
+  <a href="#ow-sub">Subscriptions</a>
+  <a href="#ow-payment">Customer payments</a>
+  <a href="#ow-staff">Staff logins</a>
+  <a href="#ow-daily">Your daily routine</a>
+  <a href="#ow-deliveries">Deliveries</a>
+  <a href="#ow-reports">Reports</a>
+  <a href="#ow-billing">Your MessDeck bill</a>
+  <p>Staff</p>
+  <a href="#delivery">Delivery staff</a>
+  <a href="#kitchen">Kitchen staff</a>
+  <p>Customers</p>
+  <a href="#customer">Customer app</a>
+  <p>Reference</p>
+  <a href="#auto">What happens automatically</a>
+  <a href="#status">Status meanings</a>
+  <a href="#faq">Questions &amp; problems</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>MessDeck User Guide</h1>
+  <p class="sub">How to use MessDeck, from adding a new mess to delivering the first meal. Every screen, every button, and what happens when you press it.</p>
+</header>
+
+<p>MessDeck replaces the notebook, WhatsApp messages and spreadsheets a mess uses to track customers, meal plans, payments and deliveries. Every screenshot in this guide comes from the real app. In this guide a new mess, <b>Shree Sai Mess</b>, is added and set up step by step. Some screens use the demo mess, <b>Annapurna Mess</b>, because it already has a month of data.</p>
+
+<p>Jump to your part of the guide:</p>
+<div class="roles" id="roles">
+  <a href="#sa-dashboard"><b>Super admin</b><span>You run MessDeck. You add messes, choose their plan and features, and record what they pay you.</span></a>
+  <a href="#ow-first"><b>Mess owner</b><span>Runs one mess: customers, plans, payments, staff and deliveries.</span></a>
+  <a href="#ow-first"><b>Manager</b><span>Same daily work as the owner. Only the owner can change settings or cancel the MessDeck plan.</span></a>
+  <a href="#delivery"><b>Delivery staff</b><span>Today's deliveries on their phone. One tap to mark delivered.</span></a>
+  <a href="#kitchen"><b>Kitchen staff</b><span>How many of each meal to cook today.</span></a>
+  <a href="#customer"><b>Customer</b><span>Their plan, meals and payments. Can skip a meal or pause.</span></a>
+</div>
+
+<!-- ═══════════════════════ START ═══════════════════════ -->
+
+<h2 id="login"><span class="num">1</span>Logging in</h2>
+<p class="lead">Everyone uses the same login page. MessDeck sends each person to their own screens based on who they are.</p>
+<ol class="steps">
+  <li>Open the MessDeck link in any browser, on a phone or computer.</li>
+  <li>Type your <b class="ui">Username</b> and <b class="ui">Password</b>, then press <b class="ui">Sign in</b>.</li>
+</ol>
+<figure><img width="1600" height="1000" src="user-guide/01-login.jpg" alt="Login page with username, password and a Forgot password link" loading="lazy"><figcaption>The login page.</figcaption></figure>
+<div class="then">The super admin lands on <b>Platform Admin</b>. Owners and managers land on their mess <b>Dashboard</b>. Delivery and kitchen staff get their phone screen. Customers get <b>My Mess</b>. You stay logged in for up to 7 days on that device.</div>
+
+<h3>Forgot your password?</h3>
+<ol class="steps">
+  <li>On the login page, press <b class="ui">Forgot password?</b></li>
+  <li>Type your username <i>or</i> your email address and press <b class="ui">Send reset link</b>.</li>
+  <li>Open the email from MessDeck. It also reminds you of your username. Press the link, type a new password twice, and press <b class="ui">Set new password</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/02-forgot-password.jpg" alt="Forgot password form" loading="lazy"><figcaption>Ask for a reset link.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/03-reset-link-sent.jpg" alt="Confirmation that a reset link was sent" loading="lazy"><figcaption>The same message appears whether or not the account exists, to keep accounts private.</figcaption></figure>
+</div>
+<div class="then">The link works <b>once</b> and only for <b>1 hour</b>. After you set the new password you are logged out on every other phone or computer, so nobody else stays logged in with the old one.</div>
+<div class="warn">A reset needs an email address on your account. If you don't have one, ask your mess owner to add it (owners: ask MessDeck support). The new password must be at least 8 characters, not only numbers, and not a common password.</div>
+
+<h3 id="popups">Messages and popups you'll see everywhere</h3>
+<ul>
+  <li><b>Green message at the top</b> (for example "Customer added", "Payment of ₹2,400 recorded"): what you did worked. It disappears by itself.</li>
+  <li><b>Red message at the top</b>: something didn't work. It says why, for example "Amount exceeds pending amount of ₹300".</li>
+  <li><b>Popup asking "Are you sure?"</b> before anything hard to undo: cancelling, suspending, deactivating, blocking or skipping. Press the coloured button to go ahead, or <b class="ui">Cancel</b> to stop. On phones it slides up from the bottom.</li>
+  <li><b>Undo</b> appears on some messages, for example after marking a meal delivered. Press it to take the action back.</li>
+</ul>
+
+<!-- ═══════════════════════ SUPER ADMIN ═══════════════════════ -->
+
+<h2 id="sa-dashboard"><span class="num">2</span>Super admin: the platform dashboard</h2>
+<p class="lead">This part is for the person who runs MessDeck itself. Each mess is a separate business; you see all of them, but no mess can see another.</p>
+<figure><img width="1600" height="1000" src="user-guide/10-admin-dashboard.jpg" alt="Platform overview with counts of businesses by billing status and total revenue" loading="lazy"><figcaption>Platform Overview: how many messes you have, who has paid, who is overdue, total MessDeck revenue, and how many messes are on each plan.</figcaption></figure>
+<div class="tbl"><table>
+<tr><th>Box</th><th>Meaning</th></tr>
+<tr><td>Awaiting First Payment</td><td>Added but hasn't paid the setup fee and first month yet.</td></tr>
+<tr><td>Paid &amp; Current</td><td>Paid up for this month.</td></tr>
+<tr><td>Payment Overdue</td><td>Monthly fee is late. The mess still works for a 7-day grace period.</td></tr>
+<tr><td>Suspended</td><td>Blocked. The owner can only see their MessDeck Billing page.</td></tr>
+</table></div>
+
+<h3 id="sa-plans">MessDeck plans and features</h3>
+<p>Plans are what a mess pays <i>you</i> each month. Each plan has a monthly price, a one-time setup fee, a reactivation fee (charged if a mess comes back more than 3 months after its last paid month), limits on customers and staff, and the <b>features</b> it includes.</p>
+<figure><img width="1600" height="1000" src="user-guide/11-admin-plans.jpg" alt="List of MessDeck plans with prices and limits" loading="lazy"><figcaption><b class="ui">Plans</b>: every MessDeck plan. <b class="ui">Add Plan</b> creates one, <b class="ui">Edit</b> changes it.</figcaption></figure>
+<div class="pair">
+  <figure><img width="560" height="918" src="user-guide/12-admin-plan-form.jpg" alt="Edit plan form with Features included checkboxes" loading="lazy"><figcaption>The plan form. Under <b>Features included</b>, untick <b>All standard features</b> to choose them one by one.</figcaption></figure>
+  <div>
+    <p>The features you can switch on or off are:</p>
+    <ul>
+      <li><b>Customer portal</b>: customers can log in, see their meals, pay, skip and pause.</li>
+      <li><b>Online payments</b>: customers pay in the app through the mess's own Razorpay account.</li>
+      <li><b>Reports</b>: charts and reports for the owner.</li>
+    </ul>
+    <p>Everything else (customers, plans, subscriptions, payments, deliveries, staff) is always included.</p>
+    <div class="then">When you change a plan's features, every mess on that plan gets the change the next time its users open or reload the app.</div>
+  </div>
+</div>
+
+<h3 id="sa-add">Adding a new mess</h3>
+<ol class="steps">
+  <li>Go to <b class="ui">Businesses</b> and press <b class="ui">Add Business</b>.</li>
+  <li>Fill in the mess's name, phone, email and address.</li>
+  <li>Under <b>Owner login</b>, fill in the owner's name, phone and email, then choose a <b>username</b> and a <b>password</b> (at least 8 characters). Give these to the owner.</li>
+  <li>Press <b class="ui">Create Business</b>.</li>
+</ol>
+<figure><img width="1600" height="1000" src="user-guide/13-admin-businesses.jpg" alt="Businesses list" loading="lazy"><figcaption><b class="ui">Businesses</b>: every mess with its owner, billing status, plan, paid-until date and next payment.</figcaption></figure>
+<figure><img width="1600" height="1000" src="user-guide/14-admin-add-mess.jpg" alt="Add Business form filled in for Shree Sai Mess" loading="lazy"><figcaption>Adding Shree Sai Mess.</figcaption></figure>
+<div class="then">
+  <ul>
+    <li>The mess and its owner login are created straight away. The owner can log in now.</li>
+    <li>Four meals are added for them: Breakfast, Lunch, Dinner and Tiffin.</li>
+    <li>The mess starts as <span class="badge b-blue">Awaiting first payment</span> on the standard Monthly Plan. If nothing is paid within 7 days, it is suspended automatically.</li>
+  </ul>
+</div>
+<figure><img width="1600" height="1000" src="user-guide/15-admin-mess-created.jpg" alt="The new mess in the list, awaiting first payment" loading="lazy"><figcaption>The new mess appears in the list.</figcaption></figure>
+
+<h3 id="sa-pay">Recording a mess's payment to you</h3>
+<p>When a mess pays you by UPI, cash or bank transfer:</p>
+<ol class="steps">
+  <li>In <b class="ui">Businesses</b>, press <b class="ui">Record Payment</b> on that mess.</li>
+  <li>The amount due is already filled in (the first payment is setup fee + first month). Choose the method, add the UPI or bank reference, and press <b class="ui">Record Payment</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/16-admin-record-payment.jpg" alt="Record payment form showing setup fee and monthly fee" loading="lazy"><figcaption>The breakdown shows exactly what is due.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/17-admin-payment-recorded.jpg" alt="Mess now active and paid until next month" loading="lazy"><figcaption>After recording: Active, with a paid-until date.</figcaption></figure>
+</div>
+<div class="then">The mess becomes <span class="badge b-green">Active</span> and is paid for one month. The next monthly payment is due the day after "Paid until". The amount must match what is due, so mistakes are caught. Messes can also pay you online from their own Billing page, which records it automatically.</div>
+
+<h3 id="sa-customize">Customizing one mess</h3>
+<p>Every mess runs on the same software, but each can work a little differently. Press <b class="ui">Customize</b> on a mess (in Businesses or Mess Details).</p>
+<figure><img width="1600" height="1000" src="user-guide/18-admin-customize.jpg" alt="Customize dialog with feature choices and workflow choices" loading="lazy"><figcaption>Customize: features and workflows for this one mess.</figcaption></figure>
+<ul>
+  <li><b>Features</b>: each one says <b>Follow plan</b> (what its plan gives), <b>On for this mess</b> or <b>Off for this mess</b>. Use this to give one mess an extra feature, or take one away, without changing its plan.</li>
+  <li><b>Workflows → Meal skip</b>: what happens when a customer skips a meal.
+    <ul>
+      <li><b>No adjustment</b> (default): the skipped meal is lost.</li>
+      <li><b>Extend end date</b>: the subscription ends one day later and the meal is delivered then.</li>
+    </ul>
+  </li>
+</ul>
+<div class="then">Press <b class="ui">Save</b>. The change applies to this mess only, and its users see it after they reload. Every change is recorded in the mess's activity log with your name. Owners see the skip rule on their Settings page but cannot change it.</div>
+
+<h3 id="sa-details">Mess details: everything about one mess</h3>
+<p>Open <b class="ui">Mess Details</b>. The list on the left shows every mess (type to search). Click one to see everything about it on the right. Clicking a mess's name in <b>Businesses</b> opens the same page.</p>
+<figure><img width="1600" height="1000" src="user-guide/19-admin-mess-details.jpg" alt="Mess details page for Green Valley Hostel Mess" loading="lazy"><figcaption>Green Valley Hostel Mess: its numbers, its plan and limits, which features it has and where each comes from, its skip rule, settings, staff, meal plans and recent activity.</figcaption></figure>
+<p>Features marked <b>Changed for this mess</b> differ from the plan. The note in brackets shows what the plan alone would give.</p>
+
+<h3>All payments to MessDeck</h3>
+<figure><img width="1600" height="1000" src="user-guide/20-admin-payments.jpg" alt="Payment history across all messes" loading="lazy"><figcaption><b class="ui">Payments</b>: every payment any mess has made to you.</figcaption></figure>
+
+<h3 id="sa-suspend">Suspend, reactivate, cancel</h3>
+<figure><img width="1600" height="1000" src="user-guide/21-admin-suspend-confirm.jpg" alt="Popup asking to confirm suspending a business" loading="lazy"><figcaption>Every one of these asks you to confirm first.</figcaption></figure>
+<div class="tbl"><table>
+<tr><th>Button</th><th>What happens</th></tr>
+<tr><td><b class="ui">Suspend</b></td><td>The mess is blocked at once. Its owner and staff can only see the Billing page; its customers see a "suspended" notice.</td></tr>
+<tr><td><b class="ui">Reactivate</b></td><td>Gives access back without a payment. If money is owed, MessDeck refuses and tells you to use Record Payment instead, which reactivates it automatically.</td></tr>
+<tr><td><b class="ui">Cancel Plan</b></td><td>Stops the monthly plan. The mess keeps working until the end of the month it has paid for.</td></tr>
+</table></div>
+<div class="warn">MessDeck suspends unpaid messes by itself: a mess that misses its monthly due date shows <b>Payment overdue</b>, and is suspended 7 days later if still unpaid.</div>
+
+<!-- ═══════════════════════ OWNER ═══════════════════════ -->
+
+<h2 id="ow-first"><span class="num">3</span>Mess owner: first login</h2>
+<p class="lead">This part is for owners and managers. Your login details come from MessDeck. On your first login the dashboard is empty. Set up your mess in this order.</p>
+<figure><img width="1600" height="1000" src="user-guide/30-owner-first-dashboard.jpg" alt="Empty dashboard for a brand new mess" loading="lazy"><figcaption>A brand-new mess. The menu on the left is how you move around.</figcaption></figure>
+<div class="card">
+  <b>Setup checklist (about 15 minutes)</b>
+  <ol>
+    <li><a href="#ow-setup">Check your business profile and settings</a></li>
+    <li><a href="#ow-setup">Check your meals, then add your meal plans</a></li>
+    <li><a href="#ow-customer">Add your customers</a></li>
+    <li><a href="#ow-sub">Start a subscription for each customer</a></li>
+    <li><a href="#ow-payment">Record what each customer paid</a></li>
+    <li><a href="#ow-staff">Add logins for your delivery and kitchen staff</a></li>
+  </ol>
+</div>
+
+<h3 id="ow-setup">Business profile and settings</h3>
+<p><b class="ui">Business Profile</b> shows your mess name, phone, email, address and logo. Press <b class="ui">Edit</b> to change them, or upload a logo.</p>
+<figure><img width="1600" height="1000" src="user-guide/31-owner-business-profile.jpg" alt="Business profile page" loading="lazy"><figcaption>Business Profile.</figcaption></figure>
+<p><b class="ui">Settings</b> controls how your mess works. Change what you need and press <b class="ui">Save Settings</b>.</p>
+<figure><img width="1600" height="1000" src="user-guide/32-owner-settings.jpg" alt="Settings page with skip and pause rules, notifications and online payments" loading="lazy"><figcaption>Settings.</figcaption></figure>
+<ul>
+  <li><b>When a meal is skipped</b>: set by MessDeck for your mess (see <a href="#sa-customize">Customizing</a>). Contact support to change it.</li>
+  <li><b>Min / Max Pause Days</b>: the shortest and longest pause a customer can ask for.</li>
+  <li><b>Notification preferences</b>: which events alert you (payments received, subscriptions ending soon, deliveries).</li>
+  <li><b>Online payments</b>: if your plan includes it, paste your Razorpay <b>Key ID</b> and <b>Key Secret</b> and tick <b>Customers can pay online</b>. Money goes straight to your Razorpay account. The secret is stored encrypted and never shown again.</li>
+</ul>
+<div class="tip">Only the owner can save Settings. Managers can see them.</div>
+
+<h3>Meals and meal plans</h3>
+<p><b class="ui">Meals</b> are the kinds of meal you serve. Breakfast, Lunch, Dinner and Tiffin are already there. Use <b class="ui">Add Meal</b> for more, <b class="ui">Edit</b> to rename, or <b class="ui">Deactivate</b> to stop offering one (you'll be asked to confirm; you can activate it again any time).</p>
+<figure><img width="1600" height="1000" src="user-guide/33-owner-meals.jpg" alt="Meals list" loading="lazy"><figcaption>Meals.</figcaption></figure>
+<p><b class="ui">Plans</b> are what customers buy, for example "Monthly Lunch, 30 days, 30 meals, ₹2,400".</p>
+<ol class="steps">
+  <li>Go to <b class="ui">Plans</b> and press <b class="ui">Add Plan</b>.</li>
+  <li>Give it a name, choose the meal, and set the number of <b>Days</b> it lasts, the number of <b>Meals</b> and the <b>Price</b>.</li>
+  <li>Tick <b>Allow skip</b> if customers may skip single meals, and <b>Allow pause</b> if they may pause for some days.</li>
+  <li>Press <b class="ui">Create</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/34-owner-add-plan.jpg" alt="Add plan form" loading="lazy"><figcaption>Adding "Monthly Lunch".</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/35-owner-plans.jpg" alt="Plans list" loading="lazy"><figcaption>Your plans.</figcaption></figure>
+</div>
+<div class="tip">Changing a plan's price later doesn't change subscriptions that already started; they keep the price they were sold at.</div>
+
+<h3 id="ow-customer">Adding customers</h3>
+<ol class="steps">
+  <li>Go to <b class="ui">Customers</b> and press <b class="ui">Add Customer</b>.</li>
+  <li>Fill in name and phone (needed), plus email, address and location. The address is what delivery staff see.</li>
+  <li>Press <b class="ui">Create</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/36-owner-add-customer.jpg" alt="Add customer form" loading="lazy"><figcaption>Adding a customer.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/37-owner-customers.jpg" alt="Customer list with the new customer" loading="lazy"><figcaption>The customer gets a code like <b>CUST-0001</b>.</figcaption></figure>
+</div>
+<div class="then">Two customers can't share the same phone number; MessDeck warns you. Have many customers already? Use <b class="ui">Import CSV</b> on the Customers page to upload them all from a CSV file (download the template first).</div>
+<p>Click any customer to open their page, where you can <b class="ui">Edit</b> their details, <b class="ui">Set Inactive</b>, or <b class="ui">Block</b> them (asks you to confirm).</p>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/52-owner-customers-list.jpg" alt="Full customer list of a busy mess" loading="lazy"><figcaption>Search by name or phone, and filter by status.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/53-owner-customer-details.jpg" alt="Customer details page" loading="lazy"><figcaption>One customer's page.</figcaption></figure>
+</div>
+
+<h3 id="ow-sub">Starting a subscription</h3>
+<p>A subscription connects a customer to a plan from a start date.</p>
+<ol class="steps">
+  <li>Go to <b class="ui">Subscriptions</b> and press <b class="ui">New Subscription</b>.</li>
+  <li>Choose the <b>Customer</b> and the <b>Plan</b>, and pick the <b>Start Date</b> (today or later).</li>
+  <li>Press <b class="ui">Create Subscription</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/38-owner-new-subscription.jpg" alt="New subscription form" loading="lazy"><figcaption>New subscription.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/39-owner-subscription-pending.jpg" alt="Subscription shown as pending" loading="lazy"><figcaption>It starts as <b>Pending</b>.</figcaption></figure>
+</div>
+<div class="then">The subscription is <span class="badge b-blue">PENDING</span>: it waits for payment and <b>no meals are scheduled yet</b>. The end date is worked out from the plan's number of days. A customer can't have two subscriptions to the same plan at the same time, but can have different plans together (for example lunch and dinner).</div>
+
+<h3 id="ow-payment">Recording a customer's payment</h3>
+<ol class="steps">
+  <li>Go to <b class="ui">Customer Payments</b> and press <b class="ui">Record Payment</b> (also on the Dashboard under Quick Actions).</li>
+  <li>Choose the subscription, type the amount, choose how they paid (cash, UPI, card or bank transfer), and add the UPI reference if there is one.</li>
+  <li>Press <b class="ui">Record Payment</b>.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/40-owner-record-payment.jpg" alt="Record payment form" loading="lazy"><figcaption>Recording ₹2,400 by UPI.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/41-owner-payment-recorded.jpg" alt="Payment recorded message" loading="lazy"><figcaption>Payments list after recording.</figcaption></figure>
+</div>
+<div class="then">
+  <ul>
+    <li><b>Paid in full</b>: the subscription turns <span class="badge b-green">ACTIVE</span>, every meal of the plan is scheduled for delivery, and you get a notification.</li>
+    <li><b>Paid part</b>: it stays <span class="badge b-blue">PENDING</span> and shows what is still due. Record the rest later.</li>
+    <li>MessDeck won't accept more than what is due.</li>
+  </ul>
+</div>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/42-owner-subscription-active.jpg" alt="Subscription now active" loading="lazy"><figcaption>Fully paid: Active.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/45-owner-deliveries.jpg" alt="Deliveries page showing the new customer's meal for today" loading="lazy"><figcaption>Her first meal is already in today's <b class="ui">Deliveries</b>.</figcaption></figure>
+</div>
+
+<h3 id="ow-staff">Staff logins</h3>
+<ol class="steps">
+  <li>Go to <b class="ui">Staff</b> and press <b class="ui">Add Staff</b>.</li>
+  <li>Choose a username, type their full name, pick the <b>Role</b> (Manager, Delivery Staff or Kitchen Staff) and set a password.</li>
+  <li>Press <b class="ui">Create</b> and give them their username and password.</li>
+</ol>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/43-owner-add-staff.jpg" alt="Add staff form" loading="lazy"><figcaption>Adding a delivery rider.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/44-owner-staff.jpg" alt="Staff list" loading="lazy"><figcaption>Your staff. <b class="ui">Deactivate</b> stops someone logging in.</figcaption></figure>
+</div>
+<div class="tip">Give every person their own login and never share yours. Add an email for each person so they can reset their own password.</div>
+<div class="warn">Customer logins for the customer app are created by MessDeck support for now. Ask support if you want your customers to use it.</div>
+
+<h3 id="ow-daily">Your daily routine</h3>
+<figure><img width="1600" height="1000" src="user-guide/50-owner-dashboard.jpg" alt="Dashboard of a busy mess" loading="lazy"><figcaption>The Dashboard of a busy mess.</figcaption></figure>
+<ol class="steps">
+  <li>Open the <b class="ui">Dashboard</b>: customers, active subscriptions, today's money in, and money still owed.</li>
+  <li>Look at <b>Expiring Subscriptions</b>: who ends today, within 3 days or this week, and who is waiting for payment. Call them about renewing.</li>
+  <li>Look at <b>Today's Deliveries</b>: how many are delivered and pending, and how many of each meal.</li>
+  <li>Press the <b>bell</b> at the top for alerts (payments received, subscriptions activated or ending).</li>
+</ol>
+<figure><img width="1600" height="1000" src="user-guide/51-owner-notifications.jpg" alt="Notifications panel open from the bell" loading="lazy"><figcaption>Notifications.</figcaption></figure>
+<p>On the <b class="ui">Subscriptions</b> page, the tabs filter by status. The buttons on each row:</p>
+<div class="tbl"><table>
+<tr><th>Button</th><th>What happens</th></tr>
+<tr><td><b class="ui">Pause</b></td><td>Stops deliveries from today until you press Resume. When you resume, the end date moves out by the meals that were paused, so the customer loses nothing.</td></tr>
+<tr><td><b class="ui">Resume</b></td><td>Starts deliveries again from today.</td></tr>
+<tr><td><b class="ui">Cancel</b></td><td>Ends the subscription for good. Asks you to confirm.</td></tr>
+<tr><td><b class="ui">Renew</b></td><td>On expired or cancelled subscriptions: makes a new Pending subscription to the same plan. Record the payment to start it.</td></tr>
+</table></div>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/54-owner-subscriptions.jpg" alt="Subscriptions list with status tabs" loading="lazy"><figcaption>Subscriptions, filtered by tab.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/55-owner-cancel-confirm.jpg" alt="Popup confirming cancelling a subscription" loading="lazy"><figcaption>Cancelling asks first.</figcaption></figure>
+</div>
+
+<h3 id="ow-deliveries">Deliveries</h3>
+<p><b class="ui">Deliveries</b> lists every meal due today with the customer's phone and address. Your delivery staff usually update these from their phones, but you can too:</p>
+<ul>
+  <li><b class="ui">Delivered</b>: marks it done. An <b>Undo</b> appears for a few seconds.</li>
+  <li><b class="ui">Not Delivered</b>: asks for a reason (customer not home, door locked…).</li>
+  <li><b class="ui">Skip</b>: the customer doesn't want today's meal. Asks you to confirm. Whether the subscription is extended depends on your mess's skip rule.</li>
+</ul>
+<div class="pair">
+  <figure><img width="1600" height="1000" src="user-guide/56-owner-deliveries-busy.jpg" alt="Owner deliveries list" loading="lazy"><figcaption>Today's deliveries.</figcaption></figure>
+  <figure><img width="1600" height="1000" src="user-guide/57-owner-skip-confirm.jpg" alt="Popup confirming skipping a meal" loading="lazy"><figcaption>Skipping asks first.</figcaption></figure>
+</div>
+
+<h3 id="ow-reports">Reports</h3>
+<p>If your plan includes Reports, <b class="ui">Reports</b> shows money collected over time, subscriptions by status, meals served, and customer and payment lists. Pick a date range at the top.</p>
+<figure><img width="1600" height="1000" src="user-guide/58-owner-reports.jpg" alt="Reports page with revenue chart" loading="lazy"><figcaption>Reports.</figcaption></figure>
+
+<h3 id="ow-billing">Your MessDeck bill</h3>
+<p><b class="ui">MessDeck Billing</b> is what <i>your mess</i> pays MessDeck. It has nothing to do with your customers' payments. It shows your plan, the date you're paid until, and the next amount due.</p>
+<figure><img width="1600" height="1000" src="user-guide/46-owner-billing.jpg" alt="MessDeck Billing page" loading="lazy"><figcaption>MessDeck Billing.</figcaption></figure>
+<ul>
+  <li>Pay by UPI or cash and press <b class="ui">Send payment details on WhatsApp</b>. Support updates your account the same day. If online payment is set up, you can also pay here directly.</li>
+  <li>If a payment is late, you have <b>7 days</b> before your account is suspended.</li>
+  <li><b class="ui">Cancel monthly plan</b> (owner only): you keep using MessDeck until the end of your paid month. The setup fee is not refunded.</li>
+</ul>
+<figure><img width="1600" height="1000" src="user-guide/59-owner-help.jpg" alt="Help and support page" loading="lazy"><figcaption><b class="ui">Help &amp; Support</b>: WhatsApp and email for help.</figcaption></figure>
+
+<!-- ═══════════════════════ DELIVERY ═══════════════════════ -->
+
+<h2 id="delivery"><span class="num">4</span>Delivery staff</h2>
+<p class="lead">Made for your phone. Log in with the username and password from your mess owner.</p>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/60-delivery-home.jpg" alt="Delivery home with progress ring and delivery cards" loading="lazy"><figcaption>Today's route.</figcaption></figure>
+  <div>
+    <ul>
+      <li>The <b>blue box</b> shows how many meals are left and how many are done. The round button refreshes the list.</li>
+      <li><b class="ui">To deliver</b> shows what is still left. <b class="ui">Done</b> shows what you've finished.</li>
+      <li>Type in the search box to find a customer by name, address or meal.</li>
+      <li>Each card shows the customer, the meal and the address. <b class="ui">Call</b> phones them. <b class="ui">Directions</b> opens Google Maps.</li>
+    </ul>
+  </div>
+</div>
+<h3>Delivered: one tap</h3>
+<p>Hand over the meal, then press the green <b class="ui">Delivered</b> button.</p>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/61-delivery-delivered-toast.jpg" alt="Delivered message with Undo button" loading="lazy"><figcaption>Delivered, with Undo.</figcaption></figure>
+  <div class="then">The card moves to <b>Done</b> with the time, and the count goes down. Pressed it by mistake? Press <b>Undo</b> on the message, or on the card in the Done tab. Undo works for <b>10 minutes</b>. After that, ask your owner to correct it.</div>
+</div>
+<h3>Couldn't deliver?</h3>
+<ol class="steps">
+  <li>Press <b class="ui">Not delivered</b>.</li>
+  <li>Tap a reason (Customer not home, Door locked, Not answering phone, Wrong address, Customer refused) or type your own.</li>
+  <li>Press <b class="ui">Mark not delivered</b>.</li>
+</ol>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/62-delivery-not-delivered.jpg" alt="Popup asking for the reason a meal wasn't delivered" loading="lazy"><figcaption>Pick a reason.</figcaption></figure>
+  <figure class="phone"><img width="618" height="1259" src="user-guide/63-delivery-done-tab.jpg" alt="Done tab showing delivered and not delivered meals" loading="lazy"><figcaption>The Done tab. The owner sees your reason.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/64-delivery-new-mess.jpg" alt="New rider's screen at Shree Sai Mess with one delivery" loading="lazy"><figcaption>The rider added in <a href="#ow-staff">Staff logins</a>, on his first day at Shree Sai Mess.</figcaption></figure>
+  <div class="tip">The list refreshes by itself when you come back to the app, so new customers added by the owner show up.</div>
+</div>
+
+<!-- ═══════════════════════ KITCHEN ═══════════════════════ -->
+
+<h2 id="kitchen"><span class="num">5</span>Kitchen staff</h2>
+<p class="lead">Shows how many of each meal to cook today.</p>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/70-kitchen-meals.jpg" alt="Today's meals with counts per meal" loading="lazy"><figcaption><b class="ui">Today's Meals</b>: count per meal.</figcaption></figure>
+  <figure class="phone"><img width="618" height="1259" src="user-guide/71-kitchen-summary.jpg" alt="Meal summary with delivery outcomes" loading="lazy"><figcaption><b class="ui">Summary</b>: also shows how today's deliveries went.</figcaption></figure>
+</div>
+<p>Customers who skipped today or paused are already left out of the counts.</p>
+
+<!-- ═══════════════════════ CUSTOMER ═══════════════════════ -->
+
+<h2 id="customer"><span class="num">6</span>Customers</h2>
+<p class="lead">If your mess gives you a login, you can check your plan and manage your meals from your phone.</p>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/80-customer-dashboard.jpg" alt="Customer dashboard with plan, days remaining and today's meal" loading="lazy"><figcaption><b class="ui">Dashboard</b>: your plan, days and meals left, and today's meal.</figcaption></figure>
+  <figure class="phone"><img width="618" height="1259" src="user-guide/81-customer-subscription.jpg" alt="My Subscription page with skip, pause and renew buttons" loading="lazy"><figcaption><b class="ui">My Subscription</b>: skip, pause or renew.</figcaption></figure>
+</div>
+<h3>Skip a meal</h3>
+<ol class="steps">
+  <li>On <b class="ui">My Subscription</b>, press <b class="ui">Skip Meal</b>.</li>
+  <li>Pick the date (empty means today) and, if you like, a reason. Press <b class="ui">Skip Meal</b>.</li>
+</ol>
+<div class="then">That day's meal is not delivered. Depending on your mess, your plan may end one day later so you still get the meal. You can't skip a past date, and only plans that allow skipping show this button.</div>
+<h3>Pause</h3>
+<ol class="steps">
+  <li>Press <b class="ui">Pause Subscription</b>.</li>
+  <li>Pick <b>From</b> and, if you know it, <b>To</b>. Press <b class="ui">Pause</b>.</li>
+</ol>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/82-customer-skip.jpg" alt="Skip a meal popup" loading="lazy"><figcaption>Skip a meal.</figcaption></figure>
+  <figure class="phone"><img width="618" height="1259" src="user-guide/83-customer-pause.jpg" alt="Pause subscription popup" loading="lazy"><figcaption>Pause.</figcaption></figure>
+</div>
+<div class="then">No meals come during the pause. When it ends, your plan's end date moves out by the meals you missed. If the pause starts later, it is <b>scheduled</b> and you keep getting meals until then. Your mess sets the shortest and longest pause allowed.</div>
+<h3>Meals, payments and profile</h3>
+<div class="pair">
+  <figure class="phone"><img width="618" height="1259" src="user-guide/84-customer-meals.jpg" alt="My Meals list with dates and status" loading="lazy"><figcaption><b class="ui">My Meals</b>: every meal and its status.</figcaption></figure>
+  <figure class="phone"><img width="618" height="1259" src="user-guide/85-customer-payments.jpg" alt="Payments list" loading="lazy"><figcaption><b class="ui">Payments</b>: everything you've paid.</figcaption></figure>
+</div>
+<figure class="phone"><img width="618" height="1259" src="user-guide/86-customer-profile.jpg" alt="Customer profile page" loading="lazy"><figcaption><b class="ui">Profile</b>: update your phone, email and address. Ask your mess to change your name.</figcaption></figure>
+<p>When your plan ends, press <b class="ui">Renew</b> to ask for another month. Then pay your mess (or pay online if your mess offers it); the new plan starts once it's paid.</p>
+
+<!-- ═══════════════════════ REFERENCE ═══════════════════════ -->
+
+<h2 id="auto"><span class="num">7</span>What happens automatically</h2>
+<p class="lead">Every night just after midnight, MessDeck does these jobs by itself:</p>
+<div class="tbl"><table>
+<tr><th>Job</th><th>What it does</th></tr>
+<tr><td>MessDeck billing</td><td>Marks messes whose monthly fee is due as <b>Payment overdue</b>, and suspends them 7 days later if still unpaid.</td></tr>
+<tr><td>Ending subscriptions</td><td>Active subscriptions past their end date become <span class="badge b-gray">EXPIRED</span>.</td></tr>
+<tr><td>Pauses</td><td>Starts pauses that begin today and ends pauses that are over (moving the end date out).</td></tr>
+<tr><td>Deliveries</td><td>Makes sure tomorrow's deliveries are in the list.</td></tr>
+<tr><td>Expiry alerts</td><td>Emails the owner a list of subscriptions ending soon, and tells customers whose plan is ending (if they have an email and the owner turned this on).</td></tr>
+</table></div>
+<p>The full journey of one customer:</p>
+<div class="flow">
+  <span>Customer added</span><i>→</i><span>Subscription <b>PENDING</b></span><i>→</i><span>Paid in full</span><i>→</i><span><b>ACTIVE</b> + meals scheduled</span><i>→</i><span>Delivered daily</span><i>→</i><span>End date passes → <b>EXPIRED</b></span><i>→</i><span>Renew → new PENDING</span>
+</div>
+
+<h2 id="status"><span class="num">8</span>What each status means</h2>
+<h3>Subscriptions</h3>
+<div class="tbl"><table>
+<tr><th>Status</th><th>Meaning</th></tr>
+<tr><td><span class="badge b-blue">PENDING</span></td><td>Created, not fully paid. No meals scheduled.</td></tr>
+<tr><td><span class="badge b-green">ACTIVE</span></td><td>Paid; meals are being delivered. "Expiring" means it ends within 3 days.</td></tr>
+<tr><td><span class="badge b-yellow">PAUSED</span></td><td>On a pause today. Restarts by itself when the pause ends, or when resumed.</td></tr>
+<tr><td><span class="badge b-gray">EXPIRED</span></td><td>The end date passed. Can be renewed.</td></tr>
+<tr><td><span class="badge b-red">CANCELLED</span></td><td>Stopped by the owner. Can be renewed.</td></tr>
+</table></div>
+<h3>Deliveries</h3>
+<div class="tbl"><table>
+<tr><th>Status</th><th>Meaning</th></tr>
+<tr><td><span class="badge b-yellow">PENDING</span></td><td>Due, not delivered yet.</td></tr>
+<tr><td><span class="badge b-green">DELIVERED</span></td><td>Handed over, with the time.</td></tr>
+<tr><td><span class="badge b-red">NOT DELIVERED</span></td><td>Tried but couldn't, with the reason.</td></tr>
+<tr><td><span class="badge b-gray">SKIPPED</span></td><td>The customer or owner skipped this meal.</td></tr>
+<tr><td><span class="badge b-gray">CANCELLED</span></td><td>Inside a pause, or the subscription ended.</td></tr>
+</table></div>
+
+<h2 id="faq"><span class="num">9</span>Questions and problems</h2>
+<div class="card"><b>I can't see Reports, or customers can't log in.</b><br>That feature isn't part of your MessDeck plan. Contact MessDeck support to add it.</div>
+<div class="card"><b>The page says my account is suspended.</b><br>Your MessDeck bill is unpaid. Open <b>MessDeck Billing</b>, pay the amount shown, and send the payment details on WhatsApp.</div>
+<div class="card"><b>A subscription stays Pending.</b><br>It isn't fully paid yet. Check the amount pending and record the rest under <b>Customer Payments</b>.</div>
+<div class="card"><b>A customer isn't in today's deliveries.</b><br>Check their subscription: it may be Pending (not paid), Paused, Expired, or they skipped today.</div>
+<div class="card"><b>A delivery was marked by mistake.</b><br>The delivery person can press Undo within 10 minutes. After that, contact your owner.</div>
+<div class="card"><b>I didn't get the password reset email.</b><br>Check spam. The account needs an email address; ask your owner (or MessDeck support) to add one, then try again.</div>
+<div class="card"><b>A change MessDeck made for my mess isn't showing.</b><br>Reload the page, or log out and back in.</div>
+
+<p class="top"><a href="#">Back to top ↑</a></p>
+</main>
+</div>
+
+<div id="zoom" role="dialog" aria-label="Enlarged screenshot"><img alt=""></div>
+<script>
+  // Click a screenshot to see it full size; click anywhere or press Escape to close.
+  const zoom = document.getElementById('zoom')
+  const zoomImg = zoom.querySelector('img')
+  document.querySelectorAll('figure img').forEach((img) => {
+    img.addEventListener('click', () => { zoomImg.src = img.src; zoomImg.alt = img.alt; zoom.classList.add('open') })
+  })
+  zoom.addEventListener('click', () => zoom.classList.remove('open'))
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') zoom.classList.remove('open') })
+</script>
+</body>
+</html>

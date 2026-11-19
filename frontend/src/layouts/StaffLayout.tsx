@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
+import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
 // Delivery staff have one screen (To deliver / Done tabs inside it), so no nav for them.
-const KITCHEN_NAV = [
-  { to: '/staff', label: "Today's Meals", end: true },
-  { to: '/staff/kitchen/summary', label: 'Summary' },
+const KITCHEN_NAV: { to: string; label: string; icon: NavIconName; end?: boolean }[] = [
+  { to: '/staff', label: "Today's Meals", icon: 'chefHat', end: true },
+  { to: '/staff/kitchen/summary', label: 'Summary', icon: 'clipboard' },
 ]
 
 export function StaffLayout() {
@@ -55,11 +56,12 @@ export function StaffLayout() {
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
-                    `whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    `flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                       isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
                     }`
                   }
                 >
+                  <NavIcon name={item.icon} className="h-4 w-4 shrink-0" />
                   {item.label}
                 </NavLink>
               ))}

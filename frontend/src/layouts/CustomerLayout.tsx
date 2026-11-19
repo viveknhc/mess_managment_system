@@ -3,13 +3,14 @@ import { useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
 import { FeatureGate } from '../components/FeatureGate'
 import { FEATURES } from '../hooks/useFeature'
+import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
-const NAV_ITEMS = [
-  { to: '/portal', label: 'Dashboard', end: true },
-  { to: '/portal/subscription', label: 'My Subscription' },
-  { to: '/portal/meals', label: 'My Meals' },
-  { to: '/portal/payments', label: 'Payments' },
-  { to: '/portal/profile', label: 'Profile' },
+const NAV_ITEMS: { to: string; label: string; icon: NavIconName; end?: boolean }[] = [
+  { to: '/portal', label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: '/portal/subscription', label: 'My Subscription', icon: 'calendarCheck' },
+  { to: '/portal/meals', label: 'My Meals', icon: 'utensils' },
+  { to: '/portal/payments', label: 'Payments', icon: 'banknote' },
+  { to: '/portal/profile', label: 'Profile', icon: 'user' },
 ]
 
 export function CustomerLayout() {
@@ -42,11 +43,12 @@ export function CustomerLayout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  `flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                     isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
                   }`
                 }
               >
+                <NavIcon name={item.icon} className="h-4 w-4 shrink-0" />
                 {item.label}
               </NavLink>
             ))}

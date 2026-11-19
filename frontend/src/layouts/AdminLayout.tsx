@@ -3,21 +3,22 @@ import { useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
 import { FEATURES, type FeatureKey } from '../hooks/useFeature'
+import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
-const navItems: { to: string; label: string; end: boolean; feature?: FeatureKey }[] = [
-  { to: '/app', label: 'Dashboard', end: true },
-  { to: '/app/customers', label: 'Customers', end: false },
-  { to: '/app/meals', label: 'Meals', end: false },
-  { to: '/app/plans', label: 'Plans', end: false },
-  { to: '/app/subscriptions', label: 'Subscriptions', end: false },
-  { to: '/app/payments', label: 'Customer Payments', end: false },
-  { to: '/app/deliveries', label: 'Deliveries', end: false },
-  { to: '/app/reports', label: 'Reports', end: false, feature: FEATURES.REPORTS },
-  { to: '/app/staff', label: 'Staff', end: false },
-  { to: '/app/settings', label: 'Settings', end: false },
-  { to: '/app/business', label: 'Business Profile', end: false },
-  { to: '/app/billing', label: 'MessDeck Billing', end: false },
-  { to: '/app/support', label: 'Help & Support', end: false },
+const navItems: { to: string; label: string; icon: NavIconName; end: boolean; feature?: FeatureKey }[] = [
+  { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: '/app/customers', label: 'Customers', icon: 'users', end: false },
+  { to: '/app/meals', label: 'Meals', icon: 'utensils', end: false },
+  { to: '/app/plans', label: 'Plans', icon: 'clipboard', end: false },
+  { to: '/app/subscriptions', label: 'Subscriptions', icon: 'calendarCheck', end: false },
+  { to: '/app/payments', label: 'Customer Payments', icon: 'banknote', end: false },
+  { to: '/app/deliveries', label: 'Deliveries', icon: 'truck', end: false },
+  { to: '/app/reports', label: 'Reports', icon: 'chart', end: false, feature: FEATURES.REPORTS },
+  { to: '/app/staff', label: 'Staff', icon: 'idBadge', end: false },
+  { to: '/app/settings', label: 'Settings', icon: 'settings', end: false },
+  { to: '/app/business', label: 'Business Profile', icon: 'store', end: false },
+  { to: '/app/billing', label: 'MessDeck Billing', icon: 'creditCard', end: false },
+  { to: '/app/support', label: 'Help & Support', icon: 'help', end: false },
 ]
 
 /** Pages a suspended business can still use — the backend allows /auth/* and /billing/* only. */
@@ -42,22 +43,36 @@ export function AdminLayout() {
           <h1 className="text-lg font-bold text-blue-600">Mess Manager</h1>
         </div>
         <nav className="space-y-1 p-4">
-          {navItems.filter((item) => !item.feature || user?.features?.includes(item.feature)).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `block rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems.filter((item) => !item.feature || user?.features?.includes(item.feature)).map((item) =>
+            suspended && !SUSPENDED_ALLOWED.includes(item.to) ? (
+              // Blocked while suspended — shown greyed out instead of a link that bounces back to Billing.
+              <span
+                key={item.to}
+                title="Unavailable while your account is suspended"
+                aria-disabled="true"
+                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300"
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </span>
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </NavLink>
+            ),
+          )}
         </nav>
       </aside>
 
@@ -68,7 +83,7 @@ export function AdminLayout() {
             {user?.business_name || 'Dashboard'}
           </h2>
           <div className="flex items-center gap-4">
-            <NotificationBell />
+            {!suspended && <NotificationBell />}
             <span className="text-sm text-gray-600">
               {user?.name || user?.username}
               <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
@@ -87,7 +102,7 @@ export function AdminLayout() {
           {suspended && (
             <div role="alert" className="border-b border-red-200 bg-red-50 px-6 py-3 text-center text-sm font-medium text-red-700">
               Your business account is suspended. Please{' '}
-              <Link to="/app/billing" className="underline">
+              <Link to="/app/billing#pay" className="underline">
                 pay the amount due
               </Link>{' '}
               or contact support on{' '}

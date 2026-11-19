@@ -1,12 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
-const navItems = [
-  { to: '/platform', label: 'Dashboard', end: true },
-  { to: '/platform/businesses', label: 'Businesses', end: false },
-  { to: '/platform/messes', label: 'Mess Details', end: false },
-  { to: '/platform/plans', label: 'Plans', end: false },
-  { to: '/platform/payments', label: 'Payments', end: false },
+const navItems: { to: string; label: string; icon: NavIconName; end: boolean }[] = [
+  { to: '/platform', label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: '/platform/businesses', label: 'Businesses', icon: 'building', end: false },
+  { to: '/platform/messes', label: 'Mess Details', icon: 'soup', end: false },
+  { to: '/platform/plans', label: 'Plans', icon: 'package', end: false },
+  { to: '/platform/payments', label: 'Payments', icon: 'creditCard', end: false },
 ]
 
 export function PlatformLayout() {
@@ -32,13 +33,14 @@ export function PlatformLayout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `block rounded-lg px-3 py-2 text-sm font-medium ${
+                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
                   isActive
                     ? 'bg-purple-50 text-purple-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }
             >
+              <NavIcon name={item.icon} />
               {item.label}
             </NavLink>
           ))}

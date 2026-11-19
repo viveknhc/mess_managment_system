@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { billingApi, type BillingData, type SaasSubscription } from './platformApi'
 import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
@@ -33,6 +33,7 @@ function statusMessage(sub: SaasSubscription) {
 
 export function BillingPage() {
   const role = useAuthStore((s) => s.user?.role)
+  const location = useLocation()
   const [billing, setBilling] = useState<BillingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -53,6 +54,13 @@ export function BillingPage() {
   useEffect(() => {
     fetchBilling()
   }, [fetchBilling])
+
+  // The suspended banner links to #pay — scroll there on every click, even when already on this page.
+  useEffect(() => {
+    if (billing && location.hash === '#pay') {
+      document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [billing, location.key, location.hash])
 
   if (loading && !billing) {
     return (
@@ -157,7 +165,7 @@ export function BillingPage() {
       </div>
 
       {/* Amount due */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <div id="pay" className="scroll-mt-4 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-800">
           {sub.status === 'CANCELLED' && sub.business_status !== 'SUSPENDED' ? 'To continue after your plan ends' : 'Next payment'}
         </h2>

@@ -98,7 +98,7 @@ test('full payment → ACTIVE, notification, delivery scheduled today', async ({
   await expect(row(page, CUSTOMER)).toContainText('ACTIVE')
 
   await page.reload()
-  await page.locator('header button').filter({ has: page.locator('svg') }).first().click()
+  await page.getByRole('button', { name: 'Notifications' }).click()
   await expect(page.getByText('Subscription Activated').first()).toBeVisible()
 
   await page.getByRole('link', { name: 'Deliveries' }).click()

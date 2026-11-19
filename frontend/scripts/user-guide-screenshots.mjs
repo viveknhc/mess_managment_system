@@ -81,7 +81,7 @@ async function step(name, fn) {
 async function login(page, [username, password], urlPart) {
   await page.goto(`${BASE}/login`)
   await page.getByLabel('Username').fill(username)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(new RegExp(urlPart))
   await page.waitForLoadState('networkidle')
@@ -307,7 +307,7 @@ await step('Busy dashboard and notifications', async () => {
   await login(busy, USERS.owner, '/app')
   await busy.getByText('Expiring Subscriptions').waitFor()
   await shot(busy, '50-owner-dashboard', { full: true })
-  await busy.locator('header button').filter({ has: busy.locator('svg') }).first().click()
+  await busy.getByRole('button', { name: 'Notifications' }).click()
   await busy.waitForTimeout(500)
   await shot(busy, '51-owner-notifications')
   await busy.keyboard.press('Escape')

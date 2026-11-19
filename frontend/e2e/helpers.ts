@@ -19,7 +19,7 @@ export type Creds = { username: string; password: string }
 export async function login(page: Page, user: Creds, expectedPath?: string) {
   await page.goto('/login')
   await page.getByLabel('Username').fill(user.username)
-  await page.getByLabel('Password').fill(user.password)
+  await page.getByLabel('Password', { exact: true }).fill(user.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   if (expectedPath) await expect(page).toHaveURL(new RegExp(`${expectedPath}(/|$)`))
 }

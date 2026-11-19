@@ -67,6 +67,8 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
+        aria-label="Notifications"
+        aria-expanded={open}
         className="relative rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

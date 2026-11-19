@@ -109,7 +109,7 @@ export function PlatformPaymentsPage() {
   }, [fetchPayments])
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Payment History ({count})</h1>
 
       <DataTable

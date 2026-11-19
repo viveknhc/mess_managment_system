@@ -68,8 +68,8 @@ export function CustomerImportModal({ onClose, onImported }: Props) {
   const rowErrors = error?.fields?.rows ?? []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
         <h2 className="mb-1 text-lg font-bold text-gray-900">Import Customers from CSV</h2>
         <p className="mb-4 text-sm text-gray-500">
           Upload a UTF-8 CSV with up to {MAX_ROWS} customers. <span className="font-medium">name</span> and{' '}

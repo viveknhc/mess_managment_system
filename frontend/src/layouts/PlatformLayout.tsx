@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
+import { AppShell } from '../components/AppShell'
 
 const navItems: { to: string; label: string; icon: NavIconName; end: boolean }[] = [
   { to: '/platform', label: 'Dashboard', icon: 'dashboard', end: true },
@@ -19,57 +20,58 @@ export function PlatformLayout() {
     navigate('/login')
   }
 
-  return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-200 bg-white">
-        <div className="flex h-16 items-center border-b border-gray-200 px-6">
-          <h1 className="text-lg font-bold text-purple-600">Platform Admin</h1>
-        </div>
-        <nav className="space-y-1 p-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive
-                    ? 'bg-purple-50 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              <NavIcon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+  const userBadge = (
+    <span className="text-sm text-gray-600">
+      {user?.name || user?.username}
+      <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700">
+        SUPER_ADMIN
+      </span>
+    </span>
+  )
+  const logoutButton = (
+    <button
+      onClick={handleLogout}
+      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+    >
+      Logout
+    </button>
+  )
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-          <h2 className="text-lg font-semibold text-gray-800">Platform Management</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {user?.name || user?.username}
-              <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700">
-                SUPER_ADMIN
-              </span>
-            </span>
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              Logout
-            </button>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+  return (
+    <AppShell
+      brand={<h1 className="text-lg font-bold text-purple-600">Platform Admin</h1>}
+      title="Platform Management"
+      actions={
+        <>
+          <span className="hidden md:inline">{userBadge}</span>
+          <span className="hidden sm:inline">{logoutButton}</span>
+        </>
+      }
+      drawerFooter={
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {userBadge}
+          {logoutButton}
+        </div>
+      }
+      nav={navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+              isActive
+                ? 'bg-purple-50 text-purple-700'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`
+          }
+        >
+          <NavIcon name={item.icon} />
+          {item.label}
+        </NavLink>
+      ))}
+    >
+      <Outlet />
+    </AppShell>
   )
 }

@@ -72,7 +72,7 @@ export function BillingPage() {
 
   if (!billing) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error || 'No billing information found.'}</div>
       </div>
     )
@@ -117,7 +117,7 @@ export function BillingPage() {
   const payMessage = `Hi, I've paid ${rupees(due.total)} for ${sub.business_name} (MessDeck). Payment reference: `
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">MessDeck Billing</h1>
         <p className="mt-1 text-sm text-gray-500">

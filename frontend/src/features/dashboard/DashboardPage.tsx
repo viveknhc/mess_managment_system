@@ -38,7 +38,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <h1 className="mb-6 text-xl font-bold text-gray-900">Dashboard</h1>
 
       {/* Stat cards row */}

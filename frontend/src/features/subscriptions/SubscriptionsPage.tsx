@@ -191,8 +191,8 @@ export function SubscriptionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Subscriptions</h1>
           <p className="mt-1 text-sm text-gray-500">{count} subscription{count !== 1 ? 's' : ''}</p>

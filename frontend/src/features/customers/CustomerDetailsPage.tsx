@@ -83,7 +83,7 @@ export function CustomerDetailsPage() {
 
   if (error || !customer) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error || 'Customer not found'}</div>
         <button onClick={() => navigate('/app/customers')} className="mt-4 text-sm text-blue-600 hover:underline">
           Back to customers
@@ -93,9 +93,9 @@ export function CustomerDetailsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-3xl p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <button onClick={() => navigate('/app/customers')} className="mb-2 text-sm text-blue-600 hover:underline">
             &larr; Customers
@@ -103,7 +103,7 @@ export function CustomerDetailsPage() {
           <h1 className="text-xl font-bold text-gray-900">{customer.name}</h1>
           <p className="text-sm text-gray-500">{customer.customer_code}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               customer.status === 'ACTIVE'

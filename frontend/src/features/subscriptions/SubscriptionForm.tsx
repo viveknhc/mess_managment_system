@@ -60,8 +60,8 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
         <h2 className="mb-4 text-lg font-bold text-gray-900">New Subscription</h2>
 
         {error && (

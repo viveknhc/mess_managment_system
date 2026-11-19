@@ -113,8 +113,8 @@ export function PaymentsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Customer Payments</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -134,7 +134,7 @@ export function PaymentsPage() {
 
       {/* Summary cards (PAY-11) */}
       {summary && (
-        <div className="mb-6 grid grid-cols-3 gap-4">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-gray-500 uppercase">Today</p>
             <p className="mt-1 text-2xl font-bold text-gray-900">₹{Number(summary.today).toLocaleString('en-IN')}</p>

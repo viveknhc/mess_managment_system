@@ -100,8 +100,8 @@ export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBus
   const inherited = Object.fromEntries((current?.features ?? []).map((f) => [f.key, f]))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
         <h2 className="text-lg font-bold text-gray-900">Customize {biz.name}</h2>
         <p className="mt-1 text-sm text-gray-500">
           Choose what this mess gets and how its workflows run. Changes apply to this mess only and take
@@ -169,7 +169,7 @@ export function CustomizeBusinessModal({ biz, onClose }: { biz: Pick<PlatformBus
                       </label>
                       <p className="mt-1 text-xs text-gray-500">{selected?.description || point.description}</p>
                       {selected && selected.params.length > 0 && (
-                        <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           {selected.params.map((param) => (
                             <ParamInput
                               key={param.name}

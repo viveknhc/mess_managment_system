@@ -212,8 +212,8 @@ export function PlatformPlansPage() {
   }, [fetchPlans])
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">SaaS Plans</h1>
         <button
           onClick={openCreate}
@@ -242,8 +242,8 @@ export function PlatformPlansPage() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center sm:p-4">
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
             <h2 className="mb-4 text-lg font-bold text-gray-900">
               {editId ? 'Edit Plan' : 'New Plan'}
             </h2>
@@ -268,7 +268,7 @@ export function PlatformPlansPage() {
                 onChange={(e) => setEditingPlan({ ...editingPlan, price_monthly: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-xs text-gray-600">
                   One-time setup fee
                   <input
@@ -292,7 +292,7 @@ export function PlatformPlansPage() {
                   />
                 </label>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   type="number"
                   placeholder="Max customers (0=unlimited)"

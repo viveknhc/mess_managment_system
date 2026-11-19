@@ -76,8 +76,8 @@ export function RecordPaymentForm({ onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
         <h2 className="mb-4 text-lg font-bold text-gray-900">Record Payment</h2>
 
         {error && (
@@ -105,7 +105,7 @@ export function RecordPaymentForm({ onClose, onSaved }: Props) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="amount" className="mb-1 block text-sm font-medium text-gray-700">Amount (₹) *</label>
               <input id="amount" type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required

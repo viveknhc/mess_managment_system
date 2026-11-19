@@ -68,7 +68,7 @@ export function SettingsPage() {
   if (!settings) return <div className="p-6 text-gray-500">Failed to load settings</div>
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="mb-6 text-xl font-bold text-gray-900">Business Settings</h1>
 
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -85,7 +85,7 @@ export function SettingsPage() {
               </p>
               <p className="mt-1 text-xs text-gray-500">Set up by MessDeck for your mess. Contact support to change it.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Min Pause Days</label>
                 <input type="number" min="1" value={settings.min_pause_days}

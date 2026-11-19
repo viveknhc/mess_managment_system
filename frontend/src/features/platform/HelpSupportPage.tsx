@@ -6,7 +6,7 @@ export function HelpSupportPage() {
   const businessName = useAuthStore((s) => s.user?.business_name) ?? 'my business'
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <h1 className="text-2xl font-bold text-gray-900">Help &amp; Support</h1>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6">

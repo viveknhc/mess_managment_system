@@ -171,7 +171,7 @@ export function DataTable<T>({
                   className={`${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''} ${rowClassName?.(row) ?? ''}`}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className={`px-4 py-3 text-sm ${ALIGN[col.align ?? 'left']} ${col.className ?? ''}`}>
+                    <td key={col.key} className={`px-4 py-3 text-sm max-sm:whitespace-nowrap ${ALIGN[col.align ?? 'left']} ${col.className ?? ''}`}>
                       {col.render(row)}
                     </td>
                   ))}

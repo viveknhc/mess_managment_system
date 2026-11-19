@@ -70,7 +70,7 @@ export function BusinessProfilePage() {
 
   if (!business) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {error || 'No business found'}
         </div>
@@ -79,8 +79,8 @@ export function BusinessProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-2xl p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-900">Business Profile</h1>
         {isOwner && !editing && (
           <button

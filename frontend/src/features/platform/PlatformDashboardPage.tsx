@@ -23,7 +23,7 @@ export function PlatformDashboardPage() {
 
   if (error || !stats) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
           {error || 'Failed to load dashboard. Please try again.'}
         </div>
@@ -42,7 +42,7 @@ export function PlatformDashboardPage() {
   ]
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Platform Overview</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

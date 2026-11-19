@@ -128,8 +128,8 @@ export function MealsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-3xl p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Meals</h1>
           <p className="mt-1 text-sm text-gray-500">Meal types offered by your business</p>
@@ -252,8 +252,8 @@ function MealForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
         <h2 className="mb-4 text-lg font-bold text-gray-900">
           {isEdit ? 'Edit Meal' : 'Add Meal'}
         </h2>

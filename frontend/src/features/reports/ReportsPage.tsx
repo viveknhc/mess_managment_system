@@ -65,10 +65,10 @@ export function ReportsPage() {
   ].filter(d => d.value > 0) : []
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-900">Reports</h1>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="From" />
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}

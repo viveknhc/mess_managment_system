@@ -54,8 +54,8 @@ function AddBusinessModal({ onClose, onCreated }: { onClose: () => void; onCreat
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
         <h2 className="text-lg font-bold text-gray-900">Add Business</h2>
         <p className="mt-1 text-sm text-gray-500">
           The business starts with its first payment (setup fee + first month) due. Default meals are added.
@@ -63,18 +63,18 @@ function AddBusinessModal({ onClose, onCreated }: { onClose: () => void; onCreat
         {error && <div className="mt-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <input required placeholder="Business name" value={form.business_name} onChange={set('business_name')} className={inputClass} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input placeholder="Business phone" value={form.phone} onChange={set('phone')} className={inputClass} />
             <input type="email" placeholder="Business email" value={form.email} onChange={set('email')} className={inputClass} />
           </div>
           <input placeholder="Address" value={form.address} onChange={set('address')} className={inputClass} />
           <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Owner login</p>
           <input placeholder="Owner name" value={form.owner_name} onChange={set('owner_name')} className={inputClass} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input placeholder="Owner phone" value={form.owner_phone} onChange={set('owner_phone')} className={inputClass} />
             <input type="email" placeholder="Owner email" value={form.owner_email} onChange={set('owner_email')} className={inputClass} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input required placeholder="Owner username" value={form.owner_username} onChange={set('owner_username')} className={inputClass} />
             <input required type="password" minLength={8} placeholder="Owner password (min 8)" value={form.owner_password} onChange={set('owner_password')} className={inputClass} />
           </div>
@@ -115,8 +115,8 @@ function RecordPaymentModal({ biz, onClose, onRecorded }: { biz: PlatformBusines
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center sm:p-4">
+      <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
         <h2 className="text-lg font-bold text-gray-900">Record Payment</h2>
         <p className="mt-1 text-sm text-gray-500">{biz.name}</p>
         {due && (
@@ -370,8 +370,8 @@ export function BusinessesListPage() {
   }, [fetchBusinesses])
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Businesses ({count})</h1>
         <button
           onClick={() => setShowAdd(true)}

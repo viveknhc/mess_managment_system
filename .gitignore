@@ -40,3 +40,14 @@ postgres_data/
 # Local-only demo logins (never push — repo is public)
 docs/login-credentials.html
 docs/tester-guide.html
+
+# Video making (promo reels) — local only
+edit/
+raw/
+exports/
+references/
+.claude/skills/my-editing-style/
+*.mp4
+*.mov
+*.m4v
+*.webm

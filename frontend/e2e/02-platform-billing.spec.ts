@@ -2,8 +2,9 @@ import { expect, test } from '@playwright/test'
 import { USERS, apiToken, confirmPopup, login, logout, modal, row, uniq } from './helpers'
 
 /**
- * Monthly plan billing (docs/Monthly_Subscription_Plan.pdf) — no self-signup, no trial, no online checkout:
- * platform admin adds a business → ₹3,000 first payment due → admin records it (UPI/cash) → ACTIVE, paid until
+ * Monthly plan billing (docs/Monthly_Subscription_Plan.pdf) — no self-signup, no online checkout:
+ * platform admin adds a business → ₹3,000 first payment due, app locked → admin starts the 7-day free trial
+ * (full access + countdown) → admin records the payment (UPI/cash) → ACTIVE, paid until
  * a month out, ₹500/month next → suspend/reactivate (refused while money is owed) → owner cancels.
  */
 test.describe.configure({ mode: 'serial' })
@@ -49,20 +50,43 @@ test('platform admin adds a business — first payment of ₹3,000 is due', asyn
   await expect(bizRow).toContainText('₹3,000')
 })
 
-test('owner sees the first payment breakdown on the Billing page', async ({ page }) => {
+test('owner is locked until the first payment and sees the breakdown on Billing', async ({ page }) => {
   await login(page, OWNER, '/app')
+
+  // Awaiting first payment → everything but Billing/Support is blocked; the owner lands on Billing.
+  await expect(page).toHaveURL(/\/app\/billing$/)
+  await expect(page.getByText('Welcome to MessDeck!', { exact: false })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Meals' })).toHaveCount(0)
+  const token = await apiToken(page, OWNER)
+  const res = await page.request.get('/api/v1/meals/', { headers: { Authorization: `Bearer ${token}` } })
+  expect(res.status()).toBe(403)
+
+  await expect(page.getByText('Awaiting first payment')).toBeVisible()
+  await expect(page.getByText('One-time setup fee')).toBeVisible()
+  await expect(page.getByText('₹3,000').first()).toBeVisible()
+  await expect(page.getByText('No payments yet.')).toBeVisible()
+})
+
+test('platform admin starts the 7-day free trial → owner gets full access with a countdown', async ({ page }) => {
+  await login(page, USERS.superadmin, '/platform')
+  await page.getByRole('link', { name: 'Businesses' }).click()
+  await row(page, BIZ).getByRole('button', { name: 'Start 7-day trial' }).click()
+  await confirmPopup(page, 'Start trial')
+  await expect(row(page, BIZ)).toContainText('Free trial')
+  await expect(row(page, BIZ)).toContainText('7 days left')
+  // A trial can be given only once.
+  await expect(row(page, BIZ).getByRole('button', { name: 'Start 7-day trial' })).toHaveCount(0)
+  await logout(page)
+
+  await login(page, OWNER, '/app')
+  await expect(page.getByRole('status').filter({ hasText: 'Free trial' })).toContainText(/6d \d{2}h \d{2}m \d{2}s/)
+  await expect(page.getByText('Welcome to MessDeck!', { exact: false })).toHaveCount(0)
 
   // New businesses get the four default meals
   await page.getByRole('link', { name: 'Meals' }).click()
   for (const meal of ['Breakfast', 'Lunch', 'Dinner', 'Tiffin']) {
     await expect(row(page, meal)).toBeVisible()
   }
-
-  await page.getByRole('link', { name: 'Billing' }).click()
-  await expect(page.getByText('Awaiting first payment')).toBeVisible()
-  await expect(page.getByText('One-time setup fee')).toBeVisible()
-  await expect(page.getByText('₹3,000').first()).toBeVisible()
-  await expect(page.getByText('No payments yet.')).toBeVisible()
 })
 
 test('platform admin records the first payment — wrong amount is rejected', async ({ page }) => {

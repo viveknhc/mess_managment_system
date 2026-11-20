@@ -26,6 +26,9 @@ apiClient.interceptors.request.use((config) => {
  */
 export const BUSINESS_SUSPENDED_EVENT = 'messdeck:business-suspended'
 
+/** Fired on 403 PAYMENT_REQUIRED — the business hasn't made its first MessDeck payment yet. */
+export const PAYMENT_REQUIRED_EVENT = 'messdeck:payment-required'
+
 // Response interceptor: handle 401 → refresh once → retry → logout
 let isRefreshing = false
 let failedQueue: Array<{
@@ -90,6 +93,9 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 403 && error.response.data?.error?.code === 'BUSINESS_SUSPENDED') {
       window.dispatchEvent(new Event(BUSINESS_SUSPENDED_EVENT))
+    }
+    if (error.response?.status === 403 && error.response.data?.error?.code === 'PAYMENT_REQUIRED') {
+      window.dispatchEvent(new Event(PAYMENT_REQUIRED_EVENT))
     }
 
     return Promise.reject(error)

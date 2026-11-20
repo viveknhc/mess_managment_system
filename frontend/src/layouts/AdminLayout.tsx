@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { businessLock, useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
 import { FEATURES, type FeatureKey } from '../hooks/useFeature'
@@ -22,14 +22,15 @@ const navItems: { to: string; label: string; icon: NavIconName; end: boolean; fe
   { to: '/app/support', label: 'Help & Support', icon: 'help', end: false },
 ]
 
-/** Pages a suspended business can still use — the backend allows /auth/* and /billing/* only. */
+/** Pages a locked business (suspended, or first payment not made) can still use — the backend allows /auth/* and /billing/* only. */
 const SUSPENDED_ALLOWED = ['/app/billing', '/app/support']
 
 export function AdminLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const suspended = user?.business_status === 'SUSPENDED'
+  const lock = businessLock(user)
+  const suspended = lock !== null
 
   async function handleLogout() {
     await logout()
@@ -75,7 +76,7 @@ export function AdminLayout() {
           // Blocked while suspended — shown greyed out instead of a link that bounces back to Billing.
           <span
             key={item.to}
-            title="Unavailable while your account is suspended"
+            title={lock === 'PAYMENT_REQUIRED' ? 'Available after your first payment' : 'Unavailable while your account is suspended'}
             aria-disabled="true"
             className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300"
           >
@@ -101,7 +102,25 @@ export function AdminLayout() {
         ),
       )}
     >
-      {suspended && (
+      {lock === 'PAYMENT_REQUIRED' && (
+        <div role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-800 sm:px-6">
+          Welcome to MessDeck! To start adding customers, meals and plans,{' '}
+          <Link to="/app/billing#pay" className="underline">
+            complete your first payment
+          </Link>
+          . Need help? Message us on{' '}
+          <a
+            href={whatsappLink(`Hi, I need help with the first payment for ${user?.business_name ?? 'my business'} on MessDeck.`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            WhatsApp
+          </a>
+          .
+        </div>
+      )}
+      {lock === 'SUSPENDED' && (
         <div role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-700 sm:px-6">
           Your business account is suspended. Please{' '}
           <Link to="/app/billing#pay" className="underline">

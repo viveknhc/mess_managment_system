@@ -5,6 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.accounts.models import User
 from apps.customization.services import FeatureService
+from common.authentication import saas_status
 from common.constants import BUSINESS_STAFF_ROLES, Role
 
 
@@ -21,6 +22,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source="business.name", read_only=True, default=None)
     business_status = serializers.CharField(source="business.status", read_only=True, default=None)
+    saas_status = serializers.SerializerMethodField()
     features = serializers.SerializerMethodField()
 
     class Meta:
@@ -36,9 +38,14 @@ class UserSerializer(serializers.ModelSerializer):
             "business_id",
             "business_name",
             "business_status",
+            "saas_status",
             "features",
         ]
         read_only_fields = fields
+
+    def get_saas_status(self, obj):
+        """MessDeck billing status — PENDING means the app is locked until the first payment."""
+        return saas_status(obj.business)
 
     def get_features(self, obj):
         """Feature keys the user's business has — the frontend hides what's missing."""

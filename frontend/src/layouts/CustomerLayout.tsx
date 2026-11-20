@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { businessLock, useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
 import { FeatureGate } from '../components/FeatureGate'
 import { FEATURES } from '../hooks/useFeature'
@@ -16,7 +16,7 @@ const NAV_ITEMS: { to: string; label: string; icon: NavIconName; end?: boolean }
 export function CustomerLayout() {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
-  const suspended = useAuthStore((s) => s.user?.business_status === 'SUSPENDED')
+  const suspended = useAuthStore((s) => businessLock(s.user) !== null)
 
   async function handleLogout() {
     await logout()

@@ -226,6 +226,81 @@ class TestSuspension:
         assert resp.status_code == 200
 
 
+# ── Awaiting first payment (PENDING) — no free use before paying ─────────
+
+
+class TestAwaitingFirstPaymentLock:
+    @pytest.mark.parametrize(
+        "method,url",
+        [
+            ("get", "/api/v1/customers/"),
+            ("post", "/api/v1/customers/"),
+            ("get", "/api/v1/meals/"),
+            ("post", "/api/v1/meals/"),
+            ("get", "/api/v1/plans/"),
+            ("get", "/api/v1/subscriptions/"),
+            ("get", "/api/v1/dashboard/"),
+            ("get", "/api/v1/settings/"),
+        ],
+    )
+    def test_pending_business_blocked(self, sub_a, jwt_client_a, method, url):
+        assert sub_a.status == SaasStatus.PENDING
+        resp = getattr(jwt_client_a, method)(url, {}, format="json")
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == "PAYMENT_REQUIRED"
+
+    def test_pending_owner_can_log_in_and_see_billing(self, sub_a, jwt_client_a):
+        me = jwt_client_a.get("/api/v1/auth/me/")
+        assert me.status_code == 200
+        assert me.json()["saas_status"] == SaasStatus.PENDING
+        assert jwt_client_a.get("/api/v1/billing/").status_code == 200
+
+    def test_login_reports_saas_status(self, sub_a, owner_a):
+        login = APIClient().post("/api/v1/auth/login/", {"username": "owner_a", "password": "pass"})
+        assert login.status_code == 200
+        assert login.json()["user"]["saas_status"] == SaasStatus.PENDING
+
+    def test_pending_staff_and_customer_blocked(self, biz_a, sub_a):
+        for username, role, url in [
+            ("staff_a", Role.DELIVERY_STAFF, "/api/v1/deliveries/"),
+            ("cust_a", Role.CUSTOMER, "/api/v1/portal/dashboard/"),
+        ]:
+            User.objects.create_user(username=username, password="pass", role=role, business=biz_a)
+            c = APIClient()
+            login = c.post("/api/v1/auth/login/", {"username": username, "password": "pass"})
+            c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.json()['access']}")
+            resp = c.get(url)
+            assert resp.status_code == 403
+            assert resp.json()["error"]["code"] == "PAYMENT_REQUIRED"
+
+    def test_first_payment_unlocks(self, sub_a, jwt_client_a):
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 403
+        due = PlatformService.amount_due(sub_a)
+        PlatformService.record_manual_payment(sub_a, amount=due.total, method="UPI", reference="T1")
+        sub_a.refresh_from_db()
+        assert sub_a.status == SaasStatus.ACTIVE
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+        assert jwt_client_a.get("/api/v1/auth/me/").json()["saas_status"] == SaasStatus.ACTIVE
+
+    def test_past_due_keeps_grace_access(self, sub_a, jwt_client_a):
+        """A paying business that's late keeps working during the grace period."""
+        PlatformService.record_manual_payment(
+            sub_a, amount=PlatformService.amount_due(sub_a).total, method="UPI", reference="T1"
+        )
+        sub_a.refresh_from_db()
+        sub_a.status = SaasStatus.PAST_DUE
+        sub_a.save(update_fields=["status"])
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+
+    def test_business_without_billing_row_not_locked(self, biz_a, jwt_client_a):
+        """Bootstrap / self-hosted installs have no SaasSubscription — never locked."""
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+        assert jwt_client_a.get("/api/v1/auth/me/").json()["saas_status"] is None
+
+    def test_super_admin_not_locked(self, sub_a, client_super):
+        assert client_super.get(f"/api/v1/platform/businesses/{sub_a.business_id}/").status_code == 200
+
+
 # ── Public Plans ─────────────────────────────────────────────────────────
 
 

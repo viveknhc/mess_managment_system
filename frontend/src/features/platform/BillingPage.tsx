@@ -33,6 +33,7 @@ function statusMessage(sub: SaasSubscription) {
 
 export function BillingPage() {
   const role = useAuthStore((s) => s.user?.role)
+  const refreshUser = useAuthStore((s) => s.refreshUser)
   const location = useLocation()
   const [billing, setBilling] = useState<BillingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -110,6 +111,8 @@ export function BillingPage() {
     if (res.outcome === 'error') notify.error(res.error)
     if (res.outcome === 'paid') notify.success('Payment received', 'Thank you!')
     await fetchBilling()
+    // Unlocks the app (suspended / awaiting first payment) without a page reload.
+    if (res.outcome === 'paid') await refreshUser()
     setPaying(false)
   }
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { apiClient, BUSINESS_SUSPENDED_EVENT } from '../services/apiClient'
+import { apiClient, BUSINESS_SUSPENDED_EVENT, PAYMENT_REQUIRED_EVENT } from '../services/apiClient'
 import { tokenStorage } from '../services/tokenStorage'
 
 export interface User {
@@ -13,6 +13,8 @@ export interface User {
   business_id: string | null
   business_name: string | null
   business_status: string | null
+  /** MessDeck billing status. PENDING = first payment not made yet → app locked except Billing/Support. */
+  saas_status: string | null
   /** Feature keys the business has (backend customization.registry) — see useFeature(). */
   features: string[]
 }
@@ -24,6 +26,8 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   fetchMe: () => Promise<void>
+  /** Re-read /auth/me/ without a loading state — e.g. after paying, to unlock the app. */
+  refreshUser: () => Promise<void>
   reset: () => void
 }
 
@@ -62,6 +66,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  refreshUser: async () => {
+    try {
+      const { data } = await apiClient.get('/auth/me/')
+      set({ user: data })
+    } catch {
+      // Keep the current user — a failed refresh shouldn't log anyone out.
+    }
+  },
+
   reset: () => {
     tokenStorage.clear()
     set({ user: null, isAuthenticated: false, isLoading: false })
@@ -75,3 +88,19 @@ window.addEventListener(BUSINESS_SUSPENDED_EVENT, () => {
     useAuthStore.setState({ user: { ...user, business_status: 'SUSPENDED' } })
   }
 })
+
+// A request was rejected with PAYMENT_REQUIRED — the first MessDeck payment hasn't been made.
+window.addEventListener(PAYMENT_REQUIRED_EVENT, () => {
+  const { user } = useAuthStore.getState()
+  if (user && user.saas_status !== 'PENDING') {
+    useAuthStore.setState({ user: { ...user, saas_status: 'PENDING' } })
+  }
+})
+
+/** Is the business locked out of everything except Billing/Support? */
+export function businessLock(user: User | null): 'SUSPENDED' | 'PAYMENT_REQUIRED' | null {
+  if (!user) return null
+  if (user.business_status === 'SUSPENDED') return 'SUSPENDED'
+  if (user.saas_status === 'PENDING') return 'PAYMENT_REQUIRED'
+  return null
+}

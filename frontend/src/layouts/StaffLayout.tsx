@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { businessLock, useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
@@ -70,7 +70,7 @@ export function StaffLayout() {
         )}
       </header>
       <main className="mx-auto w-full max-w-2xl flex-1 py-4">
-        {user?.business_status === 'SUSPENDED' ? <SuspendedNotice /> : <Outlet />}
+        {businessLock(user) ? <SuspendedNotice /> : <Outlet />}
       </main>
     </div>
   )

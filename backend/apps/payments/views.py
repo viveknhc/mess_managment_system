@@ -56,8 +56,8 @@ class PaymentViewSet(TenantScopedViewSet):
     http_method_names = ["get", "post", "head", "options"]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "create": [Role.OWNER, Role.MANAGER],
         "summary": [Role.OWNER, Role.MANAGER],
     }

@@ -181,48 +181,10 @@ class RazorpayWebhookView(APIView):
         event = payload.get("event", "")
         if event in ("order.paid", "payment.captured"):
             return self._checkout_paid(payload)
-        entity = payload.get("payload", {}).get("subscription", {}).get("entity", {})
-        rz_sub_id = entity.get("id", "")
-
-        if not rz_sub_id:
-            return JsonResponse({"status": "ignored"})
-
-        try:
-            sub = SaasSubscription.objects.select_related("business", "plan").get(
-                razorpay_subscription_id=rz_sub_id,
-            )
-        except SaasSubscription.DoesNotExist:
-            logger.warning("Webhook for unknown subscription: %s", rz_sub_id)
-            return JsonResponse({"status": "ignored"})
-
-        if event == "subscription.activated":
-            if sub.plan:
-                PlatformService.activate_subscription(sub, sub.plan)
-
-        elif event == "subscription.charged":
-            payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
-            amount = payment_entity.get("amount", 0) / 100  # paise to rupees
-            PlatformService.record_payment_success(
-                sub,
-                amount=amount,
-                razorpay_payment_id=payment_entity.get("id", ""),
-                razorpay_order_id=payment_entity.get("order_id", ""),
-            )
-
-        elif event == "subscription.payment_failed":
-            payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
-            amount = payment_entity.get("amount", 0) / 100
-            PlatformService.record_payment_failure(
-                sub,
-                amount=amount,
-                failure_reason=payment_entity.get("error_description", ""),
-                razorpay_payment_id=payment_entity.get("id", ""),
-            )
-
-        elif event == "subscription.cancelled":
-            PlatformService.suspend_business(sub.business)
-
-        return JsonResponse({"status": "ok"})
+        # Only Checkout payments are accepted. The old Razorpay Subscriptions events
+        # (subscription.activated / charged / …) activated plans without the setup fee
+        # and weren't idempotent; MessDeck never creates Razorpay subscriptions.
+        return JsonResponse({"status": "ignored"})
 
     def _checkout_paid(self, payload):
         """Billing-page Checkout paid — covers owners who closed the tab before it confirmed."""

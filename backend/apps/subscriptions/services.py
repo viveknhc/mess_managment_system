@@ -47,6 +47,12 @@ def _close_window(subscription, pause, today):
     DeliveryService.generate_delivery_schedule(subscription)
 
 
+def _lock_customer(customer):
+    from apps.customers.models import Customer
+
+    Customer.objects.select_for_update().filter(pk=customer.pk).first()
+
+
 def _start_late_from_today(subscription, today):
     """A subscription activated after its start date starts today instead, keeping its
     length — otherwise the days before payment (or all of them) would be lost.
@@ -79,6 +85,31 @@ def _activate_if_free(subscription):
 
 
 class SubscriptionService:
+    @staticmethod
+    def refresh_remaining_meals(subscription):
+        """Meals still owed = plan meals − meals used. A meal is used when it went out
+        (delivered or not delivered) or was skipped without the end date being extended.
+        Ended subscriptions owe nothing."""
+        from apps.deliveries.models import Delivery, DeliveryStatus, SkipAdjustment
+
+        if subscription.status in (SubStatus.CANCELLED, SubStatus.EXPIRED):
+            remaining = 0
+        else:
+            rows = Delivery.objects.filter(subscription=subscription)
+            went_out = rows.filter(
+                status__in=[
+                    DeliveryStatus.OUT_FOR_DELIVERY,
+                    DeliveryStatus.DELIVERED,
+                    DeliveryStatus.NOT_DELIVERED,
+                ]
+            ).count()
+            skipped = rows.filter(status=DeliveryStatus.SKIPPED)
+            extended = skipped.filter(skip_record__adjustment=SkipAdjustment.EXTEND).distinct().count()
+            remaining = max(subscription.total_meals - went_out - (skipped.count() - extended), 0)
+        Subscription.objects.filter(pk=subscription.pk).update(remaining_meals=remaining)
+        subscription.remaining_meals = remaining
+        return remaining
+
     @staticmethod
     def activate_on_full_payment(subscription, today=None):
         """PENDING → ACTIVE once fully paid (caller holds the row lock and saves).
@@ -132,6 +163,7 @@ class SubscriptionService:
 
         end_date = start_date + timedelta(days=plan.duration_days)
 
+        _lock_customer(customer)  # a double-submitted create waits here, then sees the first one
         SubscriptionService.ensure_no_overlap(customer, plan, start_date, end_date)
 
         subscription = Subscription.objects.create(
@@ -287,6 +319,7 @@ class SubscriptionService:
         DeliveryService.cancel_upcoming_deliveries(subscription, from_date=today)
         for pause in PauseSelector.open_pauses(subscription):
             DeliveryService.close_pause(pause, days_extended=0)
+        SubscriptionService.refresh_remaining_meals(subscription)
         return subscription
 
     @staticmethod
@@ -311,7 +344,8 @@ class SubscriptionService:
 
         new_start = start_date or datetime.date.today()
         new_end = new_start + timedelta(days=plan.duration_days)
-        SubscriptionService.ensure_no_overlap(subscription.customer, plan, new_start, new_end)
+        _lock_customer(customer)
+        SubscriptionService.ensure_no_overlap(customer, plan, new_start, new_end)
 
         renewal = Subscription.objects.create(
             business_id=subscription.business_id,

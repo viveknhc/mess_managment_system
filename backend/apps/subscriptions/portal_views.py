@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from apps.customization.permissions import requires_feature
 from apps.customization.registry import CUSTOMER_PORTAL
-from apps.deliveries.models import Delivery, DeliveryStatus
+from apps.deliveries.models import Delivery, DeliveryStatus, SubscriptionPause
 from apps.deliveries.serializers import DeliveryListSerializer
 from apps.deliveries.services import DeliveryService
 from apps.payments.models import Payment, PaymentOrder
@@ -71,6 +71,30 @@ class PortalPermission:
                 "PERMISSION_DENIED", "Your account with this mess isn't active. Please contact the mess.", 403
             )
         return None
+
+
+def _paused_days_in_a_row(sub, start, end):
+    """Length of the unbroken paused stretch the new window [start, end] would be part of,
+    counting existing windows that touch or overlap it. None = joins an open-ended pause."""
+    one = datetime.timedelta(days=1)
+    windows = [
+        (w.start_date, w.last_paused_day)
+        for w in SubscriptionPause.objects.filter(subscription=sub)
+        if w.last_paused_day is None or w.last_paused_day >= w.start_date  # skip voided windows
+    ]
+    grew = True
+    while grew:
+        grew = False
+        for w_start, w_end in windows:
+            touches = w_start <= end + one and (w_end is None or w_end >= start - one)
+            if not touches:
+                continue
+            if w_end is None:
+                return None
+            if w_start < start or w_end > end:
+                start, end = min(start, w_start), max(end, w_end)
+                grew = True
+    return (end - start).days + 1
 
 
 def _first_changeable_date(business):
@@ -327,6 +351,13 @@ class PortalSubscriptionActionsView(APIView):
             return _error("VALIDATION_ERROR", f"Minimum pause duration is {min_days} day(s).", 400)
         if days > max_days:
             return _error("VALIDATION_ERROR", f"Maximum pause duration is {max_days} day(s).", 400)
+        in_a_row = _paused_days_in_a_row(sub, start_date, end_date)
+        if in_a_row is None or in_a_row > max_days:
+            return _error(
+                "VALIDATION_ERROR",
+                f"This pause joins another one. Pauses back to back can't add up to more than {max_days} day(s).",
+                400,
+            )
         if not sub.plan.pause_allowed:
             return _error("VALIDATION_ERROR", "Pausing is not allowed on this plan.", 400)
 
@@ -404,11 +435,17 @@ class PortalProfileView(APIView):
         return Response(self._payload(customer))
 
     def put(self, request):
+        from apps.customers.serializers import PortalProfileSerializer
+
         customer, err = _portal_customer(request)
         if err:
             return err
-        for field in self.EDITABLE_FIELDS:
-            if field in request.data:
-                setattr(customer, field, request.data[field])
-        customer.save(update_fields=[*self.EDITABLE_FIELDS, "updated_at"])
+        serializer = PortalProfileSerializer(customer, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.save()
+        # Password-reset emails go to the login's address — keep it the same as the profile.
+        user = request.user
+        if "email" in serializer.validated_data and user.email != customer.email:
+            user.email = customer.email
+            user.save(update_fields=["email"])
         return Response(self._payload(customer))

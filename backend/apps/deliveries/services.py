@@ -30,6 +30,12 @@ def _lock(delivery):
     return delivery
 
 
+def _refresh_meals_left(delivery):
+    from apps.subscriptions.services import SubscriptionService
+
+    SubscriptionService.refresh_remaining_meals(Subscription.objects.get(pk=delivery.subscription_id))
+
+
 # Statuses a delivery run sets — never for a delivery dated in the future.
 RUN_STATUSES = (DeliveryStatus.OUT_FOR_DELIVERY, DeliveryStatus.DELIVERED, DeliveryStatus.NOT_DELIVERED)
 
@@ -110,6 +116,7 @@ class DeliveryService:
             delivery.assigned_staff = staff
             fields.append("assigned_staff")
         delivery.save(update_fields=fields)
+        _refresh_meals_left(delivery)
         return delivery
 
     @staticmethod
@@ -134,6 +141,7 @@ class DeliveryService:
         delivery.status = DeliveryStatus.PENDING
         delivery.delivered_at = None
         delivery.save(update_fields=["status", "delivered_at", "updated_at"])
+        _refresh_meals_left(delivery)
         return delivery
 
     @staticmethod
@@ -166,6 +174,7 @@ class DeliveryService:
             reason=reason,
         )
         PolicyService.get(delivery.business_id, SKIP).apply(skip)
+        _refresh_meals_left(delivery)
         return skip
 
     @staticmethod
@@ -316,5 +325,5 @@ class DeliverySelector:
             status=SubStatus.ACTIVE,
             end_date__lt=today,
         )
-        count = expired.update(status=SubStatus.EXPIRED)
+        count = expired.update(status=SubStatus.EXPIRED, remaining_meals=0)
         return count

@@ -115,6 +115,24 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
+class PortalProfileSerializer(serializers.ModelSerializer):
+    """What a customer may change about themselves in the portal (model limits apply)."""
+
+    class Meta:
+        model = Customer
+        fields = ["phone", "email", "address", "location"]
+
+    def validate_phone(self, value):
+        if not value:
+            raise serializers.ValidationError("Phone number is required.")
+        clash = Customer.objects.filter(business_id=self.instance.business_id, phone=value).exclude(
+            id=self.instance.id
+        )
+        if clash.exists():
+            raise serializers.ValidationError("Another customer of this mess already uses this phone number.")
+        return value
+
+
 class PortalLoginCreateSerializer(serializers.Serializer):
     """Body for POST /customers/{id}/portal-login/. Omit username → phone; omit password → generated."""
 

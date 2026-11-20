@@ -1,6 +1,7 @@
 """Auth views (Module 1) + Staff management (Module 3)."""
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -26,6 +27,25 @@ from apps.accounts.services import InvalidResetLink, PasswordResetService
 from common.constants import BUSINESS_STAFF_ROLES, Role
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
+
+
+def _keep_an_active_owner(staff, *, new_role=None, new_active=None):
+    """Refuse a change that would leave the business with no active owner.
+
+    The owner rows are locked first, so two owners removing each other at the same
+    moment are handled one after the other and the second is refused.
+    """
+    role = new_role if new_role is not None else staff.role
+    active = new_active if new_active is not None else staff.is_active
+    if staff.role != Role.OWNER or not staff.is_active or (role == Role.OWNER and active):
+        return
+    owners = list(
+        User.objects.select_for_update().filter(
+            business_id=staff.business_id, role=Role.OWNER, is_active=True
+        )
+    )
+    if not any(o.id != staff.id for o in owners):
+        raise ValidationError({"detail": "Cannot remove the last active owner."})
 
 
 def _check_staff_seat(business, role):
@@ -82,9 +102,15 @@ class RefreshView(TokenRefreshView):
 
 
 class LogoutView(APIView):
-    """POST /auth/logout/ — blacklist the refresh token."""
+    """POST /auth/logout/ — blacklist the refresh token.
 
-    permission_classes = [IsAuthenticated]
+    The refresh token in the body is the credential: no access token needed, so a client
+    whose access token expired logs out directly instead of refreshing first (which would
+    rotate the token and leave the new one alive).
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         refresh_token = request.data.get("refresh")
@@ -203,8 +229,14 @@ class StaffViewSet(TenantScopedViewSet):
         _check_staff_seat(self.request.user.business, serializer.validated_data.get("role"))
         serializer.save(business_id=self.request.user.business_id)
 
+    @transaction.atomic
     def perform_update(self, serializer):
         staff = serializer.instance
+        _keep_an_active_owner(
+            staff,
+            new_role=serializer.validated_data.get("role"),
+            new_active=serializer.validated_data.get("is_active"),
+        )
         reactivating = serializer.validated_data.get("is_active") is True and not staff.is_active
         new_role = serializer.validated_data.get("role", staff.role)
         becomes_staff = staff.role == Role.OWNER and new_role != Role.OWNER and staff.is_active
@@ -212,8 +244,10 @@ class StaffViewSet(TenantScopedViewSet):
             _check_staff_seat(staff.business, new_role)
         serializer.save()
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         """Soft-delete: deactivate rather than hard-delete."""
+        _keep_an_active_owner(instance, new_active=False)
         instance.is_active = False
         instance.save(update_fields=["is_active"])
 
@@ -227,24 +261,10 @@ class StaffViewSet(TenantScopedViewSet):
         return Response(StaffListSerializer(staff).data)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def deactivate(self, request, pk=None):
         staff = self.get_object()
-        if staff.role == Role.OWNER:
-            # Prevent deactivating the last owner
-            other_owners = User.objects.filter(
-                business_id=staff.business_id, role=Role.OWNER, is_active=True
-            ).exclude(id=staff.id)
-            if not other_owners.exists():
-                return Response(
-                    {
-                        "error": {
-                            "code": "VALIDATION_ERROR",
-                            "message": "Cannot deactivate the last active owner.",
-                            "fields": {},
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        _keep_an_active_owner(staff, new_active=False)
         staff.is_active = False
         staff.save(update_fields=["is_active"])
         return Response(StaffListSerializer(staff).data)

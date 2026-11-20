@@ -8,6 +8,7 @@ from django.db import models
 
 from apps.customers.models import Customer
 from apps.deliveries.models import Delivery, DeliveryStatus
+from apps.deliveries.services import PAUSED_DELIVERY_Q
 from apps.payments.models import Payment, PaymentStatus
 from apps.subscriptions.models import Subscription
 from common.constants import SubStatus
@@ -37,7 +38,10 @@ def get_dashboard_data(business_id):
     pending_subs = sub_qs.filter(status=SubStatus.PENDING).count()
 
     # Deliveries today
-    delivery_qs = Delivery.objects.filter(business_id=business_id, delivery_date=today)
+    # Same rows as the delivery screens: deliveries cancelled by a pause aren't today's work.
+    delivery_qs = Delivery.objects.filter(business_id=business_id, delivery_date=today).exclude(
+        PAUSED_DELIVERY_Q
+    )
     total_deliveries_today = delivery_qs.count()
     delivered_today = delivery_qs.filter(status=DeliveryStatus.DELIVERED).count()
     pending_deliveries_today = delivery_qs.filter(

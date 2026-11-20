@@ -60,6 +60,11 @@ class NotificationService:
     def emit_expiring_notifications(business_id):
         """Nightly: notify owners about expiring subscriptions (N-04)."""
         from apps.accounts.models import User
+        from apps.settings_app.models import BusinessSettings
+
+        settings_row = BusinessSettings.objects.filter(business_id=business_id).first()
+        if settings_row is not None and not settings_row.notify_on_expiring:
+            return 0  # owner turned expiry alerts off (email checks the same setting)
 
         today = datetime.date.today()
         expiring = SubscriptionSelector.get_expiring(business_id).select_related("customer", "plan")

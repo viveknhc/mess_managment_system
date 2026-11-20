@@ -57,6 +57,12 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         inst = self.instance
+        min_days = attrs.get("min_pause_days", inst.min_pause_days if inst else 1)
+        max_days = attrs.get("max_pause_days", inst.max_pause_days if inst else 7)
+        if min_days > max_days:
+            raise serializers.ValidationError(
+                {"min_pause_days": "Minimum pause can't be longer than the maximum pause."}
+            )
         key_id = attrs.get("razorpay_key_id", inst.razorpay_key_id if inst else "")
         secret = attrs.get("razorpay_key_secret", "")
         if "razorpay_key_id" in attrs and not key_id:

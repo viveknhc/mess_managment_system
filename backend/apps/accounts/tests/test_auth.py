@@ -94,9 +94,17 @@ class TestLogout:
         resp = api.post("/api/v1/auth/refresh/", {"refresh": tokens["refresh"]})
         assert resp.status_code == 401
 
-    def test_logout_requires_auth(self, api, db):
+    def test_logout_rejects_invalid_refresh_token(self, api, db):
         resp = api.post("/api/v1/auth/logout/", {"refresh": "x"})
-        assert resp.status_code == 401
+        assert resp.status_code == 400
+
+    def test_logout_with_expired_access_token_revokes_refresh(self, api, owner):
+        """The refresh token alone logs out — no access token, so no refresh-and-rotate first."""
+        tokens = api.post("/api/v1/auth/login/", {"username": "owner", "password": "testpass123"}).json()
+        api.credentials(HTTP_AUTHORIZATION="Bearer expired.or.garbage")
+        assert api.post("/api/v1/auth/logout/", {"refresh": tokens["refresh"]}).status_code == 200
+        api.credentials()
+        assert api.post("/api/v1/auth/refresh/", {"refresh": tokens["refresh"]}).status_code == 401
 
     def test_logout_requires_refresh_token(self, api, owner):
         login = api.post("/api/v1/auth/login/", {"username": "owner", "password": "testpass123"})

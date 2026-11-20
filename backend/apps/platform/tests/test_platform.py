@@ -563,8 +563,10 @@ class TestWebhook:
     def test_webhook_ignores_unknown_subscription(self, db):
         assert post_webhook(CHARGED_UNKNOWN).status_code == 200
 
-    def test_webhook_charge_success(self, sub_a, plan_basic):
-        PlatformService.activate_subscription(sub_a, plan_basic, razorpay_subscription_id="sub_test123")
+    def test_legacy_subscription_charge_is_ignored(self, sub_a, plan_basic):
+        """Razorpay Subscriptions events would skip the setup fee — only Checkout payments count."""
+        sub_a.razorpay_subscription_id = "sub_test123"
+        sub_a.save(update_fields=["razorpay_subscription_id"])
         resp = post_webhook(
             {
                 "event": "subscription.charged",
@@ -575,7 +577,10 @@ class TestWebhook:
             }
         )
         assert resp.status_code == 200
-        assert SaasPayment.objects.filter(razorpay_payment_id="pay_1").exists()
+        assert resp.json()["status"] == "ignored"
+        assert not SaasPayment.objects.filter(razorpay_payment_id="pay_1").exists()
+        sub_a.refresh_from_db()
+        assert sub_a.status == "PENDING"
 
     def test_webhook_rejects_bad_signature(self, db):
         assert post_webhook(CHARGED_UNKNOWN, secret="wrong").status_code == 400

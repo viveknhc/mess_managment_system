@@ -63,8 +63,8 @@ class CustomerViewSet(TenantScopedViewSet):
     ordering_fields = ["customer_code", "name", "phone", "status", "location", "created_at"]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "create": [Role.OWNER, Role.MANAGER],
         "update": [Role.OWNER, Role.MANAGER],
         "partial_update": [Role.OWNER, Role.MANAGER],

@@ -118,7 +118,8 @@ class StaffCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
+        # Case-insensitive, like customer portal logins: "Rahul" and "rahul" can't both exist.
+        if User.objects.filter(username__iexact=value).exists():
             raise serializers.ValidationError("Username already taken.")
         return value
 

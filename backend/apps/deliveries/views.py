@@ -56,8 +56,8 @@ class DeliveryViewSet(TenantScopedViewSet):
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "today": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "update_status": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],
         "undo": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF],

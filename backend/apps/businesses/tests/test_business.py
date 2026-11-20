@@ -90,10 +90,10 @@ class TestBusinessList:
         assert resp.status_code == 200
         assert len(resp.json()["results"]) == 1
 
-    def test_customer_sees_own_business(self, customer_a, biz_a):
+    def test_customer_uses_portal_not_business_api(self, customer_a, biz_a):
+        """Customers get their mess's name from /auth/me/; the staff API is closed to them."""
         resp = auth_client(customer_a).get("/api/v1/business/")
-        assert resp.status_code == 200
-        assert len(resp.json()["results"]) == 1
+        assert resp.status_code == 403
 
     def test_unauthenticated_rejected(self, biz_a):
         resp = APIClient().get("/api/v1/business/")
@@ -233,7 +233,7 @@ class TestTenantIsolation:
             username="cust_b", password="pass", role=Role.CUSTOMER, business=biz_b
         )
         resp = auth_client(cust_b).get(f"/api/v1/business/{biz_a.id}/")
-        assert resp.status_code == 404
+        assert resp.status_code == 403  # customers can't reach the business API at all
 
     def test_both_owners_see_only_own(self, owner_a, owner_b, biz_a, biz_b):
         """Each owner sees exactly 1 business — their own."""

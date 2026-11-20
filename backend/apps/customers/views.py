@@ -1,10 +1,11 @@
 """Customer API (C-04, C-05)."""
 
-from django.db import models
+from django.db import models, transaction
 from django.http import HttpResponse
 from django_filters import rest_framework as django_filters
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -21,7 +22,7 @@ from apps.customers.serializers import (
 )
 from apps.customization.permissions import requires_feature
 from apps.customization.registry import CUSTOMER_PORTAL
-from common.constants import Role
+from common.constants import Role, Status
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
 
@@ -85,12 +86,22 @@ class CustomerViewSet(TenantScopedViewSet):
             return CustomerDetailSerializer
         return CustomerListSerializer
 
+    @transaction.atomic
+    def perform_update(self, serializer):
+        new_status = serializer.validated_data.get("status")
+        if new_status:
+            services.check_can_change_status(serializer.instance, new_status)
+        customer = serializer.save()
+        services.after_status_change(customer)
+
+    @transaction.atomic
     def perform_destroy(self, instance):
-        """Soft-delete: deactivate rather than hard-delete (C-08). Their portal login is disabled too."""
-        instance.status = "INACTIVE"
+        """Soft-delete: deactivate rather than hard-delete (C-08). Their portal login is disabled too.
+        Refused while the customer still has live subscriptions."""
+        services.check_can_change_status(instance, Status.INACTIVE)
+        instance.status = Status.INACTIVE
         instance.save(update_fields=["status"])
-        if instance.user_id is not None:
-            services.set_portal_login_active(instance, False)
+        services.after_status_change(instance)
 
     @action(
         detail=False,
@@ -160,4 +171,11 @@ class CustomerViewSet(TenantScopedViewSet):
         detail=True, methods=["post"], url_path="portal-login/enable", permission_classes=_portal_permissions
     )
     def portal_login_enable(self, request, pk=None):
-        return Response(services.set_portal_login_active(self.get_object(), True))
+        customer = self.get_object()
+        if customer.status != Status.ACTIVE:
+            raise ValidationError(
+                {
+                    "detail": f"{customer.name} is {customer.get_status_display().lower()}. Make them active first."
+                }
+            )
+        return Response(services.set_portal_login_active(customer, True))

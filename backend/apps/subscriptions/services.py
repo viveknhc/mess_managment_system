@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.subscriptions.models import Subscription
-from common.constants import SubStatus
+from common.constants import Status, SubStatus
 
 
 class PauseValidationError(ValueError):
@@ -47,7 +47,48 @@ def _close_window(subscription, pause, today):
     DeliveryService.generate_delivery_schedule(subscription)
 
 
+def _start_late_from_today(subscription, today):
+    """A subscription activated after its start date starts today instead, keeping its
+    length — otherwise the days before payment (or all of them) would be lost.
+
+    Only when it was created for today or a later date. A subscription the owner entered
+    with a start date already in the past (moving an existing customer into MessDeck)
+    keeps the dates they chose.
+    """
+    created_on = subscription.created_at.date() if subscription.created_at else today
+    backdated = subscription.start_date < created_on
+    if subscription.start_date < today and not backdated:
+        length = subscription.end_date - subscription.start_date
+        subscription.start_date = today
+        subscription.end_date = today + length
+        return True
+    return False
+
+
+def _activate_if_free(subscription):
+    """A ₹0 plan needs no payment: activate straight away and schedule deliveries."""
+    from apps.deliveries.services import DeliveryService
+
+    if subscription.total_amount > 0:
+        return subscription
+    _start_late_from_today(subscription, datetime.date.today())
+    subscription.transition_to(SubStatus.ACTIVE)
+    subscription.save(update_fields=["status", "start_date", "end_date", "updated_at"])
+    DeliveryService.generate_delivery_schedule(subscription)
+    return subscription
+
+
 class SubscriptionService:
+    @staticmethod
+    def activate_on_full_payment(subscription, today=None):
+        """PENDING → ACTIVE once fully paid (caller holds the row lock and saves).
+        Returns the fields changed."""
+        subscription.transition_to(SubStatus.ACTIVE)
+        fields = ["status"]
+        if _start_late_from_today(subscription, today or datetime.date.today()):
+            fields += ["start_date", "end_date"]
+        return fields
+
     @staticmethod
     def ensure_no_overlap(customer, plan, start_date, end_date):
         """One live subscription per customer per plan for any given day. A different plan
@@ -80,6 +121,10 @@ class SubscriptionService:
         """
         if customer.business_id != business_id:
             raise ValueError("Customer does not belong to this business.")
+        if customer.status != Status.ACTIVE:
+            raise ValueError(
+                f"{customer.name} is {customer.get_status_display().lower()}. Make them active first."
+            )
         if plan.business_id != business_id:
             raise ValueError("Plan does not belong to this business.")
         if not plan.is_active:
@@ -89,7 +134,7 @@ class SubscriptionService:
 
         SubscriptionService.ensure_no_overlap(customer, plan, start_date, end_date)
 
-        return Subscription.objects.create(
+        subscription = Subscription.objects.create(
             business_id=business_id,
             customer=customer,
             plan=plan,
@@ -100,7 +145,10 @@ class SubscriptionService:
             paid_amount=Decimal("0.00"),
             pending_amount=plan.price,
             remaining_meals=plan.total_meals,
+            meal=plan.meal,
+            total_meals=plan.total_meals,
         )
+        return _activate_if_free(subscription)
 
     # ── Pause / resume (D-10) ────────────────────────────────────────────
     #
@@ -255,12 +303,17 @@ class SubscriptionService:
         plan = subscription.plan
         if not plan.is_active:
             raise ValueError("Cannot renew with an inactive plan.")
+        customer = subscription.customer
+        if customer.status != Status.ACTIVE:
+            raise ValueError(
+                f"{customer.name} is {customer.get_status_display().lower()}. Make them active first."
+            )
 
         new_start = start_date or datetime.date.today()
         new_end = new_start + timedelta(days=plan.duration_days)
         SubscriptionService.ensure_no_overlap(subscription.customer, plan, new_start, new_end)
 
-        return Subscription.objects.create(
+        renewal = Subscription.objects.create(
             business_id=subscription.business_id,
             customer=subscription.customer,
             plan=plan,
@@ -271,8 +324,11 @@ class SubscriptionService:
             paid_amount=Decimal("0.00"),
             pending_amount=plan.price,
             remaining_meals=plan.total_meals,
+            meal=plan.meal,
+            total_meals=plan.total_meals,
             renewed_from=subscription,
         )
+        return _activate_if_free(renewal)
 
 
 class SubscriptionSelector:

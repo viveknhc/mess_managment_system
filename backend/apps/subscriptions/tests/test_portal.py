@@ -267,9 +267,16 @@ class TestPortalDashboard:
 # ── Portal actions: skip / pause-request / renew ─────────────────────────
 
 
+def _set_cutoff(business, when):
+    from apps.settings_app.models import BusinessSettings
+
+    BusinessSettings.objects.update_or_create(business=business, defaults={"delivery_start_time": when})
+
+
 @pytest.mark.django_db
 class TestPortalSkip:
-    def test_skip_todays_meal(self, cust_user_a, sub_a, today_delivery):
+    def test_skip_todays_meal_before_cutoff(self, cust_user_a, sub_a, today_delivery):
+        _set_cutoff(sub_a.business, datetime.time.max)  # cut-off not reached yet
         resp = client_for(cust_user_a).post(
             f"/api/v1/portal/subscriptions/{sub_a.id}/skip/", {"reason": "Going home"}, format="json"
         )

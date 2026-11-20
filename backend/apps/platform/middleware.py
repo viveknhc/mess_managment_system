@@ -17,6 +17,19 @@ QUOTA_MAP = {
 }
 
 
+def _counted(label, model_class, business):
+    """Rows that use up a seat: active staff logins (not the owner, not customers' portal
+    logins); customers who haven't been removed."""
+    from common.constants import Role, Status
+
+    qs = model_class.objects.filter(business=business)
+    if label == "accounts.User":
+        return qs.filter(role__in=[Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF], is_active=True)
+    if label == "customers.Customer":
+        return qs.exclude(status=Status.INACTIVE)
+    return qs
+
+
 class QuotaError(APIException):
     status_code = 402
     default_detail = "Plan quota exceeded."
@@ -46,7 +59,7 @@ def check_quota(business, model_class):
     if limit == 0:
         return  # unlimited
 
-    current_count = model_class.objects.filter(business=business).count()
+    current_count = _counted(label, model_class, business).count()
     if current_count >= limit:
         resource = limit_field.replace("max_", "")
         raise QuotaError(f"Your plan allows a maximum of {limit} {resource}. Please upgrade your plan.")

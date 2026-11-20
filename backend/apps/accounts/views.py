@@ -28,6 +28,14 @@ from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
 
 
+def _check_staff_seat(business, role):
+    """Plan's max_staff counts active non-owner staff; owners never use a seat."""
+    from apps.platform.middleware import check_quota
+
+    if business is not None and role != Role.OWNER:
+        check_quota(business, User)
+
+
 class LoginThrottle(AnonRateThrottle):
     rate = "5/min"
 
@@ -192,7 +200,17 @@ class StaffViewSet(TenantScopedViewSet):
         return StaffListSerializer
 
     def perform_create(self, serializer):
+        _check_staff_seat(self.request.user.business, serializer.validated_data.get("role"))
         serializer.save(business_id=self.request.user.business_id)
+
+    def perform_update(self, serializer):
+        staff = serializer.instance
+        reactivating = serializer.validated_data.get("is_active") is True and not staff.is_active
+        new_role = serializer.validated_data.get("role", staff.role)
+        becomes_staff = staff.role == Role.OWNER and new_role != Role.OWNER and staff.is_active
+        if reactivating or becomes_staff:
+            _check_staff_seat(staff.business, new_role)
+        serializer.save()
 
     def perform_destroy(self, instance):
         """Soft-delete: deactivate rather than hard-delete."""
@@ -202,6 +220,8 @@ class StaffViewSet(TenantScopedViewSet):
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
         staff = self.get_object()
+        if not staff.is_active:
+            _check_staff_seat(staff.business, staff.role)
         staff.is_active = True
         staff.save(update_fields=["is_active"])
         return Response(StaffListSerializer(staff).data)

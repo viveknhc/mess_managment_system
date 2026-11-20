@@ -63,7 +63,7 @@ class DeliveryService:
             if (st == DeliveryStatus.CANCELLED and closed)
             or (st == DeliveryStatus.SKIPPED and adj == SkipAdjustment.EXTEND)
         )
-        remaining_to_create = subscription.plan.total_meals - (len(rows) - compensated)
+        remaining_to_create = subscription.total_meals - (len(rows) - compensated)
         windows = list(SubscriptionPause.objects.filter(subscription=subscription))
 
         deliveries = []
@@ -75,7 +75,7 @@ class DeliveryService:
                         business_id=subscription.business_id,
                         subscription=subscription,
                         customer=subscription.customer,
-                        meal=subscription.plan.meal,
+                        meal_id=subscription.meal_id,
                         delivery_date=current,
                         status=DeliveryStatus.PENDING,
                     )

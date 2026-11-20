@@ -14,6 +14,7 @@ from apps.customization.registry import ONLINE_PAYMENTS
 from apps.customization.services import FeatureService
 from apps.payments.models import OrderStatus, Payment, PaymentMethod, PaymentOrder, PaymentStatus
 from apps.subscriptions.models import Subscription
+from apps.subscriptions.services import SubscriptionService
 from common import razorpay_checkout
 from common.constants import Role, SubStatus
 
@@ -65,10 +66,11 @@ class PaymentService:
 
         # Activation chain: fully paid PENDING → ACTIVE
         was_pending = sub.status == SubStatus.PENDING
+        fields = ["paid_amount", "pending_amount", "updated_at"]
         if sub.paid_amount >= sub.total_amount and was_pending:
-            sub.status = SubStatus.ACTIVE
+            fields += SubscriptionService.activate_on_full_payment(sub)
 
-        sub.save(update_fields=["paid_amount", "pending_amount", "status", "updated_at"])
+        sub.save(update_fields=fields)
 
         # Post-activation: generate deliveries + notify owners
         if was_pending and sub.status == SubStatus.ACTIVE:

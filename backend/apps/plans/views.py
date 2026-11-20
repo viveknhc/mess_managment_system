@@ -42,8 +42,8 @@ class PlanViewSet(TenantScopedViewSet):
     ]
 
     role_map = {
-        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
-        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF, Role.CUSTOMER],
+        "list": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
+        "retrieve": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
         "create": [Role.OWNER, Role.MANAGER],
         "update": [Role.OWNER, Role.MANAGER],
         "partial_update": [Role.OWNER, Role.MANAGER],

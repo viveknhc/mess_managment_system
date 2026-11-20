@@ -7,6 +7,7 @@ only ever see and act on their own rows. Staff/admin APIs are unreachable here.
 import datetime
 import logging
 
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
@@ -23,7 +24,7 @@ from apps.payments.services import OnlinePaymentService
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.serializers import SubscriptionListSerializer
 from apps.subscriptions.services import SubscriptionService
-from common.constants import Role, SubStatus
+from common.constants import Role, Status, SubStatus
 from common.razorpay_checkout import CheckoutError, to_paise
 
 logger = logging.getLogger(__name__)
@@ -61,9 +62,41 @@ class PortalPermission:
     def check(request):
         if getattr(request.user, "role", None) != Role.CUSTOMER:
             return _error("PERMISSION_DENIED", "Customer portal only.", 403)
-        if not request.user.customer_profiles.exists():
+        profile = request.user.customer_profiles.first()
+        if profile is None:
             return _error("NOT_FOUND", "No customer profile linked.", 404)
+        # Blocked or removed customers lose the portal even if their login is still on.
+        if profile.status != Status.ACTIVE:
+            return _error(
+                "PERMISSION_DENIED", "Your account with this mess isn't active. Please contact the mess.", 403
+            )
         return None
+
+
+def _first_changeable_date(business):
+    """Earliest day a customer may still skip or pause from the portal.
+
+    Today's meal can be changed only before the mess's delivery start time; after it —
+    or when the mess hasn't set one — the kitchen may already be cooking, so the
+    earliest is tomorrow. Owners can still change today's meal from their screens.
+    """
+    now = timezone.localtime()
+    settings_row = getattr(business, "settings", None)
+    cutoff = settings_row.delivery_start_time if settings_row else None
+    if cutoff and now.time() < cutoff:
+        return now.date()
+    return now.date() + datetime.timedelta(days=1)
+
+
+def _too_late_for_today(business):
+    settings_row = getattr(business, "settings", None)
+    cutoff = settings_row.delivery_start_time if settings_row else None
+    when = f" after {cutoff:%I:%M %p}".replace(" 0", " ") if cutoff else ""
+    return _error(
+        "VALIDATION_ERROR",
+        f"Today's meal can't be changed{when} — the kitchen is already preparing it. Choose tomorrow or later.",
+        400,
+    )
 
 
 def _portal_customer(request):
@@ -247,11 +280,14 @@ class PortalSubscriptionActionsView(APIView):
                 return _error("VALIDATION_ERROR", "Invalid date format, use YYYY-MM-DD.", 400)
             if target_date < datetime.date.today():
                 return _error("VALIDATION_ERROR", "Cannot skip a past date.", 400)
+        earliest = _first_changeable_date(sub.business)
+        if target_date is not None and target_date < earliest:
+            return _too_late_for_today(sub.business)
 
         deliveries = Delivery.objects.filter(
             subscription=sub,
             status=DeliveryStatus.PENDING,
-            delivery_date__gte=target_date or datetime.date.today(),
+            delivery_date__gte=target_date or earliest,
         ).order_by("delivery_date")
         if not deliveries.exists():
             return _error("VALIDATION_ERROR", "No upcoming delivery found to skip.", 400)
@@ -272,6 +308,8 @@ class PortalSubscriptionActionsView(APIView):
             return _error("VALIDATION_ERROR", "Invalid start_date format, use YYYY-MM-DD.", 400)
         if start_date < datetime.date.today():
             return _error("VALIDATION_ERROR", "Pause start date cannot be in the past.", 400)
+        if start_date < _first_changeable_date(sub.business):
+            return _too_late_for_today(sub.business)
 
         end_str = request.data.get("end_date")
         try:

@@ -24,6 +24,10 @@ class Subscription(TenantScopedModel):
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     pending_amount = models.DecimalField(max_digits=10, decimal_places=2)
     remaining_meals = models.PositiveIntegerField()
+    # Copied from the plan when the subscription is created, so editing the plan later
+    # never changes what an existing subscriber is owed.
+    meal = models.ForeignKey("meals.Meal", on_delete=models.PROTECT, related_name="+")
+    total_meals = models.PositiveIntegerField()
     renewed_from = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="renewals"
     )
@@ -40,6 +44,14 @@ class Subscription(TenantScopedModel):
 
     def __str__(self):
         return f"{self.customer} — {self.plan} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        # Snapshot the plan's meal and meal count on first save if the caller didn't.
+        if self.meal_id is None:
+            self.meal_id = self.plan.meal_id
+        if self.total_meals is None:
+            self.total_meals = self.plan.total_meals
+        super().save(*args, **kwargs)
 
     @property
     def remaining_days(self):

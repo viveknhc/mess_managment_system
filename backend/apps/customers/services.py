@@ -8,6 +8,7 @@ from rest_framework import serializers
 
 from apps.customers.models import Customer
 from apps.customers.serializers import CustomerCreateSerializer
+from common.constants import Status
 
 MAX_IMPORT_ROWS = 100
 MAX_IMPORT_BYTES = 1024 * 1024  # 1 MB is plenty for 100 rows
@@ -248,3 +249,35 @@ def set_portal_login_active(customer, active):
     user = _login_or_error(customer)
     CustomerLoginService.set_active(user, active)
     return portal_login_info(customer)
+
+
+# ── Status (active / blocked / inactive) ─────────────────────────────────
+
+LIVE_SUBSCRIPTION_STATUSES = ("PENDING", "ACTIVE", "PAUSED")
+
+
+def check_can_change_status(customer, new_status):
+    """Deactivating a customer with live subscriptions would leave meals being cooked and
+    delivered (and money owed) for someone who's gone — cancel those first."""
+    if new_status == Status.INACTIVE and customer.status != Status.INACTIVE:
+        live = customer.subscriptions.filter(status__in=LIVE_SUBSCRIPTION_STATUSES).count()
+        if live:
+            noun = "subscription" if live == 1 else "subscriptions"
+            raise serializers.ValidationError(
+                {
+                    "status": [
+                        f"{customer.name} has {live} live {noun}. Cancel {'it' if live == 1 else 'them'} first."
+                    ]
+                }
+            )
+    if new_status == Status.ACTIVE and customer.status == Status.INACTIVE:
+        from apps.platform.middleware import check_quota
+
+        check_quota(customer.business, Customer)  # reactivating takes a customer seat again
+
+
+def after_status_change(customer):
+    """Only an ACTIVE customer may use the portal: switch the login off otherwise.
+    (It isn't switched back on automatically — the owner re-enables it when they choose.)"""
+    if customer.status != Status.ACTIVE and customer.user_id is not None and customer.user.is_active:
+        set_portal_login_active(customer, False)

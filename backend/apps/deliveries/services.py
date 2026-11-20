@@ -22,6 +22,17 @@ from common.constants import SubStatus
 # (the customer isn't expecting a meal; delivery staff shouldn't see them).
 PAUSED_DELIVERY_Q = models.Q(status=DeliveryStatus.CANCELLED, pause__isnull=False)
 
+
+def _lock(delivery):
+    """Row-lock the delivery and refresh the given instance in place (callers keep using it)."""
+    Delivery.objects.select_for_update().filter(pk=delivery.pk).first()
+    delivery.refresh_from_db()
+    return delivery
+
+
+# Statuses a delivery run sets — never for a delivery dated in the future.
+RUN_STATUSES = (DeliveryStatus.OUT_FOR_DELIVERY, DeliveryStatus.DELIVERED, DeliveryStatus.NOT_DELIVERED)
+
 UNDO_WINDOW = timedelta(minutes=10)  # how long delivery staff can undo a Delivered / Not delivered tap
 
 
@@ -77,17 +88,36 @@ class DeliveryService:
 
     @staticmethod
     @transaction.atomic
-    def update_status(delivery, new_status, *, notes=""):
-        """Transition a delivery to a new status."""
+    def update_status(delivery, new_status, *, notes="", staff=None):
+        """Transition a delivery to a new status.
+
+        A delivery can't be marked out / delivered / not delivered before its date.
+        ``staff`` (the delivery person marking it) claims an unassigned delivery, so the
+        record shows who delivered it and other staff no longer see it.
+        """
+        _lock(delivery)
         if not delivery.can_transition_to(new_status):
             raise ValueError(f"Cannot transition delivery from {delivery.status} to {new_status}")
+        if new_status in RUN_STATUSES and delivery.delivery_date > timezone.localdate():
+            raise ValueError("Can't mark a delivery for a future date.")
         delivery.status = new_status
         if notes:
             delivery.notes = notes
         if new_status == DeliveryStatus.DELIVERED:
             delivery.delivered_at = timezone.now()
-        delivery.save(update_fields=["status", "notes", "delivered_at", "updated_at"])
+        fields = ["status", "notes", "delivered_at", "updated_at"]
+        if staff is not None and delivery.assigned_staff_id is None:
+            delivery.assigned_staff = staff
+            fields.append("assigned_staff")
+        delivery.save(update_fields=fields)
         return delivery
+
+    @staticmethod
+    def cancel_upcoming_deliveries(subscription, *, from_date):
+        """Cancel PENDING deliveries on/after ``from_date`` (subscription cancelled)."""
+        return Delivery.objects.filter(
+            subscription=subscription, status=DeliveryStatus.PENDING, delivery_date__gte=from_date
+        ).update(status=DeliveryStatus.CANCELLED, updated_at=timezone.now())
 
     @staticmethod
     @transaction.atomic
@@ -110,9 +140,19 @@ class DeliveryService:
     @transaction.atomic
     def skip_meal(delivery, *, reason=""):
         """Skip a specific delivery. Creates a MealSkip record, then applies the
-        business's skip policy (customization extension point ``skip``)."""
+        business's skip policy (customization extension point ``skip``).
+
+        Rules shared by every caller (portal, owner screen): the delivery is PENDING,
+        not in the past, and its subscription is live. Row-locked so a double tap
+        can't skip (and extend) twice.
+        """
+        _lock(delivery)
         if delivery.status != DeliveryStatus.PENDING:
             raise ValueError(f"Can only skip PENDING deliveries, got {delivery.status}")
+        if delivery.delivery_date < timezone.localdate():
+            raise ValueError("Cannot skip a past date.")
+        if delivery.subscription.status not in (SubStatus.ACTIVE, SubStatus.PAUSED):
+            raise ValueError(f"Cannot skip a meal of a {delivery.subscription.status} subscription.")
 
         delivery.status = DeliveryStatus.SKIPPED
         delivery.save(update_fields=["status", "updated_at"])

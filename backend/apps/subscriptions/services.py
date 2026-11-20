@@ -223,10 +223,22 @@ class SubscriptionService:
 
     @staticmethod
     @transaction.atomic
-    def cancel(subscription):
-        """Cancel a PENDING or ACTIVE subscription."""
+    def cancel(subscription, *, today=None):
+        """Cancel a subscription and stop its service.
+
+        Row-locked (so a payment can't land at the same moment), then every PENDING
+        delivery from today on is cancelled and open pause windows are closed without
+        extending anything — nothing is cooked or delivered for a cancelled subscription.
+        """
+        from apps.deliveries.services import DeliveryService, PauseSelector
+
+        today = today or datetime.date.today()
+        _lock(subscription)
         subscription.transition_to(SubStatus.CANCELLED)
         subscription.save(update_fields=["status", "updated_at"])
+        DeliveryService.cancel_upcoming_deliveries(subscription, from_date=today)
+        for pause in PauseSelector.open_pauses(subscription):
+            DeliveryService.close_pause(pause, days_extended=0)
         return subscription
 
     @staticmethod

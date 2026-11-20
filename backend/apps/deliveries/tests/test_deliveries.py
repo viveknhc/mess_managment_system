@@ -389,8 +389,10 @@ class TestUndoStatus:
             DeliveryService.undo_status(d, now=timezone.now() + UNDO_WINDOW + timedelta(seconds=1))
 
     def test_cannot_undo_other_day(self, deliveries):
-        d = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        d = self._today(deliveries)
         DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
+        Delivery.objects.filter(pk=d.pk).update(delivery_date=TODAY - timedelta(days=1))  # marked yesterday
+        d.refresh_from_db()
         with pytest.raises(ValueError, match="Too late"):
             DeliveryService.undo_status(d)
 
@@ -403,3 +405,164 @@ class TestUndoStatus:
         d = self._today(deliveries)
         DeliveryService.update_status(d, DeliveryStatus.DELIVERED)
         assert auth_client(owner_b).post(f"/api/v1/deliveries/{d.id}/undo/").status_code == 404
+
+
+# ── Audit fixes: cancel stops service, skip rules, delivery staff scope ──
+
+
+@pytest.fixture()
+def delivery_staff_a2(biz_a):
+    return User.objects.create_user(
+        username="delivery_a2", password="pass", role=Role.DELIVERY_STAFF, business=biz_a
+    )
+
+
+@pytest.fixture()
+def customer_user_a(biz_a, cust_a):
+    user = User.objects.create_user(username="cust_a", password="pass", role=Role.CUSTOMER, business=biz_a)
+    cust_a.user = user
+    cust_a.save(update_fields=["user"])
+    return user
+
+
+@pytest.mark.django_db
+class TestCancelStopsService:
+    def test_cancel_cancels_upcoming_deliveries(self, active_sub, deliveries):
+        from apps.subscriptions.services import SubscriptionService
+
+        SubscriptionService.cancel(active_sub)
+        assert not deliveries.filter(status=DeliveryStatus.PENDING).exists()
+        assert deliveries.filter(status=DeliveryStatus.CANCELLED).count() == 7
+
+    def test_cancelled_customer_off_today_list_and_kitchen(self, biz_a, active_sub, deliveries):
+        from apps.subscriptions.services import SubscriptionService
+
+        SubscriptionService.cancel(active_sub)
+        assert list(DeliverySelector.get_kitchen_counts(biz_a.id)) == []
+        assert not DeliverySelector.get_today(biz_a.id).filter(status=DeliveryStatus.PENDING).exists()
+
+    def test_cancel_keeps_finished_deliveries(self, active_sub, deliveries):
+        from apps.subscriptions.services import SubscriptionService
+
+        today = deliveries.get(delivery_date=TODAY)
+        DeliveryService.update_status(today, DeliveryStatus.DELIVERED)
+        SubscriptionService.cancel(active_sub)
+        today.refresh_from_db()
+        assert today.status == DeliveryStatus.DELIVERED
+
+    def test_cancel_closes_open_pause_without_extending(self, active_sub, deliveries):
+        from apps.subscriptions.services import SubscriptionService
+
+        SubscriptionService.pause(
+            active_sub, start_date=TODAY + timedelta(days=2), end_date=TODAY + timedelta(days=3)
+        )
+        active_sub.refresh_from_db()
+        end_before = active_sub.end_date
+        SubscriptionService.cancel(active_sub)
+        pause = SubscriptionPause.objects.get(subscription=active_sub)
+        assert pause.is_closed and pause.days_extended == 0
+        active_sub.refresh_from_db()
+        assert active_sub.end_date == end_before
+
+    def test_cannot_skip_meal_of_cancelled_subscription(self, active_sub, deliveries):
+        from apps.subscriptions.services import SubscriptionService
+
+        SubscriptionService.cancel(active_sub)
+        d = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        d.status = DeliveryStatus.PENDING  # even a leftover PENDING row
+        d.save(update_fields=["status"])
+        with pytest.raises(ValueError, match="CANCELLED"):
+            DeliveryService.skip_meal(d)
+
+
+@pytest.mark.django_db
+class TestSkipRules:
+    def test_customer_cannot_use_staff_skip_endpoint(self, customer_user_a, deliveries):
+        d = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        resp = auth_client(customer_user_a).post(f"{URL}{d.id}/skip/")
+        assert resp.status_code == 403
+        d.refresh_from_db()
+        assert d.status == DeliveryStatus.PENDING
+
+    def test_past_delivery_cannot_be_skipped(self, deliveries):
+        d = deliveries.get(delivery_date=TODAY)
+        Delivery.objects.filter(pk=d.pk).update(delivery_date=TODAY - timedelta(days=1))
+        d.refresh_from_db()
+        with pytest.raises(ValueError, match="past"):
+            DeliveryService.skip_meal(d)
+
+    def test_owner_past_skip_via_api_rejected(self, owner_a, deliveries):
+        d = deliveries.get(delivery_date=TODAY)
+        Delivery.objects.filter(pk=d.pk).update(delivery_date=TODAY - timedelta(days=2))
+        assert auth_client(owner_a).post(f"{URL}{d.id}/skip/").status_code == 400
+
+    def test_skip_twice_rejected(self, deliveries):
+        d = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        stale = Delivery.objects.get(pk=d.pk)
+        DeliveryService.skip_meal(d)
+        with pytest.raises(ValueError, match="PENDING"):
+            DeliveryService.skip_meal(stale)  # re-read under lock, not trusted from memory
+        assert MealSkip.objects.filter(delivery=d).count() == 1
+
+
+@pytest.mark.django_db
+class TestDeliveryStaffScope:
+    def test_staff_sees_only_today_assigned_or_unassigned(
+        self, delivery_staff_a, delivery_staff_a2, deliveries
+    ):
+        today = deliveries.get(delivery_date=TODAY)
+        tomorrow = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        ids = {r["id"] for r in auth_client(delivery_staff_a).get(URL).json()["results"]}
+        assert ids == {str(today.id)}  # no future days
+
+        Delivery.objects.filter(pk=today.pk).update(assigned_staff=delivery_staff_a2)
+        assert auth_client(delivery_staff_a).get(URL).json()["results"] == []
+        assert auth_client(delivery_staff_a).get(f"{URL}today/").json()["results"] == []
+        assert auth_client(delivery_staff_a).get(f"{URL}{tomorrow.id}/").status_code == 404
+
+    def test_staff_cannot_mark_another_staffs_delivery(self, delivery_staff_a, delivery_staff_a2, deliveries):
+        today = deliveries.get(delivery_date=TODAY)
+        Delivery.objects.filter(pk=today.pk).update(assigned_staff=delivery_staff_a2)
+        resp = auth_client(delivery_staff_a).patch(
+            f"{URL}{today.id}/status/", {"status": "DELIVERED"}, format="json"
+        )
+        assert resp.status_code == 404
+        today.refresh_from_db()
+        assert today.status == DeliveryStatus.PENDING
+
+    def test_staff_cannot_mark_future_delivery(self, delivery_staff_a, deliveries):
+        tomorrow = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        resp = auth_client(delivery_staff_a).patch(
+            f"{URL}{tomorrow.id}/status/", {"status": "DELIVERED"}, format="json"
+        )
+        assert resp.status_code == 404
+
+    def test_owner_cannot_mark_future_delivery_delivered(self, owner_a, deliveries):
+        tomorrow = deliveries.get(delivery_date=TODAY + timedelta(days=1))
+        resp = auth_client(owner_a).patch(
+            f"{URL}{tomorrow.id}/status/", {"status": "DELIVERED"}, format="json"
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.parametrize("new_status", ["SKIPPED", "CANCELLED"])
+    def test_staff_cannot_skip_or_cancel(self, delivery_staff_a, deliveries, new_status):
+        today = deliveries.get(delivery_date=TODAY)
+        resp = auth_client(delivery_staff_a).patch(
+            f"{URL}{today.id}/status/", {"status": new_status}, format="json"
+        )
+        assert resp.status_code == 403
+        today.refresh_from_db()
+        assert today.status == DeliveryStatus.PENDING
+
+    def test_marking_unassigned_delivery_claims_it(self, delivery_staff_a, delivery_staff_a2, deliveries):
+        today = deliveries.get(delivery_date=TODAY)
+        resp = auth_client(delivery_staff_a).patch(
+            f"{URL}{today.id}/status/", {"status": "DELIVERED"}, format="json"
+        )
+        assert resp.status_code == 200
+        today.refresh_from_db()
+        assert today.assigned_staff == delivery_staff_a
+        assert auth_client(delivery_staff_a2).get(URL).json()["results"] == []
+
+    def test_owner_still_sees_everything(self, owner_a, deliveries):
+        assert auth_client(owner_a).get(URL).json()["count"] == 7

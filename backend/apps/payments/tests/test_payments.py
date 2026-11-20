@@ -10,9 +10,10 @@ from apps.accounts.models import User
 from apps.businesses.models import Business
 from apps.customers.models import Customer
 from apps.meals.models import Meal
-from apps.payments.models import PaymentMethod
+from apps.payments.models import Payment, PaymentMethod
 from apps.payments.services import PaymentSelector, PaymentService
 from apps.plans.models import Plan
+from apps.subscriptions.models import Subscription
 from apps.subscriptions.services import SubscriptionService
 from common.constants import Role, SubStatus
 
@@ -402,3 +403,46 @@ class TestPaymentIsolation:
             format="json",
         )
         assert resp.status_code == 400
+
+
+# ── Audit fix: checks run on the locked row, not a stale copy ────────────
+
+
+@pytest.mark.django_db
+class TestPaymentChecksUseLockedRow:
+    """Simulates two requests that loaded the subscription before either paid:
+    each holds a stale in-memory copy saying the full amount is still pending."""
+
+    def test_second_full_payment_from_stale_copy_rejected(self, biz_a, sub_pending):
+        stale = Subscription.objects.get(pk=sub_pending.pk)
+        PaymentService.record_payment(
+            business_id=biz_a.id,
+            subscription=sub_pending,
+            amount=Decimal("2500.00"),
+            method=PaymentMethod.CASH,
+            payment_date=TODAY,
+        )
+        with pytest.raises(ValueError, match="exceeds pending"):
+            PaymentService.record_payment(
+                business_id=biz_a.id,
+                subscription=stale,
+                amount=Decimal("2500.00"),
+                method=PaymentMethod.UPI,
+                payment_date=TODAY,
+            )
+        sub_pending.refresh_from_db()
+        assert sub_pending.paid_amount == Decimal("2500.00")
+        assert Payment.objects.filter(subscription=sub_pending).count() == 1
+
+    def test_payment_after_cancel_from_stale_copy_rejected(self, biz_a, sub_pending):
+        stale = Subscription.objects.get(pk=sub_pending.pk)
+        SubscriptionService.cancel(sub_pending)
+        with pytest.raises(ValueError, match="CANCELLED"):
+            PaymentService.record_payment(
+                business_id=biz_a.id,
+                subscription=stale,
+                amount=Decimal("2500.00"),
+                method=PaymentMethod.CASH,
+                payment_date=TODAY,
+            )
+        assert not Payment.objects.filter(subscription=sub_pending).exists()

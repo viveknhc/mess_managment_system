@@ -384,11 +384,19 @@ class TestFreeTrial:
         biz_a.refresh_from_db()
         sub_a.refresh_from_db()
         assert biz_a.status == Status.SUSPENDED
-        sub_a.status = SaasStatus.PENDING  # suspended-while-pending row — owner still hasn't paid
-        sub_a.save(update_fields=["status"])
+        assert sub_a.status == SaasStatus.SUSPENDED  # the nightly check suspends the billing row too
         PlatformService.start_trial(sub_a)
         biz_a.refresh_from_db()
+        sub_a.refresh_from_db()
         assert biz_a.status == Status.ACTIVE
+        assert sub_a.status == SaasStatus.TRIAL
+
+    def test_no_trial_for_business_suspended_after_paying(self, sub_a, biz_a):
+        pay(sub_a, timezone.localdate())
+        PlatformService.suspend_business(biz_a)
+        sub_a.refresh_from_db()
+        with pytest.raises(ValueError):
+            PlatformService.start_trial(sub_a)
 
     def test_nightly_check_leaves_expired_trial_locked_not_suspended(self, sub_a, biz_a):
         PlatformService.start_trial(sub_a)

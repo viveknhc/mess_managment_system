@@ -108,7 +108,9 @@ class PlatformService:
         )
         if subscription.trial_ends_at is not None:
             raise ValueError("The free trial has already been used for this business.")
-        if subscription.status != SaasStatus.PENDING or subscription.setup_fee_paid:
+        # PENDING, or SUSPENDED by the nightly check because the first payment never came.
+        never_paid = not subscription.setup_fee_paid and not subscription.payments.exists()
+        if subscription.status not in (SaasStatus.PENDING, SaasStatus.SUSPENDED) or not never_paid:
             raise ValueError("A free trial can only be started for a business awaiting its first payment.")
 
         subscription.status = SaasStatus.TRIAL

@@ -359,7 +359,8 @@ export function BusinessesListPage() {
             >
               Record Payment
             </button>
-            {biz.saas_status === 'PENDING' && !biz.trial_ends_at && (
+            {/* Never paid (setup fee still due): awaiting first payment, or auto-suspended for it. */}
+            {(biz.saas_status === 'PENDING' || biz.saas_status === 'SUSPENDED') && !biz.trial_ends_at && Number(biz.amount_due?.setup_fee ?? 0) > 0 && (
               <button
                 onClick={() => handleStartTrial(biz)}
                 className="whitespace-nowrap rounded bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"

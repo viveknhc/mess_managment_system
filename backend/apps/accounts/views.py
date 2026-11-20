@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -32,6 +32,19 @@ class LoginThrottle(AnonRateThrottle):
     rate = "5/min"
 
 
+class LoginUsernameThrottle(SimpleRateThrottle):
+    """Caps attempts per username across all IPs — stops password guessing spread over
+    many addresses. Generous enough that a real user is never blocked by normal use."""
+
+    scope = "login_user"
+
+    def get_cache_key(self, request, view):
+        username = str(request.data.get("username", "")).strip().lower()
+        if not username:
+            return None
+        return self.cache_format % {"scope": self.scope, "ident": username}
+
+
 class PasswordResetThrottle(AnonRateThrottle):
     scope = "password_reset"  # own counter, separate from login attempts
     rate = "5/hour"
@@ -51,7 +64,7 @@ class LoginView(ThrottleUnlessDisabledMixin, TokenObtainPairView):
     """POST /auth/login/ — returns access, refresh, user + business."""
 
     serializer_class = CustomTokenObtainPairSerializer
-    throttle_classes = [LoginThrottle]
+    throttle_classes = [LoginThrottle, LoginUsernameThrottle]
 
 
 class RefreshView(TokenRefreshView):

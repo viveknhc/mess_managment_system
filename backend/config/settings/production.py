@@ -30,6 +30,28 @@ CSRF_TRUSTED_ORIGINS = _csv("CSRF_TRUSTED_ORIGINS") or CORS_ALLOWED_ORIGINS
 if not os.environ.get("FRONTEND_URL") and CORS_ALLOWED_ORIGINS:
     FRONTEND_URL = CORS_ALLOWED_ORIGINS[0].rstrip("/")
 
+# Render puts one load balancer in front of the app; it appends the real client IP as the
+# last X-Forwarded-For entry. Throttles must key on that, not on what the client sent.
+REST_FRAMEWORK["NUM_PROXIES"] = int(os.environ.get("NUM_PROXIES", "1"))  # noqa: F405
+
+# Throttle counters must be shared by all gunicorn workers (per-process memory would
+# multiply every limit). Redis when REDIS_CACHE_URL is set, else a Postgres table
+# (created by build.sh → createcachetable).
+if os.environ.get("REDIS_CACHE_URL"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.environ["REDIS_CACHE_URL"],
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+        }
+    }
+
 # Keep DB connections open between requests (Neon/Postgres)
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405

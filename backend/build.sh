@@ -5,6 +5,7 @@ set -o errexit
 pip install -r requirements/production.txt
 python manage.py collectstatic --no-input
 python manage.py migrate --no-input
+python manage.py createcachetable  # shared throttle counters (settings/production.py CACHES)
 
 # Platform admin from SUPERADMIN_USERNAME / SUPERADMIN_PASSWORD (skipped if unset)
 python manage.py ensure_superadmin

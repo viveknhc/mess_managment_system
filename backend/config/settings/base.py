@@ -126,9 +126,14 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.exceptions.api_exception_handler",
     "DEFAULT_THROTTLE_RATES": {
         "auth": "5/min",
+        "login_user": "20/hour",  # per username, whatever IP the attempts come from
         "writes": "60/min",
         "reads": "120/min",
     },
+    # Throttles identify clients by IP. 0 = the socket address (no proxy in front, e.g. local dev);
+    # N = trust the last N X-Forwarded-For hops. Never None: then the whole client-supplied
+    # header becomes the key and a fake X-Forwarded-For dodges every limit.
+    "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
 }
 
 # --- JWT (arch. §8.2; system_design.md D7) ---

@@ -31,22 +31,26 @@ class PaymentService:
         If fully paid and subscription is PENDING → transition to ACTIVE,
         then generate delivery schedule and notify owners.
         """
-        if subscription.business_id != business_id:
-            raise ValueError("Subscription does not belong to this business.")
         if amount <= 0:
             raise ValueError("Payment amount must be positive.")
-        if subscription.status in (SubStatus.CANCELLED, SubStatus.EXPIRED):
-            raise ValueError(f"Cannot record payment for {subscription.status} subscription.")
+
+        # Lock first, then check: two payments (or a payment and a cancel) arriving together
+        # are serialized here, so the second one sees the first one's result.
+        sub = Subscription.objects.select_for_update().select_related("customer").get(id=subscription.id)
+        if sub.business_id != business_id:
+            raise ValueError("Subscription does not belong to this business.")
+        if sub.status in (SubStatus.CANCELLED, SubStatus.EXPIRED):
+            raise ValueError(f"Cannot record payment for {sub.status} subscription.")
 
         # Guard against overpayment
-        max_payable = subscription.total_amount - subscription.paid_amount
+        max_payable = sub.total_amount - sub.paid_amount
         if amount > max_payable:
             raise ValueError(f"Payment of ₹{amount} exceeds pending amount of ₹{max_payable}.")
 
         payment = Payment.objects.create(
             business_id=business_id,
-            subscription=subscription,
-            customer=subscription.customer,
+            subscription=sub,
+            customer=sub.customer,
             amount=amount,
             method=method,
             payment_date=payment_date,
@@ -56,7 +60,6 @@ class PaymentService:
         )
 
         # Recalculate subscription amounts
-        sub = Subscription.objects.select_for_update().get(id=subscription.id)
         sub.paid_amount += amount
         sub.pending_amount = max(sub.total_amount - sub.paid_amount, Decimal("0.00"))
 

@@ -132,3 +132,49 @@ class TestMe:
             resp = api.get("/api/v1/auth/me/")
             assert resp.json()["role"] == role
             user.delete()
+
+
+# ── Audit fix: login throttling can't be dodged with X-Forwarded-For ─────
+
+
+@pytest.fixture()
+def throttling_on(settings, monkeypatch):
+    from django.core.cache import cache
+
+    from apps.accounts.views import LoginThrottle, LoginUsernameThrottle
+
+    rates = {"auth": "5/min", "login_user": "20/hour"}
+    settings.REST_FRAMEWORK = {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates, "NUM_PROXIES": 0}
+    monkeypatch.setattr(LoginUsernameThrottle, "THROTTLE_RATES", rates)
+    monkeypatch.setattr(LoginThrottle, "THROTTLE_RATES", rates)
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@pytest.mark.django_db
+class TestLoginThrottle:
+    def _attempts(self, n, username="victim", spoof=False):
+        api = APIClient()
+        codes = []
+        for i in range(n):
+            headers = {"HTTP_X_FORWARDED_FOR": f"10.0.0.{i}"} if spoof else {}
+            codes.append(
+                api.post(
+                    "/api/v1/auth/login/", {"username": username, "password": f"guess{i}"}, **headers
+                ).status_code
+            )
+        return codes
+
+    def test_spoofed_forwarded_for_does_not_reset_ip_limit(self, throttling_on):
+        codes = self._attempts(7, spoof=True)
+        assert codes[:5] == [401] * 5
+        assert codes[5:] == [429, 429]
+
+    def test_per_username_limit_across_ips(self, throttling_on, monkeypatch):
+        from apps.accounts.views import LoginThrottle
+
+        monkeypatch.setattr(LoginThrottle, "allow_request", lambda self, request, view: True)  # many real IPs
+        codes = self._attempts(22, username="Owner ")
+        assert codes[:20] == [401] * 20
+        assert codes[20:] == [429, 429]

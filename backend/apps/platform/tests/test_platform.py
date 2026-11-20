@@ -301,6 +301,110 @@ class TestAwaitingFirstPaymentLock:
         assert client_super.get(f"/api/v1/platform/businesses/{sub_a.business_id}/").status_code == 200
 
 
+# ── Free 7-day trial (started by SUPER_ADMIN) ────────────────────────────
+
+
+def _expire_trial(sub):
+    sub.refresh_from_db()
+    sub.trial_ends_at = timezone.now() - timedelta(seconds=1)
+    sub.save(update_fields=["trial_ends_at"])
+
+
+class TestFreeTrial:
+    def test_super_admin_starts_trial_and_owner_gets_access(self, sub_a, jwt_client_a, client_super):
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 403
+        before = timezone.now()
+        resp = client_super.post(f"/api/v1/platform/businesses/{sub_a.business_id}/start-trial/")
+        assert resp.status_code == 200
+        assert resp.json()["saas_status"] == SaasStatus.TRIAL
+        sub_a.refresh_from_db()
+        assert sub_a.status == SaasStatus.TRIAL
+        assert before + timedelta(days=7) <= sub_a.trial_ends_at <= timezone.now() + timedelta(days=7)
+
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+        assert jwt_client_a.post("/api/v1/meals/", {"name": "Snacks"}, format="json").status_code == 201
+        me = jwt_client_a.get("/api/v1/auth/me/").json()
+        assert me["saas_status"] == SaasStatus.TRIAL
+        assert me["trial_ends_at"] is not None
+
+    def test_trial_clock_starts_at_click_not_onboarding(self, sub_a):
+        later = timezone.now() + timedelta(days=5)
+        PlatformService.start_trial(sub_a, now=later)
+        sub_a.refresh_from_db()
+        assert sub_a.trial_ends_at == later + timedelta(days=7)
+
+    def test_expired_trial_locks_with_payment_required(self, sub_a, jwt_client_a):
+        PlatformService.start_trial(sub_a)
+        _expire_trial(sub_a)
+        resp = jwt_client_a.get("/api/v1/customers/")
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == "PAYMENT_REQUIRED"
+        assert "trial has ended" in resp.json()["error"]["message"]
+        # Owner can still log in and reach Billing to pay.
+        assert jwt_client_a.get("/api/v1/auth/me/").status_code == 200
+        assert jwt_client_a.get("/api/v1/billing/").status_code == 200
+
+    def test_expired_trial_locks_staff_too(self, biz_a, sub_a):
+        PlatformService.start_trial(sub_a)
+        _expire_trial(sub_a)
+        User.objects.create_user(
+            username="staff_a", password="pass", role=Role.DELIVERY_STAFF, business=biz_a
+        )
+        c = APIClient()
+        login = c.post("/api/v1/auth/login/", {"username": "staff_a", "password": "pass"})
+        c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.json()['access']}")
+        assert c.get("/api/v1/deliveries/").json()["error"]["code"] == "PAYMENT_REQUIRED"
+
+    def test_first_payment_during_or_after_trial_unlocks(self, sub_a, jwt_client_a):
+        PlatformService.start_trial(sub_a)
+        _expire_trial(sub_a)
+        due = PlatformService.amount_due(sub_a)
+        assert due.setup_fee > 0  # the trial doesn't waive the setup fee
+        PlatformService.record_manual_payment(sub_a, amount=due.total, method="UPI")
+        sub_a.refresh_from_db()
+        assert sub_a.status == SaasStatus.ACTIVE
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+        assert jwt_client_a.get("/api/v1/auth/me/").json()["trial_ends_at"] is None
+
+    def test_trial_only_once(self, sub_a, client_super):
+        url = f"/api/v1/platform/businesses/{sub_a.business_id}/start-trial/"
+        assert client_super.post(url).status_code == 200
+        _expire_trial(sub_a)
+        resp = client_super.post(url)
+        assert resp.status_code == 400
+        assert "already been used" in resp.json()["error"]["message"]
+
+    def test_trial_not_for_paying_business(self, sub_a, client_super):
+        pay(sub_a, timezone.localdate())
+        resp = client_super.post(f"/api/v1/platform/businesses/{sub_a.business_id}/start-trial/")
+        assert resp.status_code == 400
+
+    def test_trial_restores_business_suspended_for_nonpayment(self, sub_a, biz_a):
+        PlatformService.run_billing_checks(timezone.localdate() + timedelta(days=GRACE))
+        biz_a.refresh_from_db()
+        sub_a.refresh_from_db()
+        assert biz_a.status == Status.SUSPENDED
+        sub_a.status = SaasStatus.PENDING  # suspended-while-pending row — owner still hasn't paid
+        sub_a.save(update_fields=["status"])
+        PlatformService.start_trial(sub_a)
+        biz_a.refresh_from_db()
+        assert biz_a.status == Status.ACTIVE
+
+    def test_nightly_check_leaves_expired_trial_locked_not_suspended(self, sub_a, biz_a):
+        PlatformService.start_trial(sub_a)
+        PlatformService.run_billing_checks(timezone.localdate() + timedelta(days=30))
+        biz_a.refresh_from_db()
+        sub_a.refresh_from_db()
+        assert biz_a.status == Status.ACTIVE
+        assert sub_a.status == SaasStatus.TRIAL
+
+    def test_owner_cannot_start_trial(self, sub_a, jwt_client_a):
+        resp = jwt_client_a.post(f"/api/v1/platform/businesses/{sub_a.business_id}/start-trial/")
+        assert resp.status_code in (403, 404)
+        sub_a.refresh_from_db()
+        assert sub_a.status == SaasStatus.PENDING
+
+
 # ── Public Plans ─────────────────────────────────────────────────────────
 
 

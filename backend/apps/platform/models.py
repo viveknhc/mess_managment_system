@@ -11,7 +11,7 @@ from common.models import TimeStampedModel, UUIDModel
 
 class SaasStatus:
     PENDING = "PENDING"  # created, first payment (setup + first month) not yet received
-    TRIAL = "TRIAL"  # legacy — free trials are no longer offered
+    TRIAL = "TRIAL"  # 7-day free trial started by SUPER_ADMIN from PENDING; locks at trial_ends_at
     ACTIVE = "ACTIVE"
     PAST_DUE = "PAST_DUE"
     SUSPENDED = "SUSPENDED"
@@ -99,6 +99,8 @@ class SaasSubscription(UUIDModel, TimeStampedModel):
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
     trial_end_date = models.DateField(null=True, blank=True)
+    # Exact moment the free trial ends (the countdown shown to the owner). Null = trial never started.
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
     current_period_start = models.DateField(null=True, blank=True)
     # First day NOT covered by the last payment — the next monthly fee is due on this date.
     current_period_end = models.DateField(null=True, blank=True)

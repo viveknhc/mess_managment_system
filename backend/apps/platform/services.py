@@ -49,6 +49,7 @@ MONTHLY_PLAN_DEFAULTS = {
         "WhatsApp and email support",
     ],
 }
+TRIAL_DAYS = 7  # free trial a SUPER_ADMIN can start for a business awaiting its first payment
 GRACE_DAYS = 7  # unpaid this many days after the due date → suspended
 REACTIVATION_GAP_MONTHS = 3  # returning after MORE than this → reactivation fee
 DEFAULT_MEALS = ["Breakfast", "Lunch", "Dinner", "Tiffin"]
@@ -92,6 +93,36 @@ class PlatformService:
         if not created:
             logger.info("SaasSubscription already exists for business %s", business.id)
         return sub
+
+    @staticmethod
+    @transaction.atomic
+    def start_trial(subscription, now=None):
+        """SUPER_ADMIN starts the free trial: PENDING → TRIAL with full access for TRIAL_DAYS.
+
+        The clock starts now (not at onboarding). One trial per business. When it runs out the
+        app locks again (PAYMENT_REQUIRED) until the first payment — see common.authentication.
+        """
+        now = now or timezone.now()
+        subscription = (
+            SaasSubscription.objects.select_for_update().select_related("business").get(pk=subscription.pk)
+        )
+        if subscription.trial_ends_at is not None:
+            raise ValueError("The free trial has already been used for this business.")
+        if subscription.status != SaasStatus.PENDING or subscription.setup_fee_paid:
+            raise ValueError("A free trial can only be started for a business awaiting its first payment.")
+
+        subscription.status = SaasStatus.TRIAL
+        subscription.trial_ends_at = now + timedelta(days=TRIAL_DAYS)
+        subscription.trial_end_date = timezone.localtime(subscription.trial_ends_at).date()
+        subscription.save(update_fields=["status", "trial_ends_at", "trial_end_date", "updated_at"])
+
+        # The nightly check suspends businesses left unpaid in PENDING — the trial overrides that.
+        business = subscription.business
+        if business.status == Status.SUSPENDED:
+            business.status = Status.ACTIVE
+            business.save(update_fields=["status"])
+        logger.info("Free trial started for business %s until %s", business.id, subscription.trial_ends_at)
+        return subscription
 
     @staticmethod
     @transaction.atomic
@@ -349,7 +380,8 @@ class PlatformService:
         - PAST_DUE for GRACE_DAYS → SUSPENDED
         - CANCELLED once the paid month ends → business access suspended
         - PENDING (first payment never made) for GRACE_DAYS after onboarding → SUSPENDED
-        - legacy TRIAL past its end date → SUSPENDED
+        - legacy TRIAL (no trial_ends_at) past its end date → SUSPENDED
+          (a started free trial isn't suspended — it locks with PAYMENT_REQUIRED at trial_ends_at)
         """
         today = today or timezone.localdate()
         counts = {"past_due": 0, "suspended": 0}
@@ -367,7 +399,7 @@ class PlatformService:
             status=SaasStatus.CANCELLED, current_period_end__lte=today, business__status=Status.ACTIVE
         ).select_related("business")
         to_suspend += SaasSubscription.objects.filter(
-            status=SaasStatus.TRIAL, trial_end_date__lt=today
+            status=SaasStatus.TRIAL, trial_ends_at__isnull=True, trial_end_date__lt=today
         ).select_related("business")
         to_suspend += SaasSubscription.objects.filter(
             status=SaasStatus.PENDING,

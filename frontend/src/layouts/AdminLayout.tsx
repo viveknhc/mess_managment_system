@@ -1,10 +1,12 @@
 import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
-import { businessLock, useAuthStore } from '../store/authStore'
+import { useCallback, useState } from 'react'
+import { businessLock, trialEnded, useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
 import { FEATURES, type FeatureKey } from '../hooks/useFeature'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 import { AppShell } from '../components/AppShell'
+import { TrialCountdownBanner } from '../components/TrialCountdownBanner'
 
 const navItems: { to: string; label: string; icon: NavIconName; end: boolean; feature?: FeatureKey }[] = [
   { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true },
@@ -29,8 +31,12 @@ export function AdminLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // Bumped when the trial countdown hits zero so the lock below is re-evaluated against the new time.
+  const [, setTrialTick] = useState(0)
+  const onTrialEnd = useCallback(() => setTrialTick((n) => n + 1), [])
   const lock = businessLock(user)
   const suspended = lock !== null
+  const trialOver = trialEnded(user)
 
   async function handleLogout() {
     await logout()
@@ -76,7 +82,7 @@ export function AdminLayout() {
           // Blocked while suspended — shown greyed out instead of a link that bounces back to Billing.
           <span
             key={item.to}
-            title={lock === 'PAYMENT_REQUIRED' ? 'Available after your first payment' : 'Unavailable while your account is suspended'}
+            title={lock === 'PAYMENT_REQUIRED' ? (trialOver ? 'Free trial ended — available after your first payment' : 'Available after your first payment') : 'Unavailable while your account is suspended'}
             aria-disabled="true"
             className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300"
           >
@@ -102,12 +108,27 @@ export function AdminLayout() {
         ),
       )}
     >
+      {!suspended && user?.saas_status === 'TRIAL' && user.trial_ends_at && (
+        <TrialCountdownBanner endsAt={user.trial_ends_at} onEnd={onTrialEnd} />
+      )}
       {lock === 'PAYMENT_REQUIRED' && (
         <div role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-800 sm:px-6">
-          Welcome to MessDeck! To start adding customers, meals and plans,{' '}
-          <Link to="/app/billing#pay" className="underline">
-            complete your first payment
-          </Link>
+          {trialOver ? (
+            <>
+              Your 7-day free trial has ended. Your data is safe —{' '}
+              <Link to="/app/billing#pay" className="underline">
+                complete your first payment
+              </Link>{' '}
+              to continue using MessDeck
+            </>
+          ) : (
+            <>
+              Welcome to MessDeck! To start adding customers, meals and plans,{' '}
+              <Link to="/app/billing#pay" className="underline">
+                complete your first payment
+              </Link>
+            </>
+          )}
           . Need help? Message us on{' '}
           <a
             href={whatsappLink(`Hi, I need help with the first payment for ${user?.business_name ?? 'my business'} on MessDeck.`)}

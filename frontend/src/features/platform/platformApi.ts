@@ -89,6 +89,8 @@ export interface SaasSubscription {
   setup_fee_paid: boolean
   cancelled_at: string | null
   trial_end_date: string | null
+  /** Exact end of the free trial (ISO datetime); null if no trial was started. */
+  trial_ends_at: string | null
   current_period_start: string | null
   /** First day not covered by the last payment — the next fee is due on this date. */
   current_period_end: string | null
@@ -126,6 +128,7 @@ export interface PlatformBusiness {
   saas_status: SaasStatus | null
   plan_name: string | null
   trial_end_date: string | null
+  trial_ends_at: string | null
   paid_until: string | null
   amount_due: AmountDue | null
   owner_name: string | null
@@ -306,6 +309,16 @@ export const platformApi = {
   async reactivateBusiness(id: string) {
     try {
       const { data } = await apiClient.post(`/platform/businesses/${id}/reactivate/`)
+      return { ok: true as const, data }
+    } catch (e) {
+      return { ok: false as const, error: errMsg(e) }
+    }
+  },
+
+  /** Give a business awaiting its first payment 7 days of full access, starting now. */
+  async startTrial(id: string) {
+    try {
+      const { data } = await apiClient.post<PlatformBusiness>(`/platform/businesses/${id}/start-trial/`)
       return { ok: true as const, data }
     } catch (e) {
       return { ok: false as const, error: errMsg(e) }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { platformApi, type CreateBusinessInput, type ManualPaymentMethod, type PlatformBusiness } from './platformApi'
-import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
+import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, formatDateTime, rupees, trialLeftLabel } from './billingFormat'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { CustomizeBusinessModal } from './CustomizeBusinessModal'
@@ -14,9 +14,16 @@ const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm'
 function statusBadge(biz: PlatformBusiness) {
   if (!biz.saas_status) return <span className="text-gray-400">—</span>
   return (
-    <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[biz.saas_status]}`}>
-      {STATUS_LABEL[biz.saas_status]}
-    </span>
+    <>
+      <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[biz.saas_status]}`}>
+        {STATUS_LABEL[biz.saas_status]}
+      </span>
+      {biz.saas_status === 'TRIAL' && biz.trial_ends_at && (
+        <p className="mt-1 whitespace-nowrap text-xs text-gray-500" title={`Ends ${formatDateTime(biz.trial_ends_at)}`}>
+          {trialLeftLabel(biz.trial_ends_at)}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -226,6 +233,24 @@ export function BusinessesListPage() {
       fetchBusinesses()
     }
 
+    async function handleStartTrial(biz: PlatformBusiness) {
+      const ok = await confirmDialog({
+        title: `Start 7-day free trial for ${biz.name}?`,
+        message:
+          'The owner, staff and customers get full access for 7 days starting now. A countdown is shown to the owner; when it ends the app locks until the first payment. A trial can only be given once.',
+        confirmText: 'Start trial',
+        tone: 'success',
+      })
+      if (!ok) return
+      const result = await platformApi.startTrial(biz.id)
+      if (!result.ok) {
+        notify.error(result.error)
+        return
+      }
+      notify.success('Free trial started', `${biz.name} · ends ${formatDateTime(result.data.trial_ends_at ?? '')}`)
+      fetchBusinesses()
+    }
+
     async function handleCancel(biz: PlatformBusiness) {
       const ok = await confirmDialog({
         title: `Cancel the monthly plan for ${biz.name}?`,
@@ -334,6 +359,14 @@ export function BusinessesListPage() {
             >
               Record Payment
             </button>
+            {biz.saas_status === 'PENDING' && !biz.trial_ends_at && (
+              <button
+                onClick={() => handleStartTrial(biz)}
+                className="whitespace-nowrap rounded bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
+              >
+                Start 7-day trial
+              </button>
+            )}
             <button
               onClick={() => setCustomizing(biz)}
               className="rounded bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"

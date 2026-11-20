@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { billingApi, type BillingData, type SaasSubscription } from './platformApi'
-import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
+import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, formatDateTime, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../../config/support'
 import { payOnline } from '../../utils/razorpay'
@@ -15,8 +15,12 @@ function statusMessage(sub: SaasSubscription) {
   const due = sub.amount_due
   const end = sub.current_period_end
   switch (sub.status) {
-    case 'PENDING':
     case 'TRIAL':
+      if (sub.trial_ends_at && Date.parse(sub.trial_ends_at) > Date.now()) {
+        return `You're on a 7-day free trial until ${formatDateTime(sub.trial_ends_at)}. Pay ${rupees(due.total)} (${rupees(due.setup_fee)} setup + ${rupees(due.monthly_fee)} first month) before it ends to keep using MessDeck.`
+      }
+      return `Your free trial has ended. Pay ${rupees(due.total)} (${rupees(due.setup_fee)} setup + ${rupees(due.monthly_fee)} first month) to continue — your data is safe.`
+    case 'PENDING':
       return `Your first payment of ${rupees(due.total)} (${rupees(due.setup_fee)} setup + ${rupees(due.monthly_fee)} first month) is due.`
     case 'ACTIVE':
       return end ? `You're paid until ${formatDate(dayBefore(end))}. Next payment of ${rupees(due.total)} is due on ${formatDate(end)}.` : ''

@@ -92,6 +92,7 @@ class SaasSubscriptionSerializer(serializers.ModelSerializer):
             "setup_fee_paid",
             "cancelled_at",
             "trial_end_date",
+            "trial_ends_at",
             "current_period_start",
             "current_period_end",
             "days_remaining",
@@ -158,6 +159,9 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
     trial_end_date = serializers.DateField(
         source="saas_subscription.trial_end_date", read_only=True, default=None
     )
+    trial_ends_at = serializers.DateTimeField(
+        source="saas_subscription.trial_ends_at", read_only=True, default=None
+    )
     paid_until = serializers.DateField(
         source="saas_subscription.current_period_end", read_only=True, default=None
     )
@@ -178,6 +182,7 @@ class PlatformBusinessSerializer(serializers.ModelSerializer):
             "saas_status",
             "plan_name",
             "trial_end_date",
+            "trial_ends_at",
             "paid_until",
             "amount_due",
             "owner_name",

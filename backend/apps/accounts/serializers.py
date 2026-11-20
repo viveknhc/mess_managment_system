@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.accounts.models import User
 from apps.customization.services import FeatureService
-from common.authentication import saas_status
+from common.authentication import saas_status, trial_ends_at
 from common.constants import BUSINESS_STAFF_ROLES, Role
 
 
@@ -23,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source="business.name", read_only=True, default=None)
     business_status = serializers.CharField(source="business.status", read_only=True, default=None)
     saas_status = serializers.SerializerMethodField()
+    trial_ends_at = serializers.SerializerMethodField()
     features = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
             "business_name",
             "business_status",
             "saas_status",
+            "trial_ends_at",
             "features",
         ]
         read_only_fields = fields
@@ -46,6 +48,11 @@ class UserSerializer(serializers.ModelSerializer):
     def get_saas_status(self, obj):
         """MessDeck billing status — PENDING means the app is locked until the first payment."""
         return saas_status(obj.business)
+
+    def get_trial_ends_at(self, obj):
+        """End of the free trial (TRIAL only) — the owner sees a countdown; past it the app locks."""
+        ends = trial_ends_at(obj.business)
+        return ends.isoformat() if ends else None
 
     def get_features(self, obj):
         """Feature keys the user's business has — the frontend hides what's missing."""

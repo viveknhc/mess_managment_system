@@ -15,6 +15,8 @@ export interface User {
   business_status: string | null
   /** MessDeck billing status. PENDING = first payment not made yet → app locked except Billing/Support. */
   saas_status: string | null
+  /** End of the free trial (ISO datetime) while saas_status is TRIAL — past it the app locks until the first payment. */
+  trial_ends_at: string | null
   /** Feature keys the business has (backend customization.registry) — see useFeature(). */
   features: string[]
 }
@@ -89,18 +91,33 @@ window.addEventListener(BUSINESS_SUSPENDED_EVENT, () => {
   }
 })
 
-// A request was rejected with PAYMENT_REQUIRED — the first MessDeck payment hasn't been made.
+// A request was rejected with PAYMENT_REQUIRED — first MessDeck payment not made (or the free trial ran out).
 window.addEventListener(PAYMENT_REQUIRED_EVENT, () => {
   const { user } = useAuthStore.getState()
-  if (user && user.saas_status !== 'PENDING') {
+  if (!user || businessLock(user) === 'PAYMENT_REQUIRED') return
+  if (user.saas_status === 'TRIAL') {
+    useAuthStore.setState({ user: { ...user, trial_ends_at: new Date().toISOString() } })
+  } else {
     useAuthStore.setState({ user: { ...user, saas_status: 'PENDING' } })
   }
 })
 
+/** Milliseconds left in a running free trial; null when there's no trial, ≤ 0 once it has ended. */
+export function trialMsLeft(user: User | null, now = Date.now()): number | null {
+  if (!user || user.saas_status !== 'TRIAL' || !user.trial_ends_at) return null
+  return Date.parse(user.trial_ends_at) - now
+}
+
+/** Did the business's free trial run out (app locked until the first payment)? */
+export function trialEnded(user: User | null, now = Date.now()) {
+  const left = trialMsLeft(user, now)
+  return left !== null && left <= 0
+}
+
 /** Is the business locked out of everything except Billing/Support? */
-export function businessLock(user: User | null): 'SUSPENDED' | 'PAYMENT_REQUIRED' | null {
+export function businessLock(user: User | null, now = Date.now()): 'SUSPENDED' | 'PAYMENT_REQUIRED' | null {
   if (!user) return null
   if (user.business_status === 'SUSPENDED') return 'SUSPENDED'
-  if (user.saas_status === 'PENDING') return 'PAYMENT_REQUIRED'
+  if (user.saas_status === 'PENDING' || trialEnded(user, now)) return 'PAYMENT_REQUIRED'
   return null
 }

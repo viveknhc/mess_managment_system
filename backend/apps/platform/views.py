@@ -297,6 +297,16 @@ class PlatformBusinessViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelVie
             return _validation_error(str(e))
         return Response(SaasPaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["post"], url_path="start-trial")
+    def start_trial(self, request, pk=None):
+        """POST /platform/businesses/{id}/start-trial/ — 7 days of full access before the first payment."""
+        business = self.get_object()
+        try:
+            PlatformService.start_trial(self._subscription(business))
+        except ValueError as e:
+            return _validation_error(str(e))
+        return Response(PlatformBusinessSerializer(self.get_object()).data)
+
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         business = self.get_object()

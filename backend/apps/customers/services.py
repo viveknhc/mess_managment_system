@@ -192,3 +192,59 @@ def import_customers(*, business, raw: bytes, serializer_context: dict) -> int:
         for serializer in validated:
             serializer.save(business_id=business.id)  # CSV business_id never used
     return len(validated)
+
+
+# ── Portal login (customer can sign in to the customer portal) ───────────
+
+
+def _login_or_error(customer):
+    if customer.user_id is None:
+        raise serializers.ValidationError({"detail": "This customer doesn't have a portal login yet."})
+    return customer.user
+
+
+def portal_login_info(customer):
+    """{username, is_active} for the customer's portal login, or None."""
+    user = customer.user
+    if user is None:
+        return None
+    return {"username": user.username, "is_active": user.is_active}
+
+
+@transaction.atomic
+def create_portal_login(customer, *, username=None, password=None):
+    """Create a CUSTOMER user and link it. Username defaults to the customer's phone.
+
+    Returns the plain password so the owner can share it — it is not retrievable later.
+    """
+    from apps.accounts.services import CustomerLoginService
+
+    if customer.user_id is not None:
+        raise serializers.ValidationError({"detail": "This customer already has a portal login."})
+    user, password = CustomerLoginService.create_login(
+        business_id=customer.business_id,
+        username=username or customer.phone,
+        password=password,
+        name=customer.name,
+        email=customer.email,
+        phone=customer.phone,
+    )
+    customer.user = user
+    customer.save(update_fields=["user", "updated_at"])
+    return {"username": user.username, "is_active": True, "password": password}
+
+
+def reset_portal_password(customer, *, password=None):
+    from apps.accounts.services import CustomerLoginService
+
+    user = _login_or_error(customer)
+    password = CustomerLoginService.reset_password(user, password)
+    return {"username": user.username, "is_active": user.is_active, "password": password}
+
+
+def set_portal_login_active(customer, active):
+    from apps.accounts.services import CustomerLoginService
+
+    user = _login_or_error(customer)
+    CustomerLoginService.set_active(user, active)
+    return portal_login_info(customer)

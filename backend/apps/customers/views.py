@@ -16,7 +16,11 @@ from apps.customers.serializers import (
     CustomerDetailSerializer,
     CustomerListSerializer,
     CustomerUpdateSerializer,
+    PortalLoginCreateSerializer,
+    PortalPasswordResetSerializer,
 )
+from apps.customization.permissions import requires_feature
+from apps.customization.registry import CUSTOMER_PORTAL
 from common.constants import Role
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
@@ -66,6 +70,10 @@ class CustomerViewSet(TenantScopedViewSet):
         "destroy": [Role.OWNER],
         "import_csv": [Role.OWNER, Role.MANAGER],
         "import_template": [Role.OWNER, Role.MANAGER],
+        "portal_login": [Role.OWNER, Role.MANAGER],
+        "portal_login_reset_password": [Role.OWNER, Role.MANAGER],
+        "portal_login_disable": [Role.OWNER, Role.MANAGER],
+        "portal_login_enable": [Role.OWNER, Role.MANAGER],
     }
 
     def get_serializer_class(self):
@@ -78,9 +86,11 @@ class CustomerViewSet(TenantScopedViewSet):
         return CustomerListSerializer
 
     def perform_destroy(self, instance):
-        """Soft-delete: deactivate rather than hard-delete (C-08)."""
+        """Soft-delete: deactivate rather than hard-delete (C-08). Their portal login is disabled too."""
         instance.status = "INACTIVE"
         instance.save(update_fields=["status"])
+        if instance.user_id is not None:
+            services.set_portal_login_active(instance, False)
 
     @action(
         detail=False,
@@ -112,3 +122,42 @@ class CustomerViewSet(TenantScopedViewSet):
         response = HttpResponse(services.build_import_template(), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="customers_import_template.csv"'
         return response
+
+    # ── Portal login (owner/manager gives the customer a username + password) ──
+
+    _portal_permissions = [IsAuthenticated, RoleBasedPermission, requires_feature(CUSTOMER_PORTAL)]
+
+    @action(detail=True, methods=["post"], url_path="portal-login", permission_classes=_portal_permissions)
+    def portal_login(self, request, pk=None):
+        """Create the login. Body: {username?, password?} — username defaults to the phone,
+        password is generated when blank. The response carries the password once."""
+        customer = self.get_object()
+        body = PortalLoginCreateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        result = services.create_portal_login(customer, **body.validated_data)
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="portal-login/reset-password",
+        permission_classes=_portal_permissions,
+    )
+    def portal_login_reset_password(self, request, pk=None):
+        """Body: {password?} — generated when blank. Signs the customer out everywhere."""
+        customer = self.get_object()
+        body = PortalPasswordResetSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(services.reset_portal_password(customer, **body.validated_data))
+
+    @action(
+        detail=True, methods=["post"], url_path="portal-login/disable", permission_classes=_portal_permissions
+    )
+    def portal_login_disable(self, request, pk=None):
+        return Response(services.set_portal_login_active(self.get_object(), False))
+
+    @action(
+        detail=True, methods=["post"], url_path="portal-login/enable", permission_classes=_portal_permissions
+    )
+    def portal_login_enable(self, request, pk=None):
+        return Response(services.set_portal_login_active(self.get_object(), True))

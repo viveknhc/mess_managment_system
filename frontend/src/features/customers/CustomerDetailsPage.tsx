@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore'
 import { CustomerForm } from './CustomerForm'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { PortalLoginCard, type PortalLogin } from './PortalLoginCard'
 
 const STATUS_TOAST: Record<string, string> = {
   ACTIVE: 'Customer set active',
@@ -24,6 +25,8 @@ interface CustomerDetail {
   longitude: string | null
   notes: string
   status: string
+  /** null = no portal login yet. Only on the detail endpoint. */
+  portal_login: PortalLogin | null
   created_at: string
   updated_at: string
 }
@@ -66,7 +69,8 @@ export function CustomerDetailsPage() {
     }
     try {
       const { data } = await apiClient.patch(`/customers/${id}/`, { status: newStatus })
-      setCustomer(data as CustomerDetail)
+      // PATCH returns the update serializer (no portal_login) — keep what we already have.
+      setCustomer((prev) => (prev ? { ...prev, ...(data as Partial<CustomerDetail>) } : prev))
       notify.success(STATUS_TOAST[newStatus] ?? 'Status updated', (data as CustomerDetail).name)
     } catch (err) {
       notify.error(err, 'Failed to update status')
@@ -192,6 +196,17 @@ export function CustomerDetailsPage() {
             </button>
           )}
         </div>
+      )}
+
+      {canWrite && (
+        <PortalLoginCard
+          customerId={customer.id}
+          customerName={customer.name}
+          customerPhone={customer.phone}
+          businessName={user?.business_name ?? 'our mess'}
+          login={customer.portal_login}
+          onChange={(portal_login) => setCustomer((prev) => (prev ? { ...prev, portal_login } : prev))}
+        />
       )}
 
       {/* Tabbed history — stub for now, populated when Subscriptions/Payments/Deliveries modules are built */}

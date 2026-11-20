@@ -88,3 +88,111 @@ class PasswordResetService:
         for outstanding in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=outstanding)
         return user
+
+
+# ── Customer portal logins (created by the mess owner/manager) ───────────
+
+# No look-alike characters (0/o, 1/l/i) — the owner reads these out or sends them on WhatsApp.
+_PASSWORD_LETTERS = "abcdefghjkmnpqrstuvwxyz"
+_PASSWORD_DIGITS = "23456789"
+
+
+def generate_password(length=8):
+    """Readable random password with at least one letter and one digit."""
+    import secrets
+
+    alphabet = _PASSWORD_LETTERS + _PASSWORD_DIGITS
+    while True:
+        pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+        if any(c in _PASSWORD_DIGITS for c in pwd) and any(c in _PASSWORD_LETTERS for c in pwd):
+            return pwd
+
+
+def _validation_error(field, message):
+    from rest_framework.exceptions import ValidationError
+
+    return ValidationError({field: [message]})
+
+
+def _check_password(password, user):
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    try:
+        validate_password(password, user)
+    except DjangoValidationError as exc:
+        from rest_framework.exceptions import ValidationError
+
+        raise ValidationError({"password": list(exc.messages)}) from None
+
+
+def _sign_out_everywhere(user):
+    for outstanding in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=outstanding)
+
+
+class CustomerLoginService:
+    """Create and manage CUSTOMER-role users for the customer portal.
+
+    The owner sets (or auto-generates) the password and shares it with the customer.
+    Passwords are returned to the caller once and never stored in plain text.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def create_login(*, business_id, username, password=None, name="", email="", phone=""):
+        """Returns (user, plain_password)."""
+        from django.contrib.auth.validators import UnicodeUsernameValidator
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from common.constants import Role
+
+        username = (username or "").strip()
+        if not username:
+            raise _validation_error("username", "Enter a username (the customer's phone number works well).")
+        try:
+            UnicodeUsernameValidator()(username)
+        except DjangoValidationError:
+            raise _validation_error(
+                "username", "Use only letters, numbers and @ . + - _ (no spaces)."
+            ) from None
+        if User.objects.filter(username__iexact=username).exists():
+            raise _validation_error("username", "This username is already taken. Try another one.")
+
+        user = User(
+            username=username,
+            name=name,
+            email=email,
+            phone=phone,
+            role=Role.CUSTOMER,
+            business_id=business_id,
+            is_active=True,
+        )
+        if password:
+            _check_password(password, user)
+        else:
+            password = generate_password()
+        user.set_password(password)
+        user.save()
+        return user, password
+
+    @staticmethod
+    @transaction.atomic
+    def reset_password(user, password=None):
+        """Set a new password (given or generated) and sign the customer out everywhere."""
+        if password:
+            _check_password(password, user)
+        else:
+            password = generate_password()
+        user.set_password(password)
+        user.save(update_fields=["password"])
+        _sign_out_everywhere(user)
+        return password
+
+    @staticmethod
+    @transaction.atomic
+    def set_active(user, active):
+        user.is_active = active
+        user.save(update_fields=["is_active"])
+        if not active:
+            _sign_out_everywhere(user)
+        return user

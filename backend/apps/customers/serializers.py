@@ -33,6 +33,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
 class CustomerDetailSerializer(serializers.ModelSerializer):
     """Full customer detail."""
 
+    portal_login = serializers.SerializerMethodField()
+
     class Meta:
         model = Customer
         fields = [
@@ -47,10 +49,16 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "longitude",
             "notes",
             "status",
+            "portal_login",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "customer_code", "created_at", "updated_at"]
+
+    def get_portal_login(self, obj):
+        """{username, is_active} or null — the password is never readable."""
+        user = obj.user
+        return {"username": user.username, "is_active": user.is_active} if user else None
 
 
 class CustomerCreateSerializer(serializers.ModelSerializer):
@@ -105,3 +113,18 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
             if qs.exists():
                 raise serializers.ValidationError("A customer with this phone already exists.")
         return value
+
+
+class PortalLoginCreateSerializer(serializers.Serializer):
+    """Body for POST /customers/{id}/portal-login/. Omit username → phone; omit password → generated."""
+
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    password = serializers.CharField(
+        max_length=128, required=False, allow_blank=True, trim_whitespace=False, write_only=True
+    )
+
+
+class PortalPasswordResetSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        max_length=128, required=False, allow_blank=True, trim_whitespace=False, write_only=True
+    )

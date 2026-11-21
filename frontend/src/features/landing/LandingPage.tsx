@@ -47,6 +47,7 @@ const CONTACT_URL = whatsappLink('Hi, I want to set up MessDeck for my mess.')
 
 
 const NAV_LINKS = [
+  { label: 'Demo', href: '#demo' },
   { label: 'Features', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'FAQ', href: '#faq' },
@@ -326,6 +327,81 @@ function PainPointsSection() {
   )
 }
 
+const DEMO_POINTS = [
+  'Every payment recorded, with pending dues flagged',
+  "Today's delivery list, marked in one tap",
+  'Exact meal counts for the kitchen',
+  'Customers skip a meal or pause on their own',
+]
+
+/** Plays muted while on screen (browsers block autoplay with sound); controls let visitors unmute. */
+function DemoVideo() {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const video = ref.current
+    if (!video || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) video.play().catch(() => {})
+        else video.pause()
+      },
+      { threshold: 0.5 },
+    )
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div className="mx-auto w-full max-w-75 rounded-[2.5rem] bg-brand-900 p-2.5 shadow-2xl shadow-brand-900/30">
+      <video
+        ref={ref}
+        className="block aspect-9/16 w-full rounded-4xl bg-cream object-cover"
+        src="/videos/messdeck-reel.mp4"
+        poster="/videos/messdeck-reel-poster.jpg"
+        muted
+        loop
+        playsInline
+        controls
+        preload="none"
+        aria-label="30-second MessDeck demo: payments, dashboard, deliveries, kitchen counts, and skip and pause"
+      />
+    </div>
+  )
+}
+
+function DemoVideoSection() {
+  return (
+    <section id="demo" className="bg-white py-16 sm:py-24">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-12 md:grid-cols-2">
+          <FadeIn className="text-center md:text-left">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-500">See it in action</p>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-brand-800">
+              Your Whole Mess in 30 Seconds
+            </h2>
+            <p className="mt-4 text-lg text-gray-500">
+              From the notebook to one screen: here's what a day looks like with MessDeck.
+            </p>
+            <ul className="mt-6 inline-block space-y-3 text-left">
+              {DEMO_POINTS.map((p) => (
+                <li key={p} className="flex items-start gap-2 text-sm text-gray-600">
+                  <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </FadeIn>
+          <FadeIn>
+            <DemoVideo />
+          </FadeIn>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function FeaturesSection() {
   return (
     <section id="features" className="bg-white py-16 sm:py-24">
@@ -580,6 +656,7 @@ export function LandingPage() {
       <Navbar />
       <HeroSection />
       <PainPointsSection />
+      <DemoVideoSection />
       <FeaturesSection />
       <HowItWorksSection />
       <PricingSection />

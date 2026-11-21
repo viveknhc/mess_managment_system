@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { LEGAL_NAME, SUPPORT_EMAIL } from '../../config/support'
-import { MONTHLY_FEE, REACTIVATION_FEE, SETUP_FEE } from '../landing/pricing'
+import { MONTHLY_FEE, REACTIVATION_FEE, SETUP_FEE, TRIAL_DAYS } from '../landing/pricing'
 import { Bullets, LegalLayout, Section } from './LegalLayout'
 
 export function TermsPage() {
@@ -34,6 +34,7 @@ export function TermsPage() {
         <Bullets
           items={[
             `A one-time setup fee of ${SETUP_FEE} and a monthly fee of ${MONTHLY_FEE}, payable in advance. Prices are in Indian Rupees.`,
+            `We may give a business one free trial of ${TRIAL_DAYS} days with full access, starting when we switch it on. When the trial ends, the app is locked until the first payment (setup fee plus the first month). Your data is kept during that time.`,
             'Payments are processed securely by Razorpay. We do not see or store your card, UPI or bank details.',
             'If a monthly fee is not paid on time, access may be limited after a short grace period until it is paid.',
             'We will tell you at least 30 days before any price change for your plan.',

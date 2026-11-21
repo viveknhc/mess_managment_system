@@ -1,4 +1,5 @@
 import { SUPPORT_EMAIL } from '../../config/support'
+import { TRIAL_DAYS } from '../landing/pricing'
 import { LegalLayout, Section } from './LegalLayout'
 
 export function ShippingPolicyPage() {
@@ -13,9 +14,10 @@ export function ShippingPolicyPage() {
 
       <Section title="When you get access">
         <p>
-          After the first payment, we set up your business account, logins, meals and plans and share your login
-          details on WhatsApp or email, normally within 2 working days. Monthly renewals take effect as soon as the
-          payment is confirmed; there is nothing to wait for.
+          We set up your business account, logins, meals and plans and share your login details on WhatsApp or email,
+          normally within 2 working days. You get access either when your {TRIAL_DAYS}-day free trial starts or after
+          the first payment. Monthly renewals take effect as soon as the payment is confirmed; there is nothing to
+          wait for.
         </p>
       </Section>
 

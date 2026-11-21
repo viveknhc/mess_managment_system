@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from './Logo'
 import { whatsappLink } from '../../config/support'
-import { FIRST_PAYMENT, MONTHLY_FEE, SETUP_FEE } from './pricing'
+import { FIRST_PAYMENT, MONTHLY_FEE, SETUP_FEE, TRIAL_DAYS } from './pricing'
 import { LEGAL_LINKS } from '../legal/links'
 
 /* ------------------------------------------------------------------ */
@@ -89,8 +89,8 @@ const FEATURES = [
 
 const STEPS = [
   { num: 1, title: 'Contact Us', desc: 'Message us on WhatsApp. We\'ll answer your questions and show you around.' },
-  { num: 2, title: 'We Set It Up', desc: 'We create your account, add your meals, plans, staff, and up to 100 customers.' },
-  { num: 3, title: 'Start Using It', desc: 'A 30-minute walkthrough and you\'re live. Then just ₹500 a month.' },
+  { num: 2, title: 'We Set It Up', desc: `We create your account, add your meals, plans, staff, and up to 100 customers, then start your ${TRIAL_DAYS}-day free trial.` },
+  { num: 3, title: 'Try It, Then Pay', desc: `Use every feature free for ${TRIAL_DAYS} days. To keep going, make the ${FIRST_PAYMENT} first payment. After that, ${MONTHLY_FEE} a month.` },
 ]
 
 const SETUP_INCLUDES = [
@@ -102,6 +102,7 @@ const SETUP_INCLUDES = [
 ]
 
 const TERMS = [
+  `The ${TRIAL_DAYS}-day free trial is given once per business. The app locks when it ends and unlocks after the first payment.`,
   'Setup fee is non-refundable',
   'Cancel the monthly plan any time',
   'If you cancel and come back after more than 3 months, a ₹1,000 reactivation fee applies',
@@ -111,7 +112,11 @@ const TERMS = [
 const FAQS = [
   {
     q: 'How much do I pay to start?',
-    a: `Your first payment is ${FIRST_PAYMENT}: the ${SETUP_FEE} one-time setup fee plus ${MONTHLY_FEE} for the first month. After that, it's ${MONTHLY_FEE} each month.`,
+    a: `Nothing during the ${TRIAL_DAYS}-day free trial. To keep going after it, your first payment is ${FIRST_PAYMENT}: the ${SETUP_FEE} one-time setup fee plus ${MONTHLY_FEE} for the first month. After that, it's ${MONTHLY_FEE} each month.`,
+  },
+  {
+    q: 'Is there a free trial?',
+    a: `Yes, ${TRIAL_DAYS} days with every feature. It starts once we've set up your account, and the app shows a countdown of the time left. Make the first payment before it ends to keep going. If you don't, the app locks, but your data is kept safe until you pay.`,
   },
   {
     q: 'What does the setup fee include?',
@@ -239,7 +244,7 @@ function HeroSection() {
                 See Pricing
               </a>
             </div>
-            <p className="mt-4 text-sm text-brand-600">{SETUP_FEE} one-time setup &middot; {MONTHLY_FEE}/month &middot; Cancel any time</p>
+            <p className="mt-4 text-sm text-brand-600">{TRIAL_DAYS}-day free trial &middot; {SETUP_FEE} one-time setup &middot; {MONTHLY_FEE}/month &middot; Cancel any time</p>
           </div>
 
           {/* Mock dashboard illustration */}
@@ -435,7 +440,7 @@ function PricingSection() {
             </div>
           </div>
           <p className="mt-8 text-center text-sm text-gray-600">
-            First payment: {SETUP_FEE} setup + {MONTHLY_FEE} first month = <strong>{FIRST_PAYMENT}</strong>. After that, {MONTHLY_FEE} each month.
+            Start with a <strong>{TRIAL_DAYS}-day free trial</strong> with every feature. To keep going: {SETUP_FEE} setup + {MONTHLY_FEE} first month = <strong>{FIRST_PAYMENT}</strong>. After that, {MONTHLY_FEE} each month.
           </p>
           <div className="mt-6 text-center">
             <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-brand-800 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-brand-900 transition-all">
@@ -480,7 +485,7 @@ function FAQSection() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div className={`overflow-hidden transition-all duration-300 ${openIdx === i ? 'max-h-40 pb-4' : 'max-h-0'}`}>
+                <div className={`overflow-hidden transition-all duration-300 ${openIdx === i ? 'max-h-96 pb-4' : 'max-h-0'}`}>
                   <p className="px-6 text-sm text-gray-500 leading-relaxed">{faq.a}</p>
                 </div>
               </div>
@@ -501,7 +506,7 @@ function CTABanner() {
             Ready to Ditch the Notebooks?
           </h2>
           <p className="mt-4 text-lg text-brand-100 max-w-2xl mx-auto">
-            We set it up for you. {MONTHLY_FEE} a month. Cancel any time.
+            We set it up for you. Try it free for {TRIAL_DAYS} days, then {MONTHLY_FEE} a month. Cancel any time.
           </p>
           <div className="mt-8">
             <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="inline-block rounded-xl bg-cream px-10 py-4 text-base font-semibold text-brand-800 shadow-lg hover:bg-brand-50 hover:shadow-xl transition-all">

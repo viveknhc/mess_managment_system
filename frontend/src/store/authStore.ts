@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { apiClient, BUSINESS_SUSPENDED_EVENT, PAYMENT_REQUIRED_EVENT } from '../services/apiClient'
+import { apiClient, BUSINESS_SUSPENDED_EVENT, PAYMENT_REQUIRED_EVENT, revokeRefreshToken } from '../services/apiClient'
 import { tokenStorage } from '../services/tokenStorage'
 
 export interface User {
@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const refresh = tokenStorage.getRefresh()
     try {
       if (refresh) {
-        await apiClient.post('/auth/logout/', { refresh })
+        await revokeRefreshToken(refresh)
       }
     } catch {
       // Ignore errors during logout

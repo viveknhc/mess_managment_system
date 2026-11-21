@@ -29,6 +29,15 @@ export const BUSINESS_SUSPENDED_EVENT = 'messdeck:business-suspended'
 /** Fired on 403 PAYMENT_REQUIRED — the business hasn't made its first MessDeck payment yet. */
 export const PAYMENT_REQUIRED_EVENT = 'messdeck:payment-required'
 
+/**
+ * Revoke a refresh token. Sent without the access token on purpose: if that had expired,
+ * the 401 → refresh → retry path would rotate the refresh token first and leave the new
+ * one valid after logout. The backend authenticates logout by the refresh token itself.
+ */
+export function revokeRefreshToken(refresh: string) {
+  return axios.post(`${API_BASE_URL}/auth/logout/`, { refresh })
+}
+
 // Response interceptor: handle 401 → refresh once → retry → logout
 let isRefreshing = false
 let failedQueue: Array<{
@@ -68,8 +77,8 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
+      const refreshToken = tokenStorage.getRefresh()
       try {
-        const refreshToken = tokenStorage.getRefresh()
         if (!refreshToken) throw new Error('No refresh token')
 
         const { data } = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
@@ -82,6 +91,15 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.access}`
         return apiClient(originalRequest)
       } catch (refreshError) {
+        // Another tab may have refreshed at the same moment: rotation blacklisted the token we
+        // sent, but that tab saved a fresh pair. Use it instead of logging everyone out.
+        const latestRefresh = tokenStorage.getRefresh()
+        const latestAccess = tokenStorage.getAccess()
+        if (latestRefresh && latestAccess && latestRefresh !== refreshToken) {
+          processQueue(null, latestAccess)
+          originalRequest.headers.Authorization = `Bearer ${latestAccess}`
+          return apiClient(originalRequest)
+        }
         processQueue(refreshError, null)
         tokenStorage.clear()
         window.location.href = '/login'

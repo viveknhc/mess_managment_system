@@ -17,6 +17,9 @@ class BusinessSettings(UUIDModel, TimeStampedModel):
     max_pause_days = models.PositiveIntegerField(default=7, help_text="Maximum pause duration in days")
     delivery_start_time = models.TimeField(null=True, blank=True, help_text="Delivery window start")
     delivery_end_time = models.TimeField(null=True, blank=True, help_text="Delivery window end")
+    # Weekdays the kitchen is closed (Python weekday: 0=Mon … 6=Sun). No deliveries are
+    # scheduled on them; plans keep their meal count and end later instead.
+    weekly_off_days = models.JSONField(default=list, blank=True)
     notify_on_payment = models.BooleanField(default=True)
     notify_on_expiring = models.BooleanField(default=True)
     notify_on_delivery = models.BooleanField(default=False)

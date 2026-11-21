@@ -24,7 +24,7 @@ class NoAdjustmentSkip(Policy):
 class ExtendSkip(Policy):
     key = "EXTEND"
     label = "Extend end date"
-    description = "The subscription ends one day later and the meal is delivered then."
+    description = "The subscription ends one kitchen day later and the meal is delivered then."
 
     def apply(self, skip):
         from apps.deliveries.services import DeliveryService

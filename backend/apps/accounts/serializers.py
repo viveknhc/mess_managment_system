@@ -25,6 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
     saas_status = serializers.SerializerMethodField()
     trial_ends_at = serializers.SerializerMethodField()
     features = serializers.SerializerMethodField()
+    kitchen_off_days = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -42,6 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
             "saas_status",
             "trial_ends_at",
             "features",
+            "kitchen_off_days",
         ]
         read_only_fields = fields
 
@@ -53,6 +55,11 @@ class UserSerializer(serializers.ModelSerializer):
         """End of the free trial (TRIAL only) — the owner sees a countdown; past it the app locks."""
         ends = trial_ends_at(obj.business)
         return ends.isoformat() if ends else None
+
+    def get_kitchen_off_days(self, obj):
+        """Weekdays the mess's kitchen is closed (0=Mon … 6=Sun) — every role sees a notice."""
+        settings_row = getattr(obj.business, "settings", None) if obj.business_id else None
+        return sorted(settings_row.weekly_off_days or []) if settings_row else []
 
     def get_features(self, obj):
         """Feature keys the user's business has — the frontend hides what's missing."""

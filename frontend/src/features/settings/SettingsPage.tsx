@@ -10,6 +10,8 @@ interface Settings {
   max_pause_days: number
   /** Chosen by MessDeck (SUPER_ADMIN) per business — read-only here. */
   skip_policy: { key: string; label: string; description: string }
+  /** Days the kitchen is closed every week: 0=Monday … 6=Sunday. */
+  weekly_off_days: number[]
   delivery_start_time: string | null
   delivery_end_time: string | null
   notify_on_payment: boolean
@@ -20,6 +22,8 @@ interface Settings {
   razorpay_configured: boolean
 }
 
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 export function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,6 +31,7 @@ export function SettingsPage() {
   const [error, setError] = useState('')
   const [keySecret, setKeySecret] = useState('') // write-only; never loaded back
   const user = useAuthStore((s) => s.user)
+  const refreshUser = useAuthStore((s) => s.refreshUser)
   const isOwner = user?.role === 'OWNER'
   const onlinePayments = useFeature(FEATURES.ONLINE_PAYMENTS)
   // Razorpay calls this when a customer pays, so payments are recorded even if they close the app first
@@ -61,6 +66,7 @@ export function SettingsPage() {
       setSettings(data)
       setKeySecret('')
       notify.success('Settings saved')
+      refreshUser() // the "kitchen closed" notice in the header reads the closed days from the user
     } catch (e) {
       // Inline banner sits at the top of a long form; the toast makes sure it's noticed.
       setError(getApiErrorMessage(e, 'Failed to save settings'))
@@ -87,6 +93,39 @@ export function SettingsPage() {
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Kitchen closed days */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold text-gray-900 uppercase tracking-wide">Kitchen Closed On</h2>
+          <p className="mb-4 text-sm text-gray-500">
+            No meals are delivered on these days. Customers still get every meal in their plan: the plan ends later instead.
+            Changing this moves upcoming meals of current subscriptions too.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAYS.map((label, i) => {
+              const closed = settings.weekly_off_days.includes(i)
+              return (
+                <label key={label}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:disabled]:cursor-default has-[:disabled]:opacity-50 ${
+                    closed ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-300 text-gray-700'
+                  }`}>
+                  <input type="checkbox" checked={closed} disabled={!isOwner}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      weekly_off_days: e.target.checked
+                        ? [...settings.weekly_off_days, i].sort((a, b) => a - b)
+                        : settings.weekly_off_days.filter((d) => d !== i),
+                    })}
+                    className="h-4 w-4 rounded border-gray-300 text-red-600" />
+                  {label}
+                </label>
+              )
+            })}
+          </div>
+          {settings.weekly_off_days.length === 7 && (
+            <p className="mt-2 text-xs text-red-600">The kitchen must be open at least one day a week.</p>
+          )}
+        </div>
+
         {/* Skip/Pause rules */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold text-gray-900 uppercase tracking-wide">Skip & Pause Rules</h2>

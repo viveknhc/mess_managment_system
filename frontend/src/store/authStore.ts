@@ -19,6 +19,8 @@ export interface User {
   trial_ends_at: string | null
   /** Feature keys the business has (backend customization.registry) — see useFeature(). */
   features: string[]
+  /** Weekdays the mess's kitchen is closed: 0=Monday … 6=Sunday (BusinessSettings.weekly_off_days). */
+  kitchen_off_days: number[]
 }
 
 interface AuthState {

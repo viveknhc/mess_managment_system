@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q
 
+from apps.settings_app.services import KitchenCalendar
 from apps.subscriptions.models import Subscription
 from common.constants import Status, SubStatus
 
@@ -34,7 +35,8 @@ def _close_window(subscription, pause, today):
     fields = []
     if paused_meals and subscription.status in (SubStatus.ACTIVE, SubStatus.PAUSED):
         last = pause.last_paused_day or today - timedelta(days=1)
-        subscription.end_date = max(subscription.end_date, last) + timedelta(days=paused_meals)
+        calendar = KitchenCalendar.for_business(subscription.business_id)
+        subscription.end_date = calendar.add_open_days(max(subscription.end_date, last), paused_meals)
         fields.append("end_date")
     DeliveryService.close_pause(pause, days_extended=paused_meals if "end_date" in fields else 0)
 
@@ -161,7 +163,9 @@ class SubscriptionService:
         if not plan.is_active:
             raise ValueError("Cannot subscribe to an inactive plan.")
 
-        end_date = start_date + timedelta(days=plan.duration_days)
+        end_date = KitchenCalendar.for_business(business_id).plan_end_date(
+            start_date, plan.duration_days, plan.total_meals
+        )
 
         _lock_customer(customer)  # a double-submitted create waits here, then sees the first one
         SubscriptionService.ensure_no_overlap(customer, plan, start_date, end_date)
@@ -193,7 +197,8 @@ class SubscriptionService:
     # End-date rule: there is no pause extension point yet (only ``skip``), so
     # paused days always EXTEND the subscription — when a window closes,
     # end_date = max(end_date, last paused day) + number of meals the window
-    # actually cancelled, and the replacement deliveries are generated.
+    # actually cancelled (counted in days the kitchen is open), and the
+    # replacement deliveries are generated.
 
     @staticmethod
     @transaction.atomic
@@ -219,6 +224,12 @@ class SubscriptionService:
             raise PauseValidationError("Pause must start on or before the subscription end date.")
         if any(p.overlaps(start_date, end_date) for p in PauseSelector.open_pauses(subscription)):
             raise PauseValidationError("This pause overlaps an existing pause on the subscription.")
+        if end_date is not None:
+            calendar = KitchenCalendar.for_business(subscription.business_id)
+            if calendar.weekly_off_days and calendar.nth_open_day(start_date, 1) > end_date:
+                raise PauseValidationError(
+                    "The kitchen is closed on those days, so there are no meals to pause."
+                )
 
         DeliveryService.pause_deliveries(
             subscription, start_date=start_date, end_date=end_date, reason=reason
@@ -295,11 +306,43 @@ class SubscriptionService:
     @staticmethod
     @transaction.atomic
     def extend_end_date(subscription, *, days):
-        """Push end_date out by ``days`` (e.g. a skip policy compensating a meal)."""
+        """Push end_date out by ``days`` open kitchen days (e.g. a skip policy compensating a meal)."""
         _lock(subscription)
-        subscription.end_date += timedelta(days=days)
+        calendar = KitchenCalendar.for_business(subscription.business_id)
+        subscription.end_date = calendar.add_open_days(subscription.end_date, days)
         subscription.save(update_fields=["end_date", "updated_at"])
         return subscription
+
+    @staticmethod
+    @transaction.atomic
+    def apply_kitchen_calendar(business_id, *, today=None):
+        """Re-fit live subscriptions after the mess changes the days its kitchen is closed.
+
+        Upcoming PENDING deliveries on closed days are removed and re-placed on open days
+        at the end of the schedule (meals are kept, end_date moves later). Unpaid
+        subscriptions get the end date a new one would get. Returns how many changed.
+        """
+        from apps.deliveries.services import DeliveryService
+
+        today = today or datetime.date.today()
+        calendar = KitchenCalendar.for_business(business_id)
+        live = Subscription.objects.filter(
+            business_id=business_id, status__in=[SubStatus.PENDING, SubStatus.ACTIVE, SubStatus.PAUSED]
+        ).values_list("pk", flat=True)
+        changed = 0
+        for pk in list(live):
+            sub = _lock(Subscription.objects.get(pk=pk))
+            before = sub.end_date
+            if sub.status == SubStatus.PENDING:
+                fits = calendar.nth_open_day(sub.start_date, sub.total_meals)
+                if fits > sub.end_date:
+                    sub.end_date = fits
+                    sub.save(update_fields=["end_date", "updated_at"])
+            removed = DeliveryService.remove_closed_day_deliveries(sub, from_date=today, calendar=calendar)
+            if removed:
+                DeliveryService.generate_delivery_schedule(sub)
+            changed += bool(removed or sub.end_date != before)
+        return changed
 
     @staticmethod
     @transaction.atomic
@@ -343,7 +386,9 @@ class SubscriptionService:
             )
 
         new_start = start_date or datetime.date.today()
-        new_end = new_start + timedelta(days=plan.duration_days)
+        new_end = KitchenCalendar.for_business(subscription.business_id).plan_end_date(
+            new_start, plan.duration_days, plan.total_meals
+        )
         _lock_customer(customer)
         SubscriptionService.ensure_no_overlap(customer, plan, new_start, new_end)
 

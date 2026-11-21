@@ -203,6 +203,8 @@ export interface MessOverview {
   settings: {
     min_pause_days: number
     max_pause_days: number
+    /** 0=Monday … 6=Sunday */
+    weekly_off_days: number[]
     delivery_start_time: string | null
     delivery_end_time: string | null
     notify_on_payment: boolean

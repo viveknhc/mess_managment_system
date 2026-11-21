@@ -15,6 +15,7 @@ from apps.deliveries.models import (
     SkipAdjustment,
     SubscriptionPause,
 )
+from apps.settings_app.services import KitchenCalendar
 from apps.subscriptions.models import Subscription
 from common.constants import SubStatus
 
@@ -39,6 +40,8 @@ def _refresh_meals_left(delivery):
 # Statuses a delivery run sets — never for a delivery dated in the future.
 RUN_STATUSES = (DeliveryStatus.OUT_FOR_DELIVERY, DeliveryStatus.DELIVERED, DeliveryStatus.NOT_DELIVERED)
 
+MAX_STRETCH = timedelta(days=400)  # how far past end_date the schedule may run to fit owed meals
+
 UNDO_WINDOW = timedelta(minutes=10)  # how long delivery staff can undo a Delivered / Not delivered tap
 
 
@@ -49,10 +52,15 @@ class DeliveryService:
         """Bulk insert PENDING deliveries for the subscription period.
 
         Idempotent — skips dates that already have a delivery row. Dates inside
-        any pause window are never generated. Rows CANCELLED by a *closed* pause
-        and SKIPPED rows the skip policy extended for don't consume the plan's
-        meal quota (they were compensated by extending end_date), so the
-        replacement meals land after the original schedule.
+        any pause window and days the kitchen is closed (BusinessSettings.weekly_off_days)
+        are never generated. Rows CANCELLED by a *closed* pause and SKIPPED rows the
+        skip policy extended for don't consume the plan's meal quota (they were
+        compensated by extending end_date), so the replacement meals land after the
+        original schedule.
+
+        Meals are fixed, dates are not: if the meals still owed don't fit by end_date
+        (closed days, an extension landing on a closed day), end_date moves to the
+        last generated delivery.
         """
         if subscription.status not in (SubStatus.ACTIVE, SubStatus.PENDING):
             return []
@@ -72,10 +80,18 @@ class DeliveryService:
         remaining_to_create = subscription.total_meals - (len(rows) - compensated)
         windows = list(SubscriptionPause.objects.filter(subscription=subscription))
 
+        calendar = KitchenCalendar.for_business(subscription.business_id)
+        # Past end_date only to fit owed meals; bounded so an open-ended pause can't loop forever.
+        limit = subscription.end_date + MAX_STRETCH
+
         deliveries = []
         current = subscription.start_date
-        while current <= subscription.end_date and len(deliveries) < remaining_to_create:
-            if current not in existing_dates and not any(w.covers(current) for w in windows):
+        while current <= limit and len(deliveries) < remaining_to_create:
+            if (
+                current not in existing_dates
+                and calendar.is_open(current)
+                and not any(w.covers(current) for w in windows)
+            ):
                 deliveries.append(
                     Delivery(
                         business_id=subscription.business_id,
@@ -90,7 +106,30 @@ class DeliveryService:
 
         if deliveries:
             Delivery.objects.bulk_create(deliveries, ignore_conflicts=True)
+            last = deliveries[-1].delivery_date
+            if last > subscription.end_date:
+                subscription.end_date = last
+                Subscription.objects.filter(pk=subscription.pk).update(
+                    end_date=last, updated_at=timezone.now()
+                )
         return deliveries
+
+    @staticmethod
+    def remove_closed_day_deliveries(subscription, *, from_date, calendar=None):
+        """Delete PENDING deliveries from ``from_date`` on that fall on days the kitchen is
+        now closed. Returns how many were removed; regenerate the schedule to re-place them."""
+        calendar = calendar or KitchenCalendar.for_business(subscription.business_id)
+        if not calendar.weekly_off_days:
+            return 0
+        # Django's week_day lookup: 1=Sunday … 7=Saturday; Python weekday(): 0=Mon … 6=Sun.
+        week_days = [(d + 1) % 7 + 1 for d in calendar.weekly_off_days]
+        deleted, _ = Delivery.objects.filter(
+            subscription=subscription,
+            status=DeliveryStatus.PENDING,
+            delivery_date__gte=from_date,
+            delivery_date__week_day__in=week_days,
+        ).delete()
+        return deleted
 
     @staticmethod
     @transaction.atomic

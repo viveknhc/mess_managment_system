@@ -66,6 +66,7 @@ def _settings(business):
     return {
         "min_pause_days": s.min_pause_days,
         "max_pause_days": s.max_pause_days,
+        "weekly_off_days": s.weekly_off_days or [],
         "delivery_start_time": s.delivery_start_time.isoformat() if s.delivery_start_time else None,
         "delivery_end_time": s.delivery_end_time.isoformat() if s.delivery_end_time else None,
         "notify_on_payment": s.notify_on_payment,

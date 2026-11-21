@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { businessLock, useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
+import { KitchenClosedNotice } from '../components/KitchenClosedNotice'
 import { FeatureGate } from '../components/FeatureGate'
 import { FEATURES } from '../hooks/useFeature'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
@@ -55,6 +56,7 @@ export function CustomerLayout() {
           </div>
         </nav>
       </header>
+      {!suspended && <KitchenClosedNotice />}
       <main className="mx-auto w-full max-w-3xl flex-1 px-0 py-4 sm:px-4">
         {suspended ? (
           <SuspendedNotice />

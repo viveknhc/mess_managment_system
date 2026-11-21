@@ -1,10 +1,17 @@
 """BusinessSettings serializer (ST-02)."""
 
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.customization.registry import ONLINE_PAYMENTS, SKIP
 from apps.customization.services import FeatureService, PolicyService
 from apps.settings_app.models import BusinessSettings
+
+WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _day_names(days):
+    return ", ".join(WEEKDAY_NAMES[d] for d in days) or "none"
 
 
 class BusinessSettingsSerializer(serializers.ModelSerializer):
@@ -13,6 +20,10 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_blank=True, max_length=128, trim_whitespace=True
     )
     razorpay_configured = serializers.BooleanField(read_only=True)
+    # Days the kitchen is closed every week: 0=Monday … 6=Sunday.
+    weekly_off_days = serializers.ListField(
+        child=serializers.IntegerField(min_value=0, max_value=6), required=False, max_length=7
+    )
     # Workflow policies are chosen by SUPER_ADMIN (customization); owners see them read-only.
     skip_policy = serializers.SerializerMethodField()
 
@@ -23,6 +34,7 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             "min_pause_days",
             "max_pause_days",
             "skip_policy",
+            "weekly_off_days",
             "delivery_start_time",
             "delivery_end_time",
             "notify_on_payment",
@@ -48,6 +60,12 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         if turning_on and inst and not FeatureService.has(inst.business_id, ONLINE_PAYMENTS):
             raise serializers.ValidationError("Online payments are not included in your MessDeck plan.")
         return value
+
+    def validate_weekly_off_days(self, value):
+        days = sorted(set(value))
+        if len(days) == 7:
+            raise serializers.ValidationError("The kitchen must be open at least one day a week.")
+        return days
 
     def validate_razorpay_key_id(self, value):
         value = value.strip()
@@ -81,4 +99,25 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         secret = validated_data.pop("razorpay_key_secret", "")
         if secret or clear:
             instance.set_razorpay_secret(secret)
-        return super().update(instance, validated_data)
+        old_off_days = sorted(instance.weekly_off_days or [])
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            new_off_days = sorted(instance.weekly_off_days or [])
+            if new_off_days != old_off_days:
+                from apps.audit.services import AuditService
+                from apps.subscriptions.services import SubscriptionService
+
+                moved = SubscriptionService.apply_kitchen_calendar(instance.business_id)
+                request = self.context.get("request")
+                AuditService.log(
+                    business_id=instance.business_id,
+                    user=request.user if request else None,
+                    action="UPDATE",
+                    entity_type="BusinessSettings",
+                    entity_id=instance.id,
+                    description=(
+                        f"Kitchen closed on: {_day_names(new_off_days)} (was {_day_names(old_off_days)}); "
+                        f"{moved} subscription(s) rescheduled"
+                    ),
+                )
+        return instance

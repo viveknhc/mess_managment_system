@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { businessLock, useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
+import { KitchenClosedNotice } from '../components/KitchenClosedNotice'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 
 // Delivery staff have one screen (To deliver / Done tabs inside it), so no nav for them.
@@ -69,6 +70,7 @@ export function StaffLayout() {
           </nav>
         )}
       </header>
+      {!businessLock(user) && <KitchenClosedNotice />}
       <main className="mx-auto w-full max-w-2xl flex-1 py-4">
         {businessLock(user) ? <SuspendedNotice /> : <Outlet />}
       </main>

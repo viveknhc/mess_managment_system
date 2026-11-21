@@ -42,7 +42,9 @@ class BusinessSettingsView(APIView):
                 status=403,
             )
         settings = self.get_settings(request)
-        serializer = BusinessSettingsSerializer(settings, data=request.data, partial=True)
+        serializer = BusinessSettingsSerializer(
+            settings, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

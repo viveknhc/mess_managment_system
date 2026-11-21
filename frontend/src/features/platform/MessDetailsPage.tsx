@@ -241,6 +241,11 @@ function MessOverviewPanel({ data, onCustomize }: { data: MessOverview; onCustom
         <Card title="Mess settings (set by owner)">
           {data.settings ? (
             <>
+              <Row label="Kitchen closed on">
+                {data.settings.weekly_off_days.length
+                  ? data.settings.weekly_off_days.map((d) => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d]).join(', ')
+                  : 'Open every day'}
+              </Row>
               <Row label="Pause length">
                 {data.settings.min_pause_days}–{data.settings.max_pause_days} days
               </Row>

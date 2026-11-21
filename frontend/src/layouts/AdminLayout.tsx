@@ -7,6 +7,7 @@ import { FEATURES, type FeatureKey } from '../hooks/useFeature'
 import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
 import { AppShell } from '../components/AppShell'
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner'
+import { KitchenClosedNotice } from '../components/KitchenClosedNotice'
 
 const navItems: { to: string; label: string; icon: NavIconName; end: boolean; feature?: FeatureKey }[] = [
   { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true },
@@ -108,6 +109,7 @@ export function AdminLayout() {
         ),
       )}
     >
+      {!lock && <KitchenClosedNotice />}
       {!suspended && user?.saas_status === 'TRIAL' && user.trial_ends_at && (
         <TrialCountdownBanner endsAt={user.trial_ends_at} onEnd={onTrialEnd} />
       )}

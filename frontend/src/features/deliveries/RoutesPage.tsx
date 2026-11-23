@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { apiClient } from '../../services/apiClient'
+import { fetchAll } from '../../services/fetchAll'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
 import { routeApi, type DeliveryRoute } from './routeApi'
@@ -19,16 +19,6 @@ interface CustomerRow {
   location: string
   route: string | null
   route_name: string | null
-}
-
-/** Every page of a paginated list endpoint. */
-async function fetchAll<T>(url: string, params: Record<string, string> = {}): Promise<T[]> {
-  const all: T[] = []
-  for (let page = 1; ; page++) {
-    const { data } = await apiClient.get(url, { params: { ...params, page, page_size: 100 } })
-    all.push(...data.results)
-    if (!data.next) return all
-  }
 }
 
 const inputCls =

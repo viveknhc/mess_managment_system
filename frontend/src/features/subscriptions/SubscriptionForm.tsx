@@ -1,10 +1,11 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
+import { fetchAll } from '../../services/fetchAll'
 import { notify } from '../../utils/notify'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { ItemsEditor, cleanItems, extrasPerMeal, inr, type CustomItem } from './CustomizationEditor'
 
-interface Customer { id: string; name: string; customer_code: string }
+interface Customer { id: string; name: string; customer_code: string; phone: string }
 interface Plan { id: string; name: string; price: string; duration_days: number; total_meals: number; meal_name: string }
 
 interface Props {
@@ -16,6 +17,8 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [customerId, setCustomerId] = useState('')
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [planId, setPlanId] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [error, setError] = useState('')
@@ -25,18 +28,40 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
   const [items, setItems] = useState<CustomItem[]>([])
 
   useEffect(() => {
+    // Every active customer and plan — a single request would only return the first 20.
     Promise.all([
-      apiClient.get('/customers/', { params: { status: 'ACTIVE' } }),
-      apiClient.get('/plans/', { params: { is_active: 'true' } }),
-    ]).then(([custRes, planRes]) => {
-      setCustomers(custRes.data.results)
-      setPlans(planRes.data.results)
-      if (custRes.data.results.length) setCustomerId(custRes.data.results[0].id)
-      if (planRes.data.results.length) setPlanId(planRes.data.results[0].id)
-    })
+      fetchAll<Customer>('/customers/', { status: 'ACTIVE', ordering: 'name' }),
+      fetchAll<Plan>('/plans/', { is_active: 'true', ordering: 'name' }),
+    ])
+      .then(([custs, planList]) => {
+        setCustomers(custs)
+        setPlans(planList)
+        if (custs.length) setCustomerId(custs[0].id)
+        if (planList.length) setPlanId(planList[0].id)
+      })
+      .catch(() => setLoadError("Couldn't load customers and plans. Close and try again."))
   }, [])
 
   const selectedPlan = plans.find((p) => p.id === planId)
+  const q = customerQuery.trim().toLowerCase()
+  const shownCustomers = q
+    ? customers.filter(
+        (c) =>
+          c.id === customerId ||
+          c.name.toLowerCase().includes(q) ||
+          c.customer_code.toLowerCase().includes(q) ||
+          (c.phone ?? '').includes(q),
+      )
+    : customers
+
+  function searchCustomers(value: string) {
+    setCustomerQuery(value)
+    const v = value.trim().toLowerCase()
+    const first = customers.find(
+      (c) => c.name.toLowerCase().includes(v) || c.customer_code.toLowerCase().includes(v) || (c.phone ?? '').includes(v),
+    )
+    if (v && first) setCustomerId(first.id)
+  }
   const basePrice = selectedPlan ? (customPrice === '' ? Number(selectedPlan.price) : Number(customPrice)) : 0
   const extras = extrasPerMeal(items)
   const total = selectedPlan ? basePrice + extras * selectedPlan.total_meals : 0
@@ -73,16 +98,23 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
       <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
         <h2 className="mb-4 text-lg font-bold text-gray-900">New Subscription</h2>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        {(error || loadError) && (
+          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error || loadError}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="customer" className="mb-1 block text-sm font-medium text-gray-700">Customer *</label>
+            <label htmlFor="customer" className="mb-1 block text-sm font-medium text-gray-700">
+              Customer * <span className="font-normal text-gray-400">({customers.length} active)</span>
+            </label>
+            {customers.length > 10 && (
+              <input type="search" value={customerQuery} onChange={(e) => searchCustomers(e.target.value)}
+                placeholder="Search name, code or phone" aria-label="Search customers"
+                className="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            )}
             <select id="customer" value={customerId} onChange={(e) => setCustomerId(e.target.value)} required
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-              {customers.map((c) => (
+              {shownCustomers.map((c) => (
                 <option key={c.id} value={c.id}>{c.name} ({c.customer_code})</option>
               ))}
             </select>

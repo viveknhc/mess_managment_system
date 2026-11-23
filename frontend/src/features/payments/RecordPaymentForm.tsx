@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { notify } from '../../utils/notify'
+import { fetchAll } from '../../services/fetchAll'
 
 interface Sub {
   id: string
@@ -35,16 +36,20 @@ export function RecordPaymentForm({ onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    apiClient.get('/subscriptions/', { params: { status: 'PENDING' } }).then((res) => {
-      const pending = res.data.results as Sub[]
-      // Also fetch ACTIVE subs that have pending amounts
-      apiClient.get('/subscriptions/', { params: { status: 'ACTIVE' } }).then((res2) => {
-        const active = (res2.data.results as Sub[]).filter((s) => Number(s.pending_amount) > 0)
-        const all = [...pending, ...active]
+    // Every unpaid subscription: PENDING ones, plus ACTIVE/PAUSED ones still owing
+    // (e.g. a part payment, or an extra added mid-month).
+    const byName = { ordering: 'customer__name' }
+    Promise.all([
+      fetchAll<Sub>('/subscriptions/', { ...byName, status: 'PENDING' }),
+      fetchAll<Sub>('/subscriptions/', { ...byName, status: 'ACTIVE' }),
+      fetchAll<Sub>('/subscriptions/', { ...byName, status: 'PAUSED' }),
+    ])
+      .then(([pending, active, paused]) => {
+        const all = [...pending, ...[...active, ...paused].filter((s) => Number(s.pending_amount) > 0)]
         setSubs(all)
         if (all.length) setSubId(all[0].id)
       })
-    })
+      .catch((err) => notify.error(err, "Couldn't load subscriptions"))
   }, [])
 
   const selectedSub = subs.find((s) => s.id === subId)

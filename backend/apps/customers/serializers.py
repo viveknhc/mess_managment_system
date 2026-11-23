@@ -3,6 +3,8 @@
 from rest_framework import serializers
 
 from apps.customers.models import Customer
+from apps.customization.registry import DELIVERY_ROUTES
+from apps.customization.services import FeatureService
 from common.constants import Status
 
 CUSTOMER_STATUS_CHOICES = [
@@ -12,8 +14,22 @@ CUSTOMER_STATUS_CHOICES = [
 ]
 
 
+def _validate_route(serializer, value):
+    """A route must belong to the caller's business, and routes must be enabled for it."""
+    if value is None:
+        return value
+    business_id = serializer.context["request"].user.business_id
+    if value.business_id != business_id:
+        raise serializers.ValidationError("Route not found.")
+    if not FeatureService.has(business_id, DELIVERY_ROUTES):
+        raise serializers.ValidationError("Delivery routes are not enabled for this business.")
+    return value
+
+
 class CustomerListSerializer(serializers.ModelSerializer):
     """Read-only serializer for customer list."""
+
+    route_name = serializers.CharField(source="route.name", read_only=True, default=None)
 
     class Meta:
         model = Customer
@@ -25,6 +41,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
             "email",
             "status",
             "location",
+            "route",
+            "route_name",
             "created_at",
         ]
         read_only_fields = fields
@@ -34,6 +52,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     """Full customer detail."""
 
     portal_login = serializers.SerializerMethodField()
+    route_name = serializers.CharField(source="route.name", read_only=True, default=None)
 
     class Meta:
         model = Customer
@@ -49,11 +68,13 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "longitude",
             "notes",
             "status",
+            "route",
+            "route_name",
             "portal_login",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "customer_code", "created_at", "updated_at"]
+        read_only_fields = ["id", "customer_code", "route", "created_at", "updated_at"]
 
     def get_portal_login(self, obj):
         """{username, is_active} or null — the password is never readable."""
@@ -76,8 +97,12 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "notes",
+            "route",
         ]
         read_only_fields = ["id"]
+
+    def validate_route(self, value):
+        return _validate_route(self, value)
 
     def validate_phone(self, value):
         if value:
@@ -104,7 +129,11 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
             "longitude",
             "notes",
             "status",
+            "route",
         ]
+
+    def validate_route(self, value):
+        return _validate_route(self, value)
 
     def validate_phone(self, value):
         if value:

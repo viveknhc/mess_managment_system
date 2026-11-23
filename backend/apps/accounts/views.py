@@ -56,6 +56,13 @@ def _check_staff_seat(business, role):
         check_quota(business, User)
 
 
+def _release_delivery_staff(user):
+    """A delivery person who stops delivering hands their route and upcoming deliveries back."""
+    from apps.deliveries.services import RouteService
+
+    RouteService.release_staff(user)
+
+
 class LoginThrottle(AnonRateThrottle):
     rate = "5/min"
 
@@ -242,7 +249,10 @@ class StaffViewSet(TenantScopedViewSet):
         becomes_staff = staff.role == Role.OWNER and new_role != Role.OWNER and staff.is_active
         if reactivating or becomes_staff:
             _check_staff_seat(staff.business, new_role)
-        serializer.save()
+        was_delivery = staff.role == Role.DELIVERY_STAFF and staff.is_active
+        staff = serializer.save()
+        if was_delivery and (staff.role != Role.DELIVERY_STAFF or not staff.is_active):
+            _release_delivery_staff(staff)
 
     @transaction.atomic
     def perform_destroy(self, instance):
@@ -250,6 +260,7 @@ class StaffViewSet(TenantScopedViewSet):
         _keep_an_active_owner(instance, new_active=False)
         instance.is_active = False
         instance.save(update_fields=["is_active"])
+        _release_delivery_staff(instance)
 
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
@@ -267,4 +278,5 @@ class StaffViewSet(TenantScopedViewSet):
         _keep_an_active_owner(staff, new_active=False)
         staff.is_active = False
         staff.save(update_fields=["is_active"])
+        _release_delivery_staff(staff)
         return Response(StaffListSerializer(staff).data)

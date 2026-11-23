@@ -9,6 +9,10 @@ export interface DeliveryItem {
   delivery_date: string
   status: string
   assigned_staff_name: string | null
+  /** Delivery route of the customer (feature delivery_routes). */
+  route_name: string | null
+  /** Food customizations of the subscription, e.g. ["Extra chicken 100g", "No rice"]. */
+  customizations: string[]
   delivered_at: string | null
   notes: string
   updated_at: string

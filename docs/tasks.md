@@ -277,6 +277,17 @@ Granular, checkbox-style task tracker. Companion to `development_plan.md` (modul
 
 ---
 
+## Client Extensions — Per-Customer Plans & Delivery Routes
+
+Opt-in per business (SUPER_ADMIN → Platform → Businesses → Customize); both features default off.
+
+- [x] `CX-01` **P1·M** `custom_subscriptions`: custom price + food extras (₹ per meal) on a subscription; `POST /subscriptions/{id}/customize/` (PENDING recomputes total, running subscriptions charge extras for meals left, never below paid); renewal carries price + extras
+- [x] `CX-02` **P1·S** Kitchen counts list today's extras; delivery list/cards show each customer's extras
+- [x] `CX-03` **P1·M** `delivery_routes`: `DeliveryRoute` + `Customer.route`; deliveries auto-assigned to the route's staff on generation and on route/staff/customer change; staff leaving hands the route back; `/delivery-routes/` + Routes page + route filter on Today's Deliveries
+- [x] `CX-04` **P0·S** Tests: payment math, activation, reassignment, feature gating, tenant isolation (`test_customizations.py`, `test_routes.py`)
+
+---
+
 ## Definition of Done (per task)
 
 A task is **done** when: code complete · tests written & green · CI green · tenant scoping verified (if touching tenant data) · no `TODO` left in touched code · commit message references task ID (e.g. `S-06: subscription pause/resume/cancel actions`).

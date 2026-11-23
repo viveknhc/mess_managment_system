@@ -4,6 +4,8 @@ import { apiClient } from '../../services/apiClient'
 interface MealCount {
   meal__name: string
   count: number
+  /** Food customizations to prepare today, e.g. "Extra chicken 100g" ×5. */
+  extras?: { label: string; count: number }[]
 }
 
 interface StatusSummary {
@@ -67,6 +69,28 @@ export function KitchenCountsPage({ showSummary = false }: { showSummary?: boole
           </div>
         )}
       </div>
+
+      {counts.some((c) => c.extras?.length) && (
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-gray-700">Customizations</p>
+          <p className="mt-0.5 text-xs text-gray-500">Included in the meal counts above</p>
+          {counts
+            .filter((c) => c.extras?.length)
+            .map((c) => (
+              <div key={c.meal__name} className="mt-4">
+                <p className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{c.meal__name}</p>
+                <ul className="mt-2 divide-y divide-gray-100">
+                  {c.extras!.map((x) => (
+                    <li key={x.label} className="flex items-center justify-between py-2 text-sm">
+                      <span className="text-gray-800">{x.label}</span>
+                      <span className="rounded-full bg-orange-50 px-2.5 py-0.5 font-semibold text-orange-700">×{x.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+        </div>
+      )}
 
       {showSummary && summary && (
         <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

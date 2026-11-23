@@ -29,6 +29,8 @@ class Feature:
 CUSTOMER_PORTAL = "customer_portal"
 ONLINE_PAYMENTS = "online_payments"
 REPORTS = "reports"
+CUSTOM_SUBSCRIPTIONS = "custom_subscriptions"
+DELIVERY_ROUTES = "delivery_routes"
 
 FEATURES = {
     f.key: f
@@ -36,6 +38,20 @@ FEATURES = {
         Feature(CUSTOMER_PORTAL, "Customer portal", "Customers log in to see meals, pay, skip and pause."),
         Feature(ONLINE_PAYMENTS, "Online payments", "Customers pay through the business's Razorpay account."),
         Feature(REPORTS, "Reports", "Customer, subscription, revenue, meal and payment reports."),
+        Feature(
+            CUSTOM_SUBSCRIPTIONS,
+            "Custom subscriptions",
+            "Per-customer price and food extras (e.g. +100g chicken) on a subscription; "
+            "the kitchen sees the extras in today's counts.",
+            default=False,
+        ),
+        Feature(
+            DELIVERY_ROUTES,
+            "Delivery routes",
+            "Group customers into routes, each run by one delivery staff member who sees only "
+            "their route's deliveries.",
+            default=False,
+        ),
     ]
 }
 

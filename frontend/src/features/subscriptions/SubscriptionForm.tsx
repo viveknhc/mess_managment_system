@@ -1,6 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { notify } from '../../utils/notify'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { ItemsEditor, cleanItems, extrasPerMeal, inr, type CustomItem } from './CustomizationEditor'
 
 interface Customer { id: string; name: string; customer_code: string }
 interface Plan { id: string; name: string; price: string; duration_days: number; total_meals: number; meal_name: string }
@@ -18,6 +20,9 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const customOn = useFeature(FEATURES.CUSTOM_SUBSCRIPTIONS)
+  const [customPrice, setCustomPrice] = useState('')
+  const [items, setItems] = useState<CustomItem[]>([])
 
   useEffect(() => {
     Promise.all([
@@ -32,17 +37,21 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
   }, [])
 
   const selectedPlan = plans.find((p) => p.id === planId)
+  const basePrice = selectedPlan ? (customPrice === '' ? Number(selectedPlan.price) : Number(customPrice)) : 0
+  const extras = extrasPerMeal(items)
+  const total = selectedPlan ? basePrice + extras * selectedPlan.total_meals : 0
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setSaving(true)
     try {
-      await apiClient.post('/subscriptions/', {
-        customer: customerId,
-        plan: planId,
-        start_date: startDate,
-      })
+      const body: Record<string, unknown> = { customer: customerId, plan: planId, start_date: startDate }
+      if (customOn) {
+        body.items = cleanItems(items)
+        if (customPrice !== '') body.custom_price = customPrice
+      }
+      await apiClient.post('/subscriptions/', body)
       const customer = customers.find((c) => c.id === customerId)
       notify.success('Subscription created', customer ? `${customer.name} — awaiting payment` : 'Awaiting payment')
       onSaved()
@@ -95,6 +104,20 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
           </div>
 
+          {customOn && selectedPlan && (
+            <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4">
+              <legend className="px-1 text-sm font-medium text-gray-700">Customize for this customer</legend>
+              <div>
+                <label htmlFor="custom_price" className="mb-1 block text-xs font-medium text-gray-600">Custom price</label>
+                <input id="custom_price" type="number" min="0" step="0.01" inputMode="decimal" value={customPrice}
+                  onChange={(e) => setCustomPrice(e.target.value)} placeholder={`Plan price ${inr(selectedPlan.price)}`}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <ItemsEditor items={items} onChange={setItems} />
+              <p className="text-xs text-gray-500">Extras are charged per meal. The kitchen and delivery staff see them every day.</p>
+            </fieldset>
+          )}
+
           {/* Plan preview */}
           {selectedPlan && (
             <div className="rounded-lg bg-gray-50 p-4 text-sm">
@@ -102,9 +125,13 @@ export function SubscriptionForm({ onClose, onSaved }: Props) {
               <div className="mt-1 text-xs text-gray-500">
                 {selectedPlan.meal_name} · {selectedPlan.duration_days} days · {selectedPlan.total_meals} meals
               </div>
-              <div className="mt-2 text-lg font-bold text-gray-900">
-                ₹{Number(selectedPlan.price).toLocaleString('en-IN')}
-              </div>
+              <div className="mt-2 text-lg font-bold text-gray-900">{inr(total)}</div>
+              {(customPrice !== '' || extras > 0) && (
+                <div className="mt-1 text-xs text-gray-500">
+                  {customPrice !== '' ? `Custom ${inr(basePrice)}` : `Plan ${inr(selectedPlan.price)}`}
+                  {extras > 0 && ` + extras ${inr(extras)} × ${selectedPlan.total_meals} meals`}
+                </div>
+              )}
             </div>
           )}
 

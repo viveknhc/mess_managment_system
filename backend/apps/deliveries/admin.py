@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.deliveries.models import Delivery, MealSkip, SubscriptionPause
+from apps.deliveries.models import Delivery, DeliveryRoute, MealSkip, SubscriptionPause
 
 
 @admin.register(Delivery)
@@ -18,3 +18,10 @@ class MealSkipAdmin(admin.ModelAdmin):
 @admin.register(SubscriptionPause)
 class SubscriptionPauseAdmin(admin.ModelAdmin):
     list_display = ["subscription", "start_date", "end_date", "reason"]
+
+
+@admin.register(DeliveryRoute)
+class DeliveryRouteAdmin(admin.ModelAdmin):
+    list_display = ["name", "staff", "business"]
+    list_filter = ["business"]
+    search_fields = ["name"]

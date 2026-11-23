@@ -31,6 +31,9 @@ class Subscription(TenantScopedModel):
     renewed_from = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="renewals"
     )
+    # Price agreed with this customer instead of the plan's (feature ``custom_subscriptions``).
+    # None = the plan price. Carried over on renewal.
+    custom_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -73,3 +76,22 @@ class Subscription(TenantScopedModel):
         if not self.can_transition_to(new_status):
             raise ValueError(f"Cannot transition from {self.status} to {new_status}")
         self.status = new_status
+
+
+class SubscriptionItem(TenantScopedModel):
+    """A per-customer food customization on a subscription, e.g. "Extra chicken 100g"
+    (+₹20 per meal) or "No rice" (₹0). Feature ``custom_subscriptions``.
+
+    The kitchen sees today's items in its counts; delivery staff see them on each delivery.
+    """
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name="items")
+    label = models.CharField(max_length=120)
+    price_per_meal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position"]
+
+    def __str__(self):
+        return f"{self.label} (+{self.price_per_meal}/meal)"

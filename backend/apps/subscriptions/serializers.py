@@ -7,12 +7,22 @@ from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.deliveries.serializers import SubscriptionPauseSerializer
 from apps.plans.models import Plan
-from apps.subscriptions.models import Subscription
+from apps.subscriptions.models import Subscription, SubscriptionItem
+
+
+class SubscriptionItemSerializer(serializers.ModelSerializer):
+    label = serializers.CharField(max_length=120)
+    price_per_meal = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0, default=0)
+
+    class Meta:
+        model = SubscriptionItem
+        fields = ["label", "price_per_meal"]
 
 
 class SubscriptionListSerializer(serializers.ModelSerializer):
     """Read-only for list view."""
 
+    items = SubscriptionItemSerializer(many=True, read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     plan_name = serializers.CharField(source="plan.name", read_only=True)
     remaining_days = serializers.IntegerField(read_only=True)
@@ -36,6 +46,8 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
             "remaining_days",
             "is_expiring",
             "renewed_from",
+            "custom_price",
+            "items",
             "created_at",
         ]
         read_only_fields = fields
@@ -65,6 +77,11 @@ class SubscriptionCreateSerializer(serializers.Serializer):
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())
     plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all())
     start_date = serializers.DateField(default=datetime.date.today)
+    # Feature custom_subscriptions — the view rejects these when it's off.
+    custom_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True, default=None
+    )
+    items = SubscriptionItemSerializer(many=True, required=False, default=list)
 
     def validate_customer(self, value):
         business_id = self.context["request"].user.business_id
@@ -84,3 +101,13 @@ class SubscriptionCreateSerializer(serializers.Serializer):
         if value < datetime.date.today():
             raise serializers.ValidationError("Start date cannot be in the past.")
         return value
+
+
+class SubscriptionCustomizeSerializer(serializers.Serializer):
+    """Body of POST /subscriptions/{id}/customize/. ``items`` is the full list;
+    ``custom_price`` (omit to keep, null = plan price) only before the subscription starts."""
+
+    items = SubscriptionItemSerializer(many=True)
+    custom_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True
+    )

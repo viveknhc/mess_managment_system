@@ -33,6 +33,7 @@ import { ReportsPage } from '../features/reports/ReportsPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { StaffPage } from '../features/staff/StaffPage'
 import { TodayDeliveriesPage } from '../features/deliveries/TodayDeliveriesPage'
+import { RoutesPage } from '../features/deliveries/RoutesPage'
 import { PaymentsPage } from '../features/payments/PaymentsPage'
 import { SubscriptionsPage } from '../features/subscriptions/SubscriptionsPage'
 import { BillingPage } from '../features/platform/BillingPage'
@@ -92,6 +93,14 @@ export function AppRoutes() {
           <Route path="subscriptions" element={<SubscriptionsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="deliveries" element={<TodayDeliveriesPage />} />
+          <Route
+            path="routes"
+            element={
+              <FeatureGate feature={FEATURES.DELIVERY_ROUTES}>
+                <RoutesPage />
+              </FeatureGate>
+            }
+          />
           <Route
             path="reports"
             element={

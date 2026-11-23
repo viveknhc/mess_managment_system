@@ -7,10 +7,14 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.customization.permissions import requires_feature
+from apps.customization.registry import CUSTOM_SUBSCRIPTIONS
+from apps.customization.services import FeatureService
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.serializers import (
     PauseRequestSerializer,
     SubscriptionCreateSerializer,
+    SubscriptionCustomizeSerializer,
     SubscriptionDetailSerializer,
     SubscriptionListSerializer,
 )
@@ -52,7 +56,7 @@ class SubscriptionViewSet(TenantScopedViewSet):
     - No update/delete — state changes via actions only.
     """
 
-    queryset = Subscription.objects.select_related("customer", "plan").all()
+    queryset = Subscription.objects.select_related("customer", "plan").prefetch_related("items").all()
     serializer_class = SubscriptionListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = SubscriptionFilter
@@ -78,6 +82,7 @@ class SubscriptionViewSet(TenantScopedViewSet):
         "resume": [Role.OWNER, Role.MANAGER],
         "cancel": [Role.OWNER, Role.MANAGER],
         "renew": [Role.OWNER, Role.MANAGER],
+        "customize": [Role.OWNER, Role.MANAGER],
     }
 
     def get_queryset(self):
@@ -96,12 +101,27 @@ class SubscriptionViewSet(TenantScopedViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        customized = data["custom_price"] is not None or bool(data["items"])
+        if customized and not FeatureService.has(request.user.business_id, CUSTOM_SUBSCRIPTIONS):
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Custom prices and food customizations are not enabled for this business.",
+                        "fields": {},
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             sub = SubscriptionService.create_subscription(
                 business_id=request.user.business_id,
-                customer=serializer.validated_data["customer"],
-                plan=serializer.validated_data["plan"],
-                start_date=serializer.validated_data["start_date"],
+                customer=data["customer"],
+                plan=data["plan"],
+                start_date=data["start_date"],
+                custom_price=data["custom_price"],
+                items=data["items"],
             )
         except ValueError as e:
             return Response(
@@ -176,3 +196,25 @@ class SubscriptionViewSet(TenantScopedViewSet):
             SubscriptionDetailSerializer(new_sub).data,
             status=status.HTTP_201_CREATED,
         )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated, RoleBasedPermission, requires_feature(CUSTOM_SUBSCRIPTIONS)],
+    )
+    def customize(self, request, pk=None):
+        """Body: {items: [{label, price_per_meal}], custom_price?}. See SubscriptionService.customize."""
+        sub = self.get_object()
+        body = SubscriptionCustomizeSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        kwargs = {"items": body.validated_data["items"]}
+        if "custom_price" in body.validated_data:
+            kwargs["custom_price"] = body.validated_data["custom_price"]
+        try:
+            sub = SubscriptionService.customize(sub, **kwargs)
+        except ValueError as e:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": str(e), "fields": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(SubscriptionDetailSerializer(Subscription.objects.get(pk=sub.pk)).data)

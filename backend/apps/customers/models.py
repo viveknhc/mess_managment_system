@@ -35,6 +35,14 @@ class Customer(TenantScopedModel):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     notes = models.TextField(blank=True)
+    # Delivery route (feature ``delivery_routes``) — its staff member delivers this customer's meals.
+    route = models.ForeignKey(
+        "deliveries.DeliveryRoute",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="customers",
+    )
     status = models.CharField(
         max_length=20,
         choices=CUSTOMER_STATUS_CHOICES,

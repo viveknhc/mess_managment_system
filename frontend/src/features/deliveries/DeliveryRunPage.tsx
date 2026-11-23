@@ -99,6 +99,16 @@ function DeliveryCard({
           )}
         </div>
 
+        {d.customizations.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Customizations">
+            {d.customizations.map((c) => (
+              <li key={c} className="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-800">
+                {c}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {open && d.customer_address && (
           <p className="mt-3 flex gap-2 text-sm text-gray-600">
             <Icon d={ICONS.pin} className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
@@ -263,7 +273,8 @@ export function DeliveryRunPage({ initialTab = 'todo' }: { initialTab?: Tab }) {
           !q ||
           d.customer_name.toLowerCase().includes(q) ||
           d.customer_address.toLowerCase().includes(q) ||
-          d.meal_name.toLowerCase().includes(q),
+          d.meal_name.toLowerCase().includes(q) ||
+          (d.route_name ?? '').toLowerCase().includes(q),
       )
   }, [items, tab, query])
 

@@ -6,6 +6,11 @@ import { useServerTable } from '../../hooks/useServerTable'
 import { confirmDialog, promptDialog } from '../../components/ui/dialog'
 import { notify } from '../../utils/notify'
 import { NOT_DELIVERED_REASONS, deliveryApi, isOpen, type DeliveryItem } from './deliveryApi'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { routeApi, type DeliveryRoute } from './routeApi'
+
+/** Route filter value: '' = all, NO_ROUTE = customers on no route, else a route id. */
+const NO_ROUTE = 'none'
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-50 text-yellow-700',
@@ -32,12 +37,22 @@ export function TodayDeliveriesPage() {
   const canUpdate = user?.role === 'OWNER' || user?.role === 'MANAGER' || user?.role === 'DELIVERY_STAFF'
   // Skipping changes the customer's subscription — owner/manager only (delivery staff just record outcomes)
   const canSkip = user?.role === 'OWNER' || user?.role === 'MANAGER'
+  const routesOn = useFeature(FEATURES.DELIVERY_ROUTES)
+  const [routes, setRoutes] = useState<DeliveryRoute[]>([])
+  const [routeFilter, setRouteFilter] = useState('')
+
+  useEffect(() => {
+    if (routesOn) routeApi.list().then(setRoutes).catch(() => setRoutes([]))
+  }, [routesOn])
 
   const fetchToday = useCallback(async () => {
     setLoading(true)
     try {
+      const params: Record<string, string | number> = { ...tableParams }
+      if (routeFilter === NO_ROUTE) params.no_route = 'true'
+      else if (routeFilter) params.route = routeFilter
       const [pageRes, summaryRes] = await Promise.all([
-        apiClient.get('/deliveries/today/', { params: tableParams }),
+        apiClient.get('/deliveries/today/', { params }),
         apiClient.get<{ total: number; pending: number }>('/deliveries/today_summary/'),
       ])
       setDeliveries(pageRes.data.results ?? pageRes.data)
@@ -49,11 +64,15 @@ export function TodayDeliveriesPage() {
     } finally {
       setLoading(false)
     }
-  }, [tableParams])
+  }, [tableParams, routeFilter])
 
   useEffect(() => {
     fetchToday()
   }, [fetchToday])
+
+  useEffect(() => {
+    table.setPage(1)
+  }, [routeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleUndo(d: DeliveryItem) {
     try {
@@ -131,7 +150,24 @@ export function TodayDeliveriesPage() {
       className: 'text-gray-500',
       render: (d) => d.customer_address || 'No address',
     },
-    { key: 'meal__name', header: 'Meal', sortable: true, className: 'text-gray-700', render: (d) => d.meal_name },
+    {
+      key: 'meal__name',
+      header: 'Meal',
+      sortable: true,
+      className: 'text-gray-700',
+      render: (d) => (
+        <>
+          <div>{d.meal_name}</div>
+          {d.customizations.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {d.customizations.map((c) => (
+                <span key={c} className="rounded bg-orange-50 px-1.5 py-0.5 text-xs font-medium text-orange-700">{c}</span>
+              ))}
+            </div>
+          )}
+        </>
+      ),
+    },
     {
       key: 'status',
       header: 'Status',
@@ -144,6 +180,16 @@ export function TodayDeliveriesPage() {
         </span>
       ),
     },
+    ...(routesOn
+      ? [
+          {
+            key: 'route',
+            header: 'Route',
+            className: 'whitespace-nowrap text-gray-500',
+            render: (d: DeliveryItem) => d.route_name || '—',
+          },
+        ]
+      : []),
     {
       key: 'assigned_staff__name',
       header: 'Staff',
@@ -204,14 +250,34 @@ export function TodayDeliveriesPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Today's Deliveries</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {summary.pending} pending · {summary.completed} completed · {count} total
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Today's Deliveries</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {summary.pending} pending · {summary.completed} completed · {routeFilter ? `${count} on this route` : `${count} total`}
+          </p>
+        </div>
+        {routesOn && routes.length > 0 && (
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Route
+            <select
+              value={routeFilter}
+              onChange={(e) => setRouteFilter(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value="">All routes</option>
+              {routes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}{r.staff_name ? ` (${r.staff_name})` : ''}
+                </option>
+              ))}
+              <option value={NO_ROUTE}>No route</option>
+            </select>
+          </label>
+        )}
       </div>
 
-      {!loading && count === 0 ? (
+      {!loading && count === 0 && !routeFilter ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <p className="text-gray-500">No deliveries scheduled for today</p>
         </div>

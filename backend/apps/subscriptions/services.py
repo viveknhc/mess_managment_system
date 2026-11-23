@@ -11,8 +11,50 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.settings_app.services import KitchenCalendar
-from apps.subscriptions.models import Subscription
+from apps.subscriptions.models import Subscription, SubscriptionItem
 from common.constants import Status, SubStatus
+
+MAX_ITEMS = 20
+
+
+def _clean_items(items):
+    """[{label, price_per_meal}] → [(label, Decimal)], blanks dropped, validated."""
+    cleaned = []
+    for item in items or []:
+        label = " ".join(str(item.get("label", "")).split())
+        if not label:
+            continue
+        price = Decimal(str(item.get("price_per_meal") or "0"))
+        if price < 0:
+            raise ValueError(f'"{label}": price per meal cannot be negative.')
+        cleaned.append((label[:120], price.quantize(Decimal("0.01"))))
+    if len(cleaned) > MAX_ITEMS:
+        raise ValueError(f"At most {MAX_ITEMS} customizations per subscription.")
+    return cleaned
+
+
+def _extras_per_meal(items):
+    return sum((price for _label, price in items), Decimal("0.00"))
+
+
+def _price_for(plan, custom_price, items, meals):
+    """Subscription total: the agreed base price plus each extra × meals."""
+    base = plan.price if custom_price is None else custom_price
+    return (base + _extras_per_meal(items) * meals).quantize(Decimal("0.01"))
+
+
+def _write_items(subscription, items):
+    SubscriptionItem.objects.filter(subscription=subscription).delete()
+    SubscriptionItem.objects.bulk_create(
+        SubscriptionItem(
+            business_id=subscription.business_id,
+            subscription=subscription,
+            label=label,
+            price_per_meal=price,
+            position=i,
+        )
+        for i, (label, price) in enumerate(items)
+    )
 
 
 class PauseValidationError(ValueError):
@@ -147,11 +189,18 @@ class SubscriptionService:
 
     @staticmethod
     @transaction.atomic
-    def create_subscription(*, business_id, customer, plan, start_date):
+    def create_subscription(*, business_id, customer, plan, start_date, custom_price=None, items=None):
         """Create a PENDING subscription from a plan.
 
-        Validates customer and plan belong to the same business.
+        Validates customer and plan belong to the same business. ``custom_price`` replaces
+        the plan price for this customer; ``items`` ([{label, price_per_meal}]) are food
+        customizations, each charged per meal of the plan (feature custom_subscriptions —
+        the caller checks it).
         """
+        if custom_price is not None and custom_price < 0:
+            raise ValueError("Custom price cannot be negative.")
+        items = _clean_items(items)
+        total = _price_for(plan, custom_price, items, plan.total_meals)
         if customer.business_id != business_id:
             raise ValueError("Customer does not belong to this business.")
         if customer.status != Status.ACTIVE:
@@ -177,14 +226,74 @@ class SubscriptionService:
             start_date=start_date,
             end_date=end_date,
             status=SubStatus.PENDING,
-            total_amount=plan.price,
+            total_amount=total,
             paid_amount=Decimal("0.00"),
-            pending_amount=plan.price,
+            pending_amount=total,
             remaining_meals=plan.total_meals,
             meal=plan.meal,
             total_meals=plan.total_meals,
+            custom_price=custom_price,
         )
+        _write_items(subscription, items)
         return _activate_if_free(subscription)
+
+    @staticmethod
+    @transaction.atomic
+    def customize(subscription, *, items, custom_price=..., today=None):
+        """Change a live subscription's food customizations (and, before it starts, its price).
+
+        - PENDING: total = (custom_price or plan price) + extras × plan meals. If what's
+          already paid now covers it, the subscription activates like a full payment.
+        - ACTIVE / PAUSED: the price is fixed; a change in extras is charged (or credited)
+          for the meals still to come, so a new +₹20 extra adds ₹20 × meals left to pending.
+          It can't drop the total below what the customer already paid.
+        - EXPIRED / CANCELLED: nothing to change.
+
+        ``custom_price`` omitted = keep the current one; None = back to the plan price.
+        """
+        from apps.deliveries.services import DeliveryService
+
+        _lock(subscription)
+        status_ = subscription.status
+        if status_ in (SubStatus.EXPIRED, SubStatus.CANCELLED):
+            raise ValueError(f"A {status_.lower()} subscription can't be changed. Renew it instead.")
+        new_items = _clean_items(items)
+        old_items = [(i.label, i.price_per_meal) for i in subscription.items.all()]
+
+        if status_ == SubStatus.PENDING:
+            if custom_price is not ...:
+                if custom_price is not None and custom_price < 0:
+                    raise ValueError("Custom price cannot be negative.")
+                subscription.custom_price = custom_price
+            new_total = _price_for(
+                subscription.plan, subscription.custom_price, new_items, subscription.total_meals
+            )
+        else:
+            if custom_price is not ... and custom_price != subscription.custom_price:
+                raise ValueError(
+                    "The price can only be changed before the subscription starts. "
+                    "Extras added now are charged for the meals left."
+                )
+            delta = (_extras_per_meal(new_items) - _extras_per_meal(old_items)) * subscription.remaining_meals
+            new_total = (subscription.total_amount + delta).quantize(Decimal("0.01"))
+
+        if new_total < subscription.paid_amount:
+            raise ValueError(
+                f"{subscription.customer.name} has already paid ₹{subscription.paid_amount}; "
+                f"the new total would be ₹{new_total}."
+            )
+
+        subscription.total_amount = new_total
+        subscription.pending_amount = new_total - subscription.paid_amount
+        fields = ["custom_price", "total_amount", "pending_amount", "updated_at"]
+        activated = status_ == SubStatus.PENDING and subscription.pending_amount == 0
+        if activated:
+            fields += SubscriptionService.activate_on_full_payment(subscription, today=today)
+        subscription.save(update_fields=fields)
+        _write_items(subscription, new_items)
+        if activated:
+            DeliveryService.generate_delivery_schedule(subscription)
+        return subscription
 
     # ── Pause / resume (D-10) ────────────────────────────────────────────
     #
@@ -392,6 +501,9 @@ class SubscriptionService:
         _lock_customer(customer)
         SubscriptionService.ensure_no_overlap(customer, plan, new_start, new_end)
 
+        # The customer keeps their agreed price and food customizations.
+        items = [(i.label, i.price_per_meal) for i in subscription.items.all()]
+        total = _price_for(plan, subscription.custom_price, items, plan.total_meals)
         renewal = Subscription.objects.create(
             business_id=subscription.business_id,
             customer=subscription.customer,
@@ -399,14 +511,16 @@ class SubscriptionService:
             start_date=new_start,
             end_date=new_end,
             status=SubStatus.PENDING,
-            total_amount=plan.price,
+            total_amount=total,
             paid_amount=Decimal("0.00"),
-            pending_amount=plan.price,
+            pending_amount=total,
             remaining_meals=plan.total_meals,
             meal=plan.meal,
             total_meals=plan.total_meals,
             renewed_from=subscription,
+            custom_price=subscription.custom_price,
         )
+        _write_items(renewal, items)
         return _activate_if_free(renewal)
 
 

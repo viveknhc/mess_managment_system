@@ -281,3 +281,29 @@ def after_status_change(customer):
     (It isn't switched back on automatically — the owner re-enables it when they choose.)"""
     if customer.status != Status.ACTIVE and customer.user_id is not None and customer.user.is_active:
         set_portal_login_active(customer, False)
+
+
+def set_route(*, business_id, route, customer_ids):
+    """Put exactly ``customer_ids`` on ``route``: they join it, anyone else on it leaves.
+
+    Returns the ids of every customer whose route changed (to re-assign their deliveries).
+    """
+    customer_ids = set(customer_ids)
+    found = set(
+        Customer.objects.filter(business_id=business_id, id__in=customer_ids).values_list("id", flat=True)
+    )
+    if found != customer_ids:
+        raise serializers.ValidationError({"customer_ids": ["Some customers were not found."]})
+    leaving = set(
+        Customer.objects.filter(business_id=business_id, route=route)
+        .exclude(id__in=customer_ids)
+        .values_list("id", flat=True)
+    )
+    joining = set(
+        Customer.objects.filter(business_id=business_id, id__in=customer_ids)
+        .exclude(route=route)
+        .values_list("id", flat=True)
+    )
+    Customer.objects.filter(id__in=leaving).update(route=None)
+    Customer.objects.filter(id__in=joining).update(route=route)
+    return leaving | joining

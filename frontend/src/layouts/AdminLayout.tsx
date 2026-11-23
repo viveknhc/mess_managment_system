@@ -17,6 +17,7 @@ const navItems: { to: string; label: string; icon: NavIconName; end: boolean; fe
   { to: '/app/subscriptions', label: 'Subscriptions', icon: 'calendarCheck', end: false },
   { to: '/app/payments', label: 'Customer Payments', icon: 'banknote', end: false },
   { to: '/app/deliveries', label: 'Deliveries', icon: 'truck', end: false },
+  { to: '/app/routes', label: 'Delivery Routes', icon: 'route', end: false, feature: FEATURES.DELIVERY_ROUTES },
   { to: '/app/reports', label: 'Reports', icon: 'chart', end: false, feature: FEATURES.REPORTS },
   { to: '/app/staff', label: 'Staff', icon: 'idBadge', end: false },
   { to: '/app/settings', label: 'Settings', icon: 'settings', end: false },

@@ -42,6 +42,30 @@ DELIVERY_TRANSITIONS = {
 }
 
 
+class DeliveryRoute(TenantScopedModel):
+    """A group of customers delivered by one staff member (feature ``delivery_routes``).
+
+    Customers point here via ``Customer.route``. Deliveries of a route's customers are
+    assigned to ``staff`` when generated, and re-assigned when the route or its staff
+    changes (RouteService), so each delivery person sees only their own run.
+    """
+
+    name = models.CharField(max_length=100)
+    staff = models.ForeignKey(
+        "accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="delivery_routes"
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["business", "name"], name="unique_route_name_per_business"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Delivery(TenantScopedModel):
     """A single meal delivery for a subscription on a specific date."""
 

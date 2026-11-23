@@ -5,6 +5,8 @@ export const FEATURES = {
   CUSTOMER_PORTAL: 'customer_portal',
   ONLINE_PAYMENTS: 'online_payments',
   REPORTS: 'reports',
+  CUSTOM_SUBSCRIPTIONS: 'custom_subscriptions',
+  DELIVERY_ROUTES: 'delivery_routes',
 } as const
 
 export type FeatureKey = (typeof FEATURES)[keyof typeof FEATURES]

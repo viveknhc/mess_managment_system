@@ -6,6 +6,8 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { CustomizeSubscriptionModal, inr as inrFmt, type CustomItem } from './CustomizationEditor'
 
 interface Subscription {
   id: string
@@ -23,6 +25,8 @@ interface Subscription {
   remaining_days: number
   is_expiring: boolean
   renewed_from: string | null
+  custom_price: string | null
+  items: CustomItem[]
 }
 
 const STATUS_TABS = ['', 'PENDING', 'ACTIVE', 'PAUSED', 'EXPIRED', 'CANCELLED'] as const
@@ -60,6 +64,23 @@ export function SubscriptionsPage() {
   const { params: tableParams, setPage } = table
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
+  const customOn = useFeature(FEATURES.CUSTOM_SUBSCRIPTIONS)
+  const [customizing, setCustomizing] = useState<{ sub: Subscription; price: number | null; meals: number | null } | null>(null)
+
+  async function openCustomize(sub: Subscription) {
+    let price: number | null = null
+    let meals: number | null = null
+    if (sub.status === 'PENDING') {
+      try {
+        const { data } = await apiClient.get(`/plans/${sub.plan}/`)
+        price = Number(data.price)
+        meals = data.total_meals
+      } catch {
+        // preview only — the server computes the real total
+      }
+    }
+    setCustomizing({ sub, price, meals })
+  }
 
   const fetchSubs = useCallback(async () => {
     setLoading(true)
@@ -116,7 +137,29 @@ export function SubscriptionsPage() {
         </div>
       ),
     },
-    { key: 'plan__name', header: 'Plan', sortable: true, className: 'text-gray-600', render: (s) => s.plan_name },
+    {
+      key: 'plan__name',
+      header: 'Plan',
+      sortable: true,
+      className: 'text-gray-600',
+      render: (s) => (
+        <>
+          <div>{s.plan_name}</div>
+          {s.custom_price !== null && (
+            <div className="text-xs text-gray-400">Custom price {inrFmt(s.custom_price)}</div>
+          )}
+          {s.items.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {s.items.map((i) => (
+                <span key={i.label} className="rounded bg-orange-50 px-1.5 py-0.5 text-xs text-orange-700">
+                  {i.label}{Number(i.price_per_meal) > 0 ? ` +${inrFmt(i.price_per_meal)}` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      ),
+    },
     {
       key: 'status',
       header: 'Status',
@@ -170,6 +213,9 @@ export function SubscriptionsPage() {
       align: 'right',
       render: (s) => (
         <div className="flex justify-end gap-1">
+          {customOn && ['PENDING', 'ACTIVE', 'PAUSED'].includes(s.status) && (
+            <button onClick={() => openCustomize(s)} className={`${actionBtn} text-orange-600 hover:bg-orange-50`}>Customize</button>
+          )}
           {s.status === 'ACTIVE' && (
             <>
               <button onClick={() => handleAction(s, 'pause')} className={`${actionBtn} text-blue-600 hover:bg-blue-50`}>Pause</button>
@@ -240,6 +286,16 @@ export function SubscriptionsPage() {
           onPageSizeChange: table.setPageSize,
         }}
       />
+
+      {customizing && (
+        <CustomizeSubscriptionModal
+          sub={customizing.sub}
+          planPrice={customizing.price}
+          totalMeals={customizing.meals}
+          onClose={() => setCustomizing(null)}
+          onSaved={() => { setCustomizing(null); fetchSubs() }}
+        />
+      )}
 
       {showForm && (
         <SubscriptionForm

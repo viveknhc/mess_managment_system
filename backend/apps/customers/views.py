@@ -32,10 +32,11 @@ class CustomerFilter(django_filters.FilterSet):
 
     search = django_filters.CharFilter(method="filter_search")
     status = django_filters.CharFilter(field_name="status")
+    route = django_filters.UUIDFilter(field_name="route_id")
 
     class Meta:
         model = Customer
-        fields = ["status"]
+        fields = ["status", "route"]
 
     def filter_search(self, queryset, _name, value):
         if not value:
@@ -56,7 +57,7 @@ class CustomerViewSet(TenantScopedViewSet):
     - Soft-delete: sets status to INACTIVE rather than hard delete.
     """
 
-    queryset = Customer.objects.all()
+    queryset = Customer.objects.select_related("route").all()
     serializer_class = CustomerListSerializer
     permission_classes = [IsAuthenticated, RoleBasedPermission]
     filterset_class = CustomerFilter
@@ -91,8 +92,13 @@ class CustomerViewSet(TenantScopedViewSet):
         new_status = serializer.validated_data.get("status")
         if new_status:
             services.check_can_change_status(serializer.instance, new_status)
+        old_route_id = serializer.instance.route_id
         customer = serializer.save()
         services.after_status_change(customer)
+        if customer.route_id != old_route_id:
+            from apps.deliveries.services import RouteService
+
+            RouteService.sync_customers([customer.id])
 
     @transaction.atomic
     def perform_destroy(self, instance):

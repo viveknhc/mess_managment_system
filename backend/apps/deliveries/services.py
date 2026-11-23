@@ -6,10 +6,11 @@ from datetime import timedelta
 from django.db import models, transaction
 from django.utils import timezone
 
-from apps.customization.registry import SKIP
-from apps.customization.services import PolicyService
+from apps.customization.registry import DELIVERY_ROUTES, SKIP
+from apps.customization.services import FeatureService, PolicyService
 from apps.deliveries.models import (
     Delivery,
+    DeliveryRoute,
     DeliveryStatus,
     MealSkip,
     SkipAdjustment,
@@ -17,7 +18,7 @@ from apps.deliveries.models import (
 )
 from apps.settings_app.services import KitchenCalendar
 from apps.subscriptions.models import Subscription
-from common.constants import SubStatus
+from common.constants import Role, SubStatus
 
 # Deliveries cancelled by a pause window — hidden from today's operational list
 # (the customer isn't expecting a meal; delivery staff shouldn't see them).
@@ -81,6 +82,7 @@ class DeliveryService:
         windows = list(SubscriptionPause.objects.filter(subscription=subscription))
 
         calendar = KitchenCalendar.for_business(subscription.business_id)
+        staff_id = RouteService.staff_id_for(subscription.customer)
         # Past end_date only to fit owed meals; bounded so an open-ended pause can't loop forever.
         limit = subscription.end_date + MAX_STRETCH
 
@@ -100,6 +102,7 @@ class DeliveryService:
                         meal_id=subscription.meal_id,
                         delivery_date=current,
                         status=DeliveryStatus.PENDING,
+                        assigned_staff_id=staff_id,
                     )
                 )
             current += timedelta(days=1)
@@ -276,6 +279,101 @@ class DeliveryService:
         return pause
 
 
+# Upcoming deliveries a route change moves to the new staff member: not yet run, and
+# pause-cancelled rows (a resume puts them back to PENDING with this assignment).
+REASSIGNABLE_STATUSES = (DeliveryStatus.PENDING, DeliveryStatus.CANCELLED)
+
+
+class RouteService:
+    """Delivery routes (feature ``delivery_routes``): each route's staff member gets the
+    deliveries of its customers. Assignment happens when deliveries are generated and is
+    redone for upcoming deliveries whenever a route, its staff or its customers change."""
+
+    @staticmethod
+    def is_enabled(business_id):
+        return FeatureService.has(business_id, DELIVERY_ROUTES)
+
+    @staticmethod
+    def staff_id_for(customer):
+        """Who delivers this customer's meals, or None (open to any delivery staff)."""
+        route = customer.route
+        if route is None or route.staff_id is None or not RouteService.is_enabled(customer.business_id):
+            return None
+        staff = route.staff
+        if not staff.is_active or staff.role != Role.DELIVERY_STAFF:
+            return None
+        return staff.id
+
+    @staticmethod
+    def sync_customers(customer_ids, *, today=None):
+        """Re-assign upcoming deliveries of these customers to their route's staff (or nobody)."""
+        from apps.customers.models import Customer
+
+        today = today or timezone.localdate()
+        changed = 0
+        for customer in Customer.objects.filter(id__in=list(customer_ids)).select_related("route__staff"):
+            changed += Delivery.objects.filter(
+                customer=customer, delivery_date__gte=today, status__in=REASSIGNABLE_STATUSES
+            ).update(assigned_staff_id=RouteService.staff_id_for(customer), updated_at=timezone.now())
+        return changed
+
+    @staticmethod
+    def _route_customer_ids(route):
+        return set(route.customers.values_list("id", flat=True))
+
+    @staticmethod
+    @transaction.atomic
+    def save_route(*, business_id, route=None, name, staff, notes="", customer_ids=None):
+        """Create or update a route. ``customer_ids`` (when given) is the route's full
+        customer list. Upcoming deliveries of every affected customer are re-assigned."""
+        from apps.customers import services as customer_services
+
+        if staff is not None and (
+            staff.business_id != business_id or staff.role != Role.DELIVERY_STAFF or not staff.is_active
+        ):
+            raise ValueError("Pick an active delivery staff member of this mess.")
+        clash = DeliveryRoute.objects.filter(business_id=business_id, name__iexact=name)
+        if route is not None:
+            clash = clash.exclude(pk=route.pk)
+        if clash.exists():
+            raise ValueError(f'A route named "{name}" already exists.')
+
+        staff_changed = route is None or route.staff_id != (staff.id if staff else None)
+        if route is None:
+            route = DeliveryRoute(business_id=business_id)
+        route.name = name
+        route.staff = staff
+        route.notes = notes
+        route.save()
+
+        affected = RouteService._route_customer_ids(route) if staff_changed else set()
+        if customer_ids is not None:
+            affected |= customer_services.set_route(
+                business_id=business_id, route=route, customer_ids=customer_ids
+            )
+        RouteService.sync_customers(affected)
+        return route
+
+    @staticmethod
+    @transaction.atomic
+    def delete_route(route):
+        """Delete a route; its customers' upcoming deliveries become unassigned."""
+        customer_ids = RouteService._route_customer_ids(route)
+        route.delete()  # Customer.route is SET_NULL
+        RouteService.sync_customers(customer_ids)
+
+    @staticmethod
+    @transaction.atomic
+    def release_staff(user, *, today=None):
+        """A delivery person left (deactivated, or no longer delivery staff): their routes
+        lose them and their upcoming deliveries go back to the open pool."""
+        today = today or timezone.localdate()
+        DeliveryRoute.objects.filter(staff=user).update(staff=None, updated_at=timezone.now())
+        return Delivery.objects.filter(
+            assigned_staff=user, delivery_date__gte=today, status__in=REASSIGNABLE_STATUSES
+        ).update(assigned_staff=None, updated_at=timezone.now())
+
+
 class PauseSelector:
     @staticmethod
     def open_pauses(subscription):
@@ -315,23 +413,41 @@ class DeliverySelector:
                 delivery_date=datetime.date.today(),
             )
             .exclude(PAUSED_DELIVERY_Q)
-            .select_related("customer", "meal", "assigned_staff")
+            .select_related("customer__route", "meal", "assigned_staff")
+            .prefetch_related("subscription__items")
         )
 
     @staticmethod
     def get_kitchen_counts(business_id):
-        """Today's meal totals per meal type — for kitchen staff."""
-        today = datetime.date.today()
-        return (
-            Delivery.objects.filter(
-                business_id=business_id,
-                delivery_date=today,
-                status__in=[DeliveryStatus.PENDING, DeliveryStatus.OUT_FOR_DELIVERY],
-            )
-            .values("meal__name")
-            .annotate(count=models.Count("id"))
-            .order_by("meal__name")
+        """Today's meal totals per meal type — for kitchen staff.
+
+        ``[{meal__name, count, extras: [{label, count}]}]`` — ``extras`` totals the
+        subscriptions' food customizations (custom_subscriptions), e.g. "Extra chicken
+        100g ×5". Aggregates only, no customer data.
+        """
+        to_cook = Delivery.objects.filter(
+            business_id=business_id,
+            delivery_date=datetime.date.today(),
+            status__in=[DeliveryStatus.PENDING, DeliveryStatus.OUT_FOR_DELIVERY],
         )
+        counts = list(to_cook.values("meal__name").annotate(count=models.Count("id")).order_by("meal__name"))
+        extras = {}
+        for meal, label in to_cook.filter(subscription__items__isnull=False).values_list(
+            "meal__name", "subscription__items__label"
+        ):
+            key = " ".join(label.split())
+            by_label = extras.setdefault(meal, {})
+            # Same extra typed with different capitalisation is one kitchen line.
+            match = next((k for k in by_label if k.lower() == key.lower()), key)
+            by_label[match] = by_label.get(match, 0) + 1
+        for row in counts:
+            row["extras"] = [
+                {"label": label, "count": n}
+                for label, n in sorted(
+                    extras.get(row["meal__name"], {}).items(), key=lambda kv: (-kv[1], kv[0])
+                )
+            ]
+        return counts
 
     @staticmethod
     def get_today_summary(business_id):

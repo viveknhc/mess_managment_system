@@ -25,6 +25,8 @@ interface CustomerDetail {
   longitude: string | null
   notes: string
   status: string
+  route: string | null
+  route_name: string | null
   /** null = no portal login yet. Only on the detail endpoint. */
   portal_login: PortalLogin | null
   created_at: string
@@ -149,6 +151,12 @@ export function CustomerDetailsPage() {
             <dt className="w-32 flex-shrink-0 text-sm font-medium text-gray-500">Location</dt>
             <dd className="text-sm text-gray-900">{customer.location || '—'}</dd>
           </div>
+          {customer.route_name && (
+            <div className="flex py-3">
+              <dt className="w-32 flex-shrink-0 text-sm font-medium text-gray-500">Route</dt>
+              <dd className="text-sm text-gray-900">{customer.route_name}</dd>
+            </div>
+          )}
           {customer.notes && (
             <div className="flex py-3">
               <dt className="w-32 flex-shrink-0 text-sm font-medium text-gray-500">Notes</dt>

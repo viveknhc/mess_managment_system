@@ -1,6 +1,8 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react'
+import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { notify } from '../../utils/notify'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { routeApi, type DeliveryRoute } from '../deliveries/routeApi'
 
 interface CustomerData {
   id: string
@@ -10,6 +12,7 @@ interface CustomerData {
   address: string
   location: string
   notes: string
+  route?: string | null
 }
 
 interface Props {
@@ -28,6 +31,13 @@ export function CustomerForm({ customer, onClose, onSaved }: Props) {
     location: customer?.location ?? '',
     notes: customer?.notes ?? '',
   })
+  const routesOn = useFeature(FEATURES.DELIVERY_ROUTES)
+  const [routes, setRoutes] = useState<DeliveryRoute[]>([])
+  const [route, setRoute] = useState(customer?.route ?? '')
+
+  useEffect(() => {
+    if (routesOn) routeApi.list().then(setRoutes).catch(() => setRoutes([]))
+  }, [routesOn])
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -40,10 +50,11 @@ export function CustomerForm({ customer, onClose, onSaved }: Props) {
     setError('')
     setSaving(true)
     try {
+      const body = routesOn ? { ...form, route: route || null } : form
       if (isEdit) {
-        await apiClient.patch(`/customers/${customer.id}/`, form)
+        await apiClient.patch(`/customers/${customer.id}/`, body)
       } else {
-        await apiClient.post('/customers/', form)
+        await apiClient.post('/customers/', body)
       }
       notify.success(isEdit ? 'Customer updated' : 'Customer added', form.name)
       onSaved()
@@ -142,6 +153,27 @@ export function CustomerForm({ customer, onClose, onSaved }: Props) {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
+
+          {routesOn && (
+            <div>
+              <label htmlFor="route" className="mb-1 block text-sm font-medium text-gray-700">
+                Delivery route
+              </label>
+              <select
+                id="route"
+                value={route}
+                onChange={(e) => setRoute(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">No route (any delivery staff)</option>
+                {routes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}{r.staff_name ? ` (${r.staff_name})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label htmlFor="notes" className="mb-1 block text-sm font-medium text-gray-700">

@@ -3,8 +3,11 @@ import { useBusinessStore } from '../../store/businessStore'
 import { useAuthStore } from '../../store/authStore'
 import { notify } from '../../utils/notify'
 
+/** Matches backend businesses.serializers.MAX_LOGO_BYTES. */
+const MAX_LOGO_BYTES = 1024 * 1024
+
 export function BusinessProfilePage() {
-  const { business, isLoading, error, fetchBusiness, updateBusiness, uploadLogo } =
+  const { business, isLoading, error, fetchBusiness, updateBusiness, uploadLogo, removeLogo } =
     useBusinessStore()
   const user = useAuthStore((s) => s.user)
   const isOwner = user?.role === 'OWNER'
@@ -53,11 +56,21 @@ export function BusinessProfilePage() {
   }
 
   async function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) {
-      await uploadLogo(file)
-      if (!useBusinessStore.getState().error) notify.success('Logo updated')
+    const input = e.target
+    const file = input.files?.[0]
+    input.value = '' // picking the same file again still triggers onChange
+    if (!file) return
+    if (file.size > MAX_LOGO_BYTES) {
+      notify.error(null, 'The logo must be 1 MB or smaller.')
+      return
     }
+    await uploadLogo(file)
+    if (!useBusinessStore.getState().error) notify.success('Logo updated')
+  }
+
+  async function handleRemoveLogo() {
+    await removeLogo()
+    if (!useBusinessStore.getState().error) notify.success('Logo removed')
   }
 
   if (isLoading && !business) {
@@ -99,13 +112,14 @@ export function BusinessProfilePage() {
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* Logo section */}
         <div className="flex items-center gap-4 border-b border-gray-100 p-6">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-blue-50 text-2xl font-bold text-blue-600">
+          <div
+            className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl text-2xl font-bold text-blue-600 ${
+              business.logo ? 'border border-gray-200 bg-white' : 'bg-blue-50'
+            }`}
+          >
             {business.logo ? (
-              <img
-                src={business.logo}
-                alt={business.name}
-                className="h-full w-full object-cover"
-              />
+              // contain, not cover: a wide or tall logo is shown whole instead of cropped
+              <img src={business.logo} alt={`${business.name} logo`} className="h-full w-full object-contain p-1" />
             ) : (
               business.name.charAt(0).toUpperCase()
             )}
@@ -123,15 +137,26 @@ export function BusinessProfilePage() {
             </span>
           </div>
           {isOwner && (
-            <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
-              {business.logo ? 'Change Logo' : 'Upload Logo'}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoChange}
-                className="hidden"
-              />
-            </label>
+            <div className="flex flex-col items-end gap-1">
+              <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+                {business.logo ? 'Change Logo' : 'Upload Logo'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleLogoChange}
+                  disabled={isLoading}
+                  className="hidden"
+                />
+              </label>
+              {business.logo ? (
+                <button type="button" onClick={handleRemoveLogo} disabled={isLoading}
+                  className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">
+                  Remove
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400">PNG, JPG, WebP · max 1 MB</span>
+              )}
+            </div>
           )}
         </div>
 

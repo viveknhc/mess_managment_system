@@ -271,8 +271,60 @@ class TestLogoUpload:
             format="multipart",
         )
         assert resp.status_code == 200
-        assert resp.json()["logo"] is not None
-        assert "business_logos/" in resp.json()["logo"]
+        body = resp.json()
+        assert body["logo"].startswith("data:image/png;base64,")
+        # The full profile comes back (the app keeps it as its business).
+        assert body["id"] == str(biz_a.id) and body["status"] == biz_a.status
+        biz_a.refresh_from_db()
+        assert bytes(biz_a.logo_data).startswith(b"\x89PNG")
+        # And it is served on every read — no /media/ URL needed.
+        assert auth_client(owner_a).get(f"/api/v1/business/{biz_a.id}/").json()["logo"] == body["logo"]
+
+    def test_jpeg_detected_from_bytes(self, owner_a, biz_a):
+        buf = BytesIO()
+        Image.new("RGB", (20, 20), color="blue").save(buf, format="JPEG")
+        buf.seek(0)
+        buf.name = "logo.png"  # wrong extension — the bytes decide
+        resp = auth_client(owner_a).patch(f"/api/v1/business/{biz_a.id}/", {"logo": buf}, format="multipart")
+        assert resp.status_code == 200
+        assert resp.json()["logo"].startswith("data:image/jpeg;base64,")
+
+    def test_non_image_rejected(self, owner_a, biz_a):
+        fake = BytesIO(b"<html><script>alert(1)</script></html>")
+        fake.name = "logo.png"
+        resp = auth_client(owner_a).patch(f"/api/v1/business/{biz_a.id}/", {"logo": fake}, format="multipart")
+        assert resp.status_code == 400
+        biz_a.refresh_from_db()
+        assert biz_a.logo_data is None
+
+    def test_too_large_rejected(self, owner_a, biz_a):
+        big = BytesIO(b"\x89PNG\r\n\x1a\n" + b"0" * (1024 * 1024))
+        big.name = "logo.png"
+        resp = auth_client(owner_a).patch(f"/api/v1/business/{biz_a.id}/", {"logo": big}, format="multipart")
+        assert resp.status_code == 400
+
+    def test_remove_logo(self, owner_a, biz_a):
+        client = auth_client(owner_a)
+        client.patch(f"/api/v1/business/{biz_a.id}/", {"logo": _make_image()}, format="multipart")
+        resp = client.patch(f"/api/v1/business/{biz_a.id}/", {"logo": ""}, format="multipart")
+        assert resp.status_code == 200
+        assert resp.json()["logo"] is None
+
+    def test_remove_logo_with_json_null(self, owner_a, biz_a):
+        client = auth_client(owner_a)
+        client.patch(f"/api/v1/business/{biz_a.id}/", {"logo": _make_image()}, format="multipart")
+        resp = client.patch(f"/api/v1/business/{biz_a.id}/", {"logo": None}, format="json")
+        assert resp.status_code == 200
+        assert resp.json()["logo"] is None
+
+    def test_text_update_keeps_logo_and_returns_full_profile(self, owner_a, biz_a):
+        client = auth_client(owner_a)
+        client.patch(f"/api/v1/business/{biz_a.id}/", {"logo": _make_image()}, format="multipart")
+        resp = client.patch(f"/api/v1/business/{biz_a.id}/", {"phone": "9999999999"}, format="json")
+        assert resp.status_code == 200
+        assert resp.json()["phone"] == "9999999999"
+        assert resp.json()["id"] == str(biz_a.id)
+        assert resp.json()["logo"].startswith("data:image/png")
 
     def test_logo_field_nullable(self, owner_a, biz_a):
         """Business without a logo returns null."""

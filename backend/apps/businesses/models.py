@@ -14,7 +14,10 @@ class Business(UUIDModel, TimeStampedModel):
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
-    logo = models.FileField(upload_to="business_logos/", null=True, blank=True)
+    # The logo lives in the database (not on disk): the production host has no persistent
+    # disk and doesn't serve /media/. Served to clients as a data: URL (BusinessSerializer).
+    logo_data = models.BinaryField(null=True, blank=True, editable=False)
+    logo_type = models.CharField(max_length=20, blank=True)
     status = models.CharField(
         max_length=20,
         choices=[(Status.ACTIVE, "Active"), (Status.INACTIVE, "Inactive"), (Status.SUSPENDED, "Suspended")],

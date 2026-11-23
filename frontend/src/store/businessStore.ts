@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiClient } from '../services/apiClient'
+import { getApiErrorMessage } from '../utils/apiError'
 
 export interface Business {
   id: string
@@ -7,6 +8,7 @@ export interface Business {
   phone: string
   email: string
   address: string
+  /** The logo as a data: URL (stored in the database, works on every device), or null. */
   logo: string | null
   status: string
   created_at: string
@@ -20,6 +22,7 @@ interface BusinessState {
   fetchBusiness: () => Promise<void>
   updateBusiness: (data: Partial<Business>) => Promise<void>
   uploadLogo: (file: File) => Promise<void>
+  removeLogo: () => Promise<void>
   reset: () => void
 }
 
@@ -46,8 +49,8 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
     try {
       const { data } = await apiClient.patch(`/business/${biz.id}/`, updates)
       set({ business: data, isLoading: false })
-    } catch {
-      set({ error: 'Failed to update business profile', isLoading: false })
+    } catch (err) {
+      set({ error: getApiErrorMessage(err, 'Failed to update business profile'), isLoading: false })
     }
   },
 
@@ -62,8 +65,20 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       set({ business: data, isLoading: false })
-    } catch {
-      set({ error: 'Failed to upload logo', isLoading: false })
+    } catch (err) {
+      set({ error: getApiErrorMessage(err, 'Failed to upload logo'), isLoading: false })
+    }
+  },
+
+  removeLogo: async () => {
+    const biz = get().business
+    if (!biz) return
+    set({ isLoading: true, error: null })
+    try {
+      const { data } = await apiClient.patch(`/business/${biz.id}/`, { logo: null })
+      set({ business: data, isLoading: false })
+    } catch (err) {
+      set({ error: getApiErrorMessage(err, 'Failed to remove logo'), isLoading: false })
     }
   },
 

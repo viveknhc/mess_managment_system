@@ -5,6 +5,7 @@ only their own business. Only OWNER can update.
 """
 
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from apps.businesses.models import Business
 from apps.businesses.serializers import BusinessSerializer, BusinessUpdateSerializer
@@ -39,3 +40,9 @@ class BusinessViewSet(TenantScopedViewSet):
         if self.action in ("update", "partial_update"):
             return BusinessUpdateSerializer
         return BusinessSerializer
+
+    def update(self, request, *args, **kwargs):
+        """Validate with the update serializer, answer with the full profile — the app keeps
+        the response as its business, so it needs id, status and the logo."""
+        super().update(request, *args, **kwargs)
+        return Response(BusinessSerializer(self.get_object()).data)

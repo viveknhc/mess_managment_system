@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { PortalDashboardData, PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
 import { PaymentDueList } from './PaymentDueList'
+import { CustomizationChips } from './CustomizationChips'
 
 export function PortalDashboard() {
   const [data, setData] = useState<PortalDashboardData | null>(null)
@@ -55,6 +56,7 @@ export function PortalDashboard() {
               <p className="mt-0.5 text-xs text-gray-500">
                 {sub.start_date} → {sub.end_date}
               </p>
+              <CustomizationChips sub={sub} />
             </div>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${

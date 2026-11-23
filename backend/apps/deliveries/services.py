@@ -154,7 +154,11 @@ class DeliveryService:
         if new_status == DeliveryStatus.DELIVERED:
             delivery.delivered_at = timezone.now()
         fields = ["status", "notes", "delivered_at", "updated_at"]
-        if staff is not None and delivery.assigned_staff_id is None:
+        # Marking claims an open delivery — or one a route pre-assigned, once routes are off.
+        if staff is not None and (
+            delivery.assigned_staff_id is None
+            or (delivery.assigned_staff_id != staff.id and not RouteService.is_enabled(delivery.business_id))
+        ):
             delivery.assigned_staff = staff
             fields.append("assigned_staff")
         delivery.save(update_fields=fields)

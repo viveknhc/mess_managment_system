@@ -3,6 +3,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import type { PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
 import { PaymentDueList } from './PaymentDueList'
+import { CustomizationChips } from './CustomizationChips'
 import { notify } from '../../utils/notify'
 
 type DialogKind = 'skip' | 'pause' | 'renew' | null
@@ -181,6 +182,7 @@ export function PortalSubscriptionPage() {
                   <p className="mt-0.5 text-xs text-gray-500">
                     {current.start_date} → {current.end_date}
                   </p>
+                  <CustomizationChips sub={current} />
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${

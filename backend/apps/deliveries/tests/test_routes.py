@@ -314,3 +314,37 @@ class TestIsolation:
             f"/api/v1/customers/{cust.id}/", {"route": str(other_route.id)}, format="json"
         )
         assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+class TestFeatureTurnedOff:
+    def test_preassigned_deliveries_open_up_and_can_be_claimed(self, biz, suresh, anil, plan):
+        cust = customer(biz, "Rahul")
+        sub = subscribe(biz, plan, cust)
+        RouteService.save_route(business_id=biz.id, name="A", staff=suresh, customer_ids=[cust.id])
+        today = Delivery.objects.get(subscription=sub, delivery_date=TODAY)
+        c = client(anil)
+        assert c.get("/api/v1/deliveries/today/").json()["results"] == []
+
+        FeatureService.set_overrides(biz.id, {DELIVERY_ROUTES: False})
+        rows = c.get("/api/v1/deliveries/today/").json()["results"]
+        assert [r["customer_name"] for r in rows] == ["Rahul"]
+        resp = c.patch(f"/api/v1/deliveries/{today.id}/status/", {"status": "DELIVERED"}, format="json")
+        assert resp.status_code == 200
+        today.refresh_from_db()
+        assert today.assigned_staff_id == anil.id
+        # Once marked, it's Anil's — Suresh no longer sees it.
+        assert client(suresh).get("/api/v1/deliveries/today/").json()["results"] == []
+
+
+@pytest.mark.django_db
+class TestCustomerFilters:
+    def test_customer_list_route_filters(self, biz, owner, suresh):
+        on = customer(biz, "On")
+        customer(biz, "Off")
+        route = RouteService.save_route(business_id=biz.id, name="A", staff=suresh, customer_ids=[on.id])
+        c = client(owner)
+        rows = c.get("/api/v1/customers/", {"route": str(route.id)}).json()["results"]
+        assert [(r["name"], r["route_name"]) for r in rows] == [("On", "A")]
+        rows = c.get("/api/v1/customers/", {"no_route": "true"}).json()["results"]
+        assert [r["name"] for r in rows] == ["Off"]

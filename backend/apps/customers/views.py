@@ -33,6 +33,7 @@ class CustomerFilter(django_filters.FilterSet):
     search = django_filters.CharFilter(method="filter_search")
     status = django_filters.CharFilter(field_name="status")
     route = django_filters.UUIDFilter(field_name="route_id")
+    no_route = django_filters.BooleanFilter(field_name="route", lookup_expr="isnull")
 
     class Meta:
         model = Customer

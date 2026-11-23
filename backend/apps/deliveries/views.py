@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from apps.customization.permissions import requires_feature
 from apps.customization.registry import DELIVERY_ROUTES
-from apps.deliveries.models import Delivery, DeliveryRoute
+from apps.deliveries.models import Delivery, DeliveryRoute, DeliveryStatus
 from apps.deliveries.serializers import (
     DeliveryListSerializer,
     DeliveryRouteSerializer,
@@ -87,13 +87,17 @@ class DeliveryViewSet(TenantScopedViewSet):
 
     def _staff_scope(self, qs):
         """Delivery staff work today's run only: deliveries assigned to them, or not yet
-        assigned (marking one claims it). Never another staff member's or another day's."""
+        assigned (marking one claims it). Never another staff member's or another day's.
+
+        Pre-assignment comes from delivery routes; if the mess turns routes off, the still
+        PENDING ones are open to everyone again (marking claims them)."""
         user = self.request.user
         if user.role != Role.DELIVERY_STAFF:
             return qs
-        return qs.filter(delivery_date=timezone.localdate()).filter(
-            Q(assigned_staff=user) | Q(assigned_staff__isnull=True)
-        )
+        visible = Q(assigned_staff=user) | Q(assigned_staff__isnull=True)
+        if not RouteService.is_enabled(user.business_id):
+            visible |= Q(status=DeliveryStatus.PENDING)
+        return qs.filter(delivery_date=timezone.localdate()).filter(visible)
 
     @action(detail=False, methods=["get"])
     def today(self, request):

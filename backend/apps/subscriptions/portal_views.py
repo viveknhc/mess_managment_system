@@ -149,7 +149,7 @@ class PortalDashboardView(APIView):
         customer, err = _portal_customer(request)
         if err:
             return err
-        subs = Subscription.objects.filter(customer=customer).select_related("plan")
+        subs = Subscription.objects.filter(customer=customer).select_related("plan").prefetch_related("items")
         active_sub = (
             subs.filter(status__in=[SubStatus.ACTIVE, SubStatus.PAUSED]).order_by("-end_date").first()
         )
@@ -194,7 +194,11 @@ class PortalSubscriptionsView(APIView):
             OnlinePaymentService.reconcile_customer(customer)
         except Exception:
             logger.exception("Online payment reconcile failed for customer %s", customer.id)
-        subs = Subscription.objects.filter(customer=customer).select_related("plan", "customer")
+        subs = (
+            Subscription.objects.filter(customer=customer)
+            .select_related("plan", "customer")
+            .prefetch_related("items")
+        )
         return Response(SubscriptionListSerializer(subs, many=True).data)
 
 
@@ -403,7 +407,8 @@ class PortalDeliveriesView(APIView):
             return err
         deliveries = (
             Delivery.objects.filter(customer=customer)
-            .select_related("customer", "meal", "assigned_staff")
+            .select_related("customer__route", "meal", "assigned_staff")
+            .prefetch_related("subscription__items")
             .order_by("-delivery_date")[:100]
         )
         return Response(DeliveryListSerializer(deliveries, many=True).data)

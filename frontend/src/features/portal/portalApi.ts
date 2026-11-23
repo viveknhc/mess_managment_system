@@ -13,6 +13,8 @@ export interface PortalSubscription {
   remaining_meals: number
   remaining_days: number
   is_expiring: boolean
+  /** Food customizations agreed with the mess (feature custom_subscriptions). */
+  items?: { label: string; price_per_meal: string }[]
 }
 
 export interface TodaysMeal {

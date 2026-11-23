@@ -290,3 +290,23 @@ class TestApi:
         resp = client(outsider).post(f"{SUBS}{sub.id}/customize/", {"items": [CHICKEN]}, format="json")
         assert resp.status_code == 404
         assert labels(sub) == []
+
+
+@pytest.mark.django_db
+class TestPortal:
+    def test_customer_sees_own_customizations(self, biz, plan, cust):
+        from apps.customization.registry import CUSTOMER_PORTAL
+
+        FeatureService.set_overrides(biz.id, {CUSTOMER_PORTAL: True})
+        login = User.objects.create_user(username="rahul", password="p", role=Role.CUSTOMER, business=biz)
+        cust.user = login
+        cust.save()
+        sub = create(biz, plan, cust, items=[CHICKEN])
+        pay(sub, "1200")
+        c = client(login)
+        subs = c.get("/api/v1/portal/subscriptions/").json()
+        assert subs[0]["items"] == [{"label": "Extra chicken 100g", "price_per_meal": "20.00"}]
+        dash = c.get("/api/v1/portal/dashboard/").json()
+        assert dash["active_subscription"]["items"][0]["label"] == "Extra chicken 100g"
+        deliveries = c.get("/api/v1/portal/deliveries/").json()
+        assert deliveries[0]["customizations"] == ["Extra chicken 100g"]

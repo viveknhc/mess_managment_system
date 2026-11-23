@@ -7,6 +7,8 @@ import { CustomerImportModal } from './CustomerImportModal'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
+import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { routeApi, type DeliveryRoute } from '../deliveries/routeApi'
 
 interface Customer {
   id: string
@@ -16,7 +18,19 @@ interface Customer {
   email: string
   status: string
   location: string
+  route: string | null
+  route_name: string | null
   created_at: string
+}
+
+/** Route filter value for customers on no route. */
+const NO_ROUTE = 'none'
+
+const routeColumn: Column<Customer> = {
+  key: 'route',
+  header: 'Route',
+  className: 'whitespace-nowrap text-gray-500',
+  render: (c) => c.route_name || '—',
 }
 
 const STATUS_OPTIONS = ['', 'ACTIVE', 'INACTIVE', 'BLOCKED'] as const
@@ -82,6 +96,14 @@ export function CustomersPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER'
+  const routesOn = useFeature(FEATURES.DELIVERY_ROUTES) && canWrite
+  const [routes, setRoutes] = useState<DeliveryRoute[]>([])
+  const [routeFilter, setRouteFilter] = useState('')
+  const shownColumns = routesOn ? [...columns.slice(0, 5), routeColumn, ...columns.slice(5)] : columns
+
+  useEffect(() => {
+    if (routesOn) routeApi.list().then(setRoutes).catch(() => setRoutes([]))
+  }, [routesOn])
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -89,6 +111,8 @@ export function CustomersPage() {
       const params: Record<string, string> = { ...tableParams }
       if (search) params.search = search
       if (statusFilter) params.status = statusFilter
+      if (routeFilter === NO_ROUTE) params.no_route = 'true'
+      else if (routeFilter) params.route = routeFilter
       const { data } = await apiClient.get('/customers/', { params })
       setCustomers(data.results)
       setCount(data.count)
@@ -97,7 +121,7 @@ export function CustomersPage() {
     } finally {
       setLoading(false)
     }
-  }, [tableParams, search, statusFilter])
+  }, [tableParams, search, statusFilter, routeFilter])
 
   useEffect(() => {
     fetchCustomers()
@@ -105,7 +129,7 @@ export function CustomersPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, statusFilter, setPage])
+  }, [search, statusFilter, routeFilter, setPage])
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -152,9 +176,23 @@ export function CustomersPage() {
             </option>
           ))}
         </select>
+        {routesOn && routes.length > 0 && (
+          <select
+            value={routeFilter}
+            onChange={(e) => setRouteFilter(e.target.value)}
+            aria-label="Filter by route"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="">All Routes</option>
+            {routes.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+            <option value={NO_ROUTE}>No route</option>
+          </select>
+        )}
       </div>
 
-      {!loading && count === 0 && !search && !statusFilter ? (
+      {!loading && count === 0 && !search && !statusFilter && !routeFilter ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <p className="text-gray-500">No customers yet</p>
           {canWrite && (
@@ -168,7 +206,7 @@ export function CustomersPage() {
         </div>
       ) : (
         <DataTable
-          columns={columns}
+          columns={shownColumns}
           rows={customers}
           rowKey={(c) => c.id}
           loading={loading}

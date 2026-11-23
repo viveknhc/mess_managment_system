@@ -89,14 +89,14 @@ class DeliveryViewSet(TenantScopedViewSet):
         """Delivery staff work today's run only: deliveries assigned to them, or not yet
         assigned (marking one claims it). Never another staff member's or another day's.
 
-        Pre-assignment comes from delivery routes; if the mess turns routes off, the still
-        PENDING ones are open to everyone again (marking claims them)."""
+        If the mess turns delivery routes off, PENDING deliveries of customers still on a
+        route (assigned by that route) are open to everyone again; marking claims them."""
         user = self.request.user
         if user.role != Role.DELIVERY_STAFF:
             return qs
         visible = Q(assigned_staff=user) | Q(assigned_staff__isnull=True)
         if not RouteService.is_enabled(user.business_id):
-            visible |= Q(status=DeliveryStatus.PENDING)
+            visible |= Q(status=DeliveryStatus.PENDING, customer__route__isnull=False)
         return qs.filter(delivery_date=timezone.localdate()).filter(visible)
 
     @action(detail=False, methods=["get"])

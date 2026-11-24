@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { notify } from '../../utils/notify'
+import { OnlinePaymentsHelpModal } from './OnlinePaymentsHelpModal'
 
 interface Settings {
   min_pause_days: number
@@ -30,6 +31,7 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [keySecret, setKeySecret] = useState('') // write-only; never loaded back
+  const [showPaymentsHelp, setShowPaymentsHelp] = useState(false)
   const user = useAuthStore((s) => s.user)
   const refreshUser = useAuthStore((s) => s.refreshUser)
   const isOwner = user?.role === 'OWNER'
@@ -212,7 +214,16 @@ export function SettingsPage() {
             </label>
             {isOwner && webhookUrl && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-sm font-medium text-gray-700">Webhook (recommended)</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-700">Webhook (recommended)</p>
+                  <button type="button" onClick={() => setShowPaymentsHelp(true)}
+                    aria-label="How to set up online payments" title="How to set up online payments"
+                    className="rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-blue-600">
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
                 <p className="mt-1 text-xs text-gray-500">
                   Records a payment even if the customer closes the app before it finishes. In the Razorpay Dashboard →
                   Account &amp; Settings → Webhooks, add this URL with the events <b>payment.captured</b> and{' '}
@@ -227,6 +238,9 @@ export function SettingsPage() {
                   </button>
                 </div>
               </div>
+            )}
+            {showPaymentsHelp && (
+              <OnlinePaymentsHelpModal webhookUrl={webhookUrl} onClose={() => setShowPaymentsHelp(false)} />
             )}
             {settings.razorpay_key_id.startsWith('rzp_test_') && settings.online_payments_enabled && (
               <p className="rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">

@@ -3,10 +3,11 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from apps.payments.views import CustomerPaymentWebhookView, PaymentViewSet
+from apps.payments.views import CustomerPaymentWebhookView, PaymentViewSet, UpiClaimViewSet
 
 router = DefaultRouter()
 router.register("payments", PaymentViewSet, basename="payment")
+router.register("upi-claims", UpiClaimViewSet, basename="upi-claim")
 
 urlpatterns = [
     path(

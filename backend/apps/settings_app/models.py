@@ -24,6 +24,9 @@ class BusinessSettings(UUIDModel, TimeStampedModel):
     notify_on_expiring = models.BooleanField(default=True)
     notify_on_delivery = models.BooleanField(default=False)
 
+    # UPI payments: customers pay this UPI ID from their UPI app, then the owner confirms
+    upi_id = models.CharField(max_length=100, blank=True)
+
     # Online payments: customers pay into the business's own Razorpay account
     online_payments_enabled = models.BooleanField(default=False)
     razorpay_key_id = models.CharField(max_length=64, blank=True)

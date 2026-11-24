@@ -7,6 +7,7 @@ only ever see and act on their own rows. Staff/admin APIs are unreachable here.
 import datetime
 import logging
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -18,9 +19,9 @@ from apps.customization.registry import CUSTOMER_PORTAL
 from apps.deliveries.models import Delivery, DeliveryStatus, SubscriptionPause
 from apps.deliveries.serializers import DeliveryListSerializer
 from apps.deliveries.services import DeliveryService
-from apps.payments.models import Payment, PaymentOrder
+from apps.payments.models import Payment, PaymentOrder, UpiClaimStatus, UpiPaymentClaim
 from apps.payments.serializers import PaymentListSerializer
-from apps.payments.services import OnlinePaymentService
+from apps.payments.services import OnlinePaymentService, PaymentMode, UpiPaymentService, payment_mode
 from apps.subscriptions.models import Subscription
 from apps.subscriptions.serializers import SubscriptionListSerializer
 from apps.subscriptions.services import SubscriptionService
@@ -202,8 +203,15 @@ class PortalSubscriptionsView(APIView):
         return Response(SubscriptionListSerializer(subs, many=True).data)
 
 
+UPI_REJECTION_SHOWN_FOR = datetime.timedelta(days=3)
+
+
 class PortalOnlinePaymentView(APIView):
-    """GET /api/v1/portal/online-payment/ — can this customer pay online?"""
+    """GET /api/v1/portal/online-payment/ — can this customer pay online, and how?
+
+    mode: "RAZORPAY" (automatic), "UPI" (pay the mess's UPI ID, mess confirms) or null.
+    upi_claims: UPI payments waiting for the mess, and recent rejections, per subscription.
+    """
 
     permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalRateThrottle]
@@ -212,12 +220,35 @@ class PortalOnlinePaymentView(APIView):
         customer, err = _portal_customer(request)
         if err:
             return err
-        return Response({"enabled": OnlinePaymentService.is_enabled(customer.business_id)})
+        mode = payment_mode(customer.business_id)
+        claims = UpiPaymentClaim.objects.filter(customer=customer).filter(
+            Q(status=UpiClaimStatus.PENDING)
+            | Q(status=UpiClaimStatus.REJECTED, reviewed_at__gte=timezone.now() - UPI_REJECTION_SHOWN_FOR)
+        )
+        return Response(
+            {
+                "enabled": mode is not None,
+                "mode": mode,
+                "upi_claims": [
+                    {
+                        "id": str(c.id),
+                        "subscription": str(c.subscription_id),
+                        "amount": f"{c.amount:.2f}",
+                        "status": c.status,
+                        "reject_reason": c.reject_reason,
+                        "created_at": c.created_at.isoformat(),
+                    }
+                    for c in claims
+                ],
+            }
+        )
 
 
 class PortalPayView(APIView):
-    """POST /api/v1/portal/subscriptions/<id>/pay/ — open Razorpay Checkout for the pending amount.
-    POST .../pay/verify/ — Checkout success: verify the signature and record the payment."""
+    """POST /api/v1/portal/subscriptions/<id>/pay/ — start paying the pending amount:
+    Razorpay Checkout details, or (UPI mode) a upi:// link to the mess's UPI ID.
+    POST .../pay/verify/ — Checkout success: verify the signature and record the payment.
+    POST .../pay/upi-claim/ {utr?} — "I've paid by UPI": waits for the mess to confirm."""
 
     permission_classes = PORTAL_PERMISSIONS
     throttle_classes = [PortalWriteThrottle]
@@ -232,11 +263,18 @@ class PortalPayView(APIView):
         try:
             if step == "verify":
                 return self._verify(request, sub)
+            if step == "upi-claim":
+                return self._upi_claim(request, sub)
             return self._start(sub, customer)
         except (ValueError, CheckoutError) as e:
             return _error("VALIDATION_ERROR", str(e), 400)
 
     def _start(self, sub, customer):
+        if payment_mode(customer.business_id) == PaymentMode.UPI:
+            sub.refresh_from_db()
+            if sub.pending_amount <= 0:
+                return Response({"status": "PAID", "subscription": SubscriptionListSerializer(sub).data})
+            return Response({"status": "UPI", **UpiPaymentService.payment_link(sub)})
         order, key_id = OnlinePaymentService.start_checkout(sub)
         if order is None:
             sub.refresh_from_db()
@@ -266,6 +304,12 @@ class PortalPayView(APIView):
         )
         sub.refresh_from_db()
         return Response({"status": "PAID", "subscription": SubscriptionListSerializer(sub).data})
+
+    def _upi_claim(self, request, sub):
+        claim = UpiPaymentService.submit_claim(sub, utr=str(request.data.get("utr", "")))
+        return Response(
+            {"status": claim.status, "id": str(claim.id), "amount": f"{claim.amount:.2f}"}, status=201
+        )
 
 
 class PortalSubscriptionActionsView(APIView):

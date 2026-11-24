@@ -222,10 +222,10 @@ class TestCheckoutFlow:
         res = client_for(cust_user_a).post(pay_url(sub_a))
         assert res.status_code == 400
         assert "isn't set up" in res.data["error"]["message"]
-        assert client_for(cust_user_a).get("/api/v1/portal/online-payment/").data == {"enabled": False}
+        assert client_for(cust_user_a).get("/api/v1/portal/online-payment/").data["enabled"] is False
 
     def test_enabled_flag(self, cust_user_a, cust_a, online_a):
-        assert client_for(cust_user_a).get("/api/v1/portal/online-payment/").data == {"enabled": True}
+        assert client_for(cust_user_a).get("/api/v1/portal/online-payment/").data["enabled"] is True
 
     def test_razorpay_down_gives_friendly_error(self, cust_user_a, sub_a, online_a):
         with mock.patch("razorpay.Client") as client:

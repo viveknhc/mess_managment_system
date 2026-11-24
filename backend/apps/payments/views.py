@@ -11,9 +11,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from apps.payments.models import Payment
-from apps.payments.serializers import PaymentCreateSerializer, PaymentListSerializer
-from apps.payments.services import OnlinePaymentService, PaymentSelector, PaymentService
+from apps.payments.models import Payment, UpiPaymentClaim
+from apps.payments.serializers import PaymentCreateSerializer, PaymentListSerializer, UpiClaimSerializer
+from apps.payments.services import OnlinePaymentService, PaymentSelector, PaymentService, UpiPaymentService
 from common.constants import Role
 from common.permissions import RoleBasedPermission
 from common.viewsets import TenantScopedViewSet
@@ -101,6 +101,56 @@ class PaymentViewSet(TenantScopedViewSet):
         """GET /payments/summary/ — today, month, pending totals."""
         data = PaymentSelector.get_summary(request.user.business_id)
         return Response(data)
+
+
+class UpiClaimViewSet(TenantScopedViewSet):
+    """UPI payments customers say they made, waiting for the owner.
+
+    GET  /api/v1/upi-claims/?status=PENDING
+    POST /api/v1/upi-claims/{id}/confirm/          → records the payment
+    POST /api/v1/upi-claims/{id}/reject/ {reason}  → nothing recorded
+    """
+
+    queryset = UpiPaymentClaim.objects.select_related("customer", "subscription__plan", "reviewed_by").all()
+    serializer_class = UpiClaimSerializer
+    permission_classes = [IsAuthenticated, RoleBasedPermission]
+    filterset_fields = ["status", "customer", "subscription"]
+    ordering_fields = ["created_at", "amount"]
+    http_method_names = ["get", "post", "head", "options"]
+    role_map = {
+        "list": [Role.OWNER, Role.MANAGER],
+        "retrieve": [Role.OWNER, Role.MANAGER],
+        "confirm": [Role.OWNER, Role.MANAGER],
+        "reject": [Role.OWNER, Role.MANAGER],
+    }
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {"error": {"code": "NOT_FOUND", "message": "Not found.", "fields": {}}},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def _review(self, request, fn, **kwargs):
+        claim = self.get_object()
+        try:
+            claim = fn(claim, user=request.user, **kwargs)
+        except ValueError as e:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": str(e), "fields": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        claim.refresh_from_db()
+        return Response(UpiClaimSerializer(claim).data)
+
+    @action(detail=True, methods=["post"])
+    def confirm(self, request, pk=None):
+        return self._review(request, UpiPaymentService.confirm_claim)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        return self._review(
+            request, UpiPaymentService.reject_claim, reason=str(request.data.get("reason", ""))
+        )
 
 
 class CustomerWebhookThrottle(AnonRateThrottle):

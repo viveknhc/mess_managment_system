@@ -41,19 +41,27 @@ test('payments sort by amount on the server — page 1 ≥ page 2', async ({ pag
   await page.getByRole('link', { name: 'Payments' }).click()
   await page.getByLabel('Rows').selectOption('10')
   const amountCol = 5 // Date, Customer, Plan, Method, Reference, Amount
+  const amounts = async () => (await columnTexts(page, amountCol)).map(rupees)
+  // The header and "Showing …" label update before the rows do, so wait for the server's answer
+  const loaded = (match: RegExp) =>
+    page.waitForResponse((r) => r.url().includes('/api/v1/payments/?') && match.test(r.url()))
+
   await header(page, 'Amount').getByRole('button').click()
+  const sorted = loaded(/ordering=-amount/)
   await header(page, 'Amount').getByRole('button').click()
+  await sorted
   await expect(header(page, 'Amount')).toHaveAttribute('aria-sort', 'descending')
   await expect(page.getByText(/^Showing 1–10 of/)).toBeVisible()
 
-  const page1 = (await columnTexts(page, amountCol)).map(rupees)
-  expect(page1).toEqual([...page1].sort((a, b) => b - a))
+  await expect.poll(async () => { const a = await amounts(); return a.every((v, i) => i === 0 || a[i - 1] >= v) }).toBe(true)
+  const page1 = await amounts()
 
+  const page2Loaded = loaded(/[?&]page=2(&|$)/)
   await page.getByRole('button', { name: 'Next' }).click()
+  await page2Loaded
   await expect(page.getByText(/^Showing 11–/)).toBeVisible()
-  const page2 = (await columnTexts(page, amountCol)).map(rupees)
-  expect(page2.length).toBeGreaterThan(0)
-  expect(Math.min(...page1)).toBeGreaterThanOrEqual(Math.max(...page2))
+  await expect.poll(async () => Math.max(...(await amounts()))).toBeLessThanOrEqual(Math.min(...page1))
+  expect((await amounts()).length).toBeGreaterThan(0)
 })
 
 test('rows-per-page and paging never repeat a row', async ({ page }) => {

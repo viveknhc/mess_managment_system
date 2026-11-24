@@ -43,6 +43,12 @@ urlpatterns = [
         {"step": "verify"},
         name="portal-subscription-pay-verify",
     ),
+    path(
+        "portal/subscriptions/<uuid:sub_id>/pay/upi-claim/",
+        PortalPayView.as_view(),
+        {"step": "upi-claim"},
+        name="portal-subscription-pay-upi-claim",
+    ),
     path("portal/online-payment/", PortalOnlinePaymentView.as_view(), name="portal-online-payment"),
     path("portal/payments/", PortalPaymentsView.as_view(), name="portal-payments"),
     path("portal/deliveries/", PortalDeliveriesView.as_view(), name="portal-deliveries"),

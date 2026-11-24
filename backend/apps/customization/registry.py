@@ -36,7 +36,12 @@ FEATURES = {
     f.key: f
     for f in [
         Feature(CUSTOMER_PORTAL, "Customer portal", "Customers log in to see meals, pay, skip and pause."),
-        Feature(ONLINE_PAYMENTS, "Online payments", "Customers pay through the business's Razorpay account."),
+        Feature(
+            ONLINE_PAYMENTS,
+            "Online payments",
+            "Customers pay from the app: to the business's UPI ID (owner confirms) "
+            "or through its own Razorpay account (automatic).",
+        ),
         Feature(REPORTS, "Reports", "Customer, subscription, revenue, meal and payment reports."),
         Feature(
             CUSTOM_SUBSCRIPTIONS,

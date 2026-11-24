@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
 import { useAuthStore } from '../../store/authStore'
 import { RecordPaymentForm } from './RecordPaymentForm'
+import { UpiClaimsPanel } from './UpiClaimsPanel'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 
@@ -131,6 +132,8 @@ export function PaymentsPage() {
           </button>
         )}
       </div>
+
+      {canWrite && <UpiClaimsPanel onReviewed={fetchData} />}
 
       {/* Summary cards (PAY-11) */}
       {summary && (

@@ -40,6 +40,7 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             "notify_on_payment",
             "notify_on_expiring",
             "notify_on_delivery",
+            "upi_id",
             "online_payments_enabled",
             "razorpay_key_id",
             "razorpay_key_secret",
@@ -58,6 +59,22 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         inst = self.instance
         turning_on = value and not (inst and inst.online_payments_enabled)
         if turning_on and inst and not FeatureService.has(inst.business_id, ONLINE_PAYMENTS):
+            raise serializers.ValidationError("Online payments are not included in your MessDeck plan.")
+        return value
+
+    def validate_upi_id(self, value):
+        from apps.payments.services import UPI_ID_RE
+
+        value = value.strip().lower()
+        if value and not UPI_ID_RE.match(value):
+            raise serializers.ValidationError("Enter a UPI ID like yourname@okicici.")
+        inst = self.instance
+        if (
+            value
+            and inst
+            and value != inst.upi_id
+            and not FeatureService.has(inst.business_id, ONLINE_PAYMENTS)
+        ):
             raise serializers.ValidationError("Online payments are not included in your MessDeck plan.")
         return value
 

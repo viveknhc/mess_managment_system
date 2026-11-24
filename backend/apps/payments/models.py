@@ -100,3 +100,53 @@ class PaymentOrder(TenantScopedModel):
 
     def __str__(self):
         return f"{self.razorpay_order_id} ₹{self.amount} ({self.status})"
+
+
+class UpiClaimStatus:
+    PENDING = "PENDING"  # customer says they paid; owner hasn't checked yet
+    CONFIRMED = "CONFIRMED"  # owner saw the money; payment recorded
+    REJECTED = "REJECTED"  # owner did not receive it
+
+
+UPI_CLAIM_STATUS_CHOICES = [
+    (UpiClaimStatus.PENDING, "Waiting for confirmation"),
+    (UpiClaimStatus.CONFIRMED, "Confirmed"),
+    (UpiClaimStatus.REJECTED, "Rejected"),
+]
+
+
+class UpiPaymentClaim(TenantScopedModel):
+    """A customer's "I've paid" after paying the mess's UPI ID directly.
+
+    UPI apps don't report back, so nothing is recorded until the owner checks their
+    bank/UPI app and confirms. Confirming goes through record_payment like cash.
+    """
+
+    subscription = models.ForeignKey(
+        "subscriptions.Subscription", on_delete=models.CASCADE, related_name="upi_claims"
+    )
+    customer = models.ForeignKey("customers.Customer", on_delete=models.CASCADE, related_name="upi_claims")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    utr = models.CharField(max_length=32, blank=True, help_text="UPI transaction reference from the customer")
+    status = models.CharField(max_length=10, choices=UPI_CLAIM_STATUS_CHOICES, default=UpiClaimStatus.PENDING)
+    payment = models.OneToOneField(
+        Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="upi_claim"
+    )
+    reviewed_by = models.ForeignKey(
+        "accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription"],
+                condition=models.Q(status="PENDING"),
+                name="uniq_pending_upi_claim_per_subscription",
+            ),
+        ]
+
+    def __str__(self):
+        return f"UPI ₹{self.amount} — {self.customer} ({self.status})"

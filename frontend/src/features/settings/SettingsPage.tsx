@@ -18,6 +18,8 @@ interface Settings {
   notify_on_payment: boolean
   notify_on_expiring: boolean
   notify_on_delivery: boolean
+  /** Customers pay this UPI ID directly; owner confirms. Blank = off. */
+  upi_id: string
   online_payments_enabled: boolean
   razorpay_key_id: string
   razorpay_configured: boolean
@@ -91,6 +93,15 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="mb-6 text-xl font-bold text-gray-900">Business Settings</h1>
+
+      {!isOwner && (
+        <div className="mb-4 flex gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clipRule="evenodd" />
+          </svg>
+          <p>You can view these settings, but only the owner can change them. Ask the owner to update anything here.</p>
+        </div>
+      )}
 
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
@@ -183,71 +194,105 @@ export function SettingsPage() {
           </div>
         ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-1 text-sm font-semibold text-gray-900 uppercase tracking-wide">Online Payments</h2>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Online Payments</h2>
+            <button type="button" onClick={() => setShowPaymentsHelp(true)}
+              aria-label="How to collect payments online" title="How to collect payments online"
+              className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
           <p className="mb-4 text-sm text-gray-500">
-            Let customers pay for their subscription in the app. Money goes straight to your own Razorpay account.
-            Get your keys in the Razorpay Dashboard → Account &amp; Settings → API Keys.
+            Let customers pay for their subscription in the app. The money comes straight to you.
           </p>
           <div className="space-y-4">
             <div>
-              <label htmlFor="rzp-key-id" className="mb-1 block text-sm font-medium text-gray-700">Key ID</label>
-              <input id="rzp-key-id" value={settings.razorpay_key_id} placeholder="rzp_live_…"
-                onChange={(e) => setSettings({ ...settings, razorpay_key_id: e.target.value.trim() })}
-                disabled={!isOwner} autoComplete="off"
+              <label htmlFor="upi-id" className="mb-1 block text-sm font-medium text-gray-700">Your UPI ID</label>
+              <input id="upi-id" value={settings.upi_id} placeholder="yourname@okicici"
+                onChange={(e) => setSettings({ ...settings, upi_id: e.target.value.trim() })}
+                disabled={!isOwner} autoComplete="off" inputMode="email"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm disabled:opacity-50" />
-            </div>
-            {isOwner && (
-              <div>
-                <label htmlFor="rzp-key-secret" className="mb-1 block text-sm font-medium text-gray-700">Key Secret</label>
-                <input id="rzp-key-secret" type="password" value={keySecret} autoComplete="new-password"
-                  placeholder={settings.razorpay_configured ? 'Saved. Type a new one to replace it' : 'Paste your key secret'}
-                  onChange={(e) => setKeySecret(e.target.value.trim())}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm" />
-                <p className="mt-1 text-xs text-gray-500">Stored encrypted and never shown again. Clear the Key ID and save to remove your keys.</p>
-              </div>
-            )}
-            <label className="flex items-center gap-3 text-sm text-gray-700">
-              <input type="checkbox" checked={settings.online_payments_enabled}
-                onChange={(e) => setSettings({ ...settings, online_payments_enabled: e.target.checked })}
-                disabled={!isOwner} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
-              Customers can pay online
-            </label>
-            {isOwner && webhookUrl && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-700">Webhook (recommended)</p>
-                  <button type="button" onClick={() => setShowPaymentsHelp(true)}
-                    aria-label="How to set up online payments" title="How to set up online payments"
-                    className="rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-blue-600">
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Records a payment even if the customer closes the app before it finishes. In the Razorpay Dashboard →
-                  Account &amp; Settings → Webhooks, add this URL with the events <b>payment.captured</b> and{' '}
-                  <b>order.paid</b>. Leave the secret blank.
-                </p>
-                <div className="mt-2 flex gap-2">
-                  <input readOnly value={webhookUrl} onFocus={(e) => e.target.select()} aria-label="Webhook URL"
-                    className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs" />
-                  <button type="button" onClick={copyWebhookUrl}
-                    className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
-                    Copy
-                  </button>
-                </div>
-              </div>
-            )}
-            {showPaymentsHelp && (
-              <OnlinePaymentsHelpModal webhookUrl={webhookUrl} onClose={() => setShowPaymentsHelp(false)} />
-            )}
-            {settings.razorpay_key_id.startsWith('rzp_test_') && settings.online_payments_enabled && (
-              <p className="rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
-                Test keys: payments are simulated and no real money is collected.
+              <p className="mt-1 text-xs text-gray-500">
+                Customers pay this UPI ID from GPay, PhonePe or Paytm, then tap "I've paid". You confirm it under
+                Customer Payments once you see the money. No fees. Leave blank to turn off.
               </p>
-            )}
+            </div>
+
+            <details open={settings.online_payments_enabled || settings.razorpay_configured}
+              className="group rounded-lg border border-gray-200">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-gray-700">
+                <span>
+                  Automatic confirmation with Razorpay <span className="font-normal text-gray-400">(optional)</span>
+                </span>
+                <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                </svg>
+              </summary>
+              <div className="space-y-4 border-t border-gray-200 p-3">
+                <p className="text-xs text-gray-500">
+                  Payments are confirmed automatically and customers can also pay by card or netbanking. Needs a
+                  Razorpay account with KYC (Razorpay charges about 2% per payment). Get your keys in the Razorpay
+                  Dashboard → Account &amp; Settings → API Keys.
+                </p>
+                <div>
+                  <label htmlFor="rzp-key-id" className="mb-1 block text-sm font-medium text-gray-700">Key ID</label>
+                  <input id="rzp-key-id" value={settings.razorpay_key_id} placeholder="rzp_live_…"
+                    onChange={(e) => setSettings({ ...settings, razorpay_key_id: e.target.value.trim() })}
+                    disabled={!isOwner} autoComplete="off"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm disabled:opacity-50" />
+                </div>
+                {isOwner && (
+                  <div>
+                    <label htmlFor="rzp-key-secret" className="mb-1 block text-sm font-medium text-gray-700">Key Secret</label>
+                    <input id="rzp-key-secret" type="password" value={keySecret} autoComplete="new-password"
+                      placeholder={settings.razorpay_configured ? 'Saved. Type a new one to replace it' : 'Paste your key secret'}
+                      onChange={(e) => setKeySecret(e.target.value.trim())}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm" />
+                    <p className="mt-1 text-xs text-gray-500">Stored encrypted and never shown again. Clear the Key ID and save to remove your keys.</p>
+                  </div>
+                )}
+                <label className="flex items-center gap-3 text-sm text-gray-700">
+                  <input type="checkbox" checked={settings.online_payments_enabled}
+                    onChange={(e) => setSettings({ ...settings, online_payments_enabled: e.target.checked })}
+                    disabled={!isOwner} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                  Customers pay through Razorpay
+                </label>
+                {isOwner && webhookUrl && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p className="text-sm font-medium text-gray-700">Webhook (recommended)</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Records a payment even if the customer closes the app before it finishes. In the Razorpay Dashboard →
+                      Account &amp; Settings → Webhooks, add this URL with the events <b>payment.captured</b> and{' '}
+                      <b>order.paid</b>. Leave the secret blank.
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <input readOnly value={webhookUrl} onFocus={(e) => e.target.select()} aria-label="Webhook URL"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs" />
+                      <button type="button" onClick={copyWebhookUrl}
+                        className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {settings.razorpay_key_id.startsWith('rzp_test_') && settings.online_payments_enabled && (
+                  <p className="rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                    Test keys: payments are simulated and no real money is collected.
+                  </p>
+                )}
+                {settings.online_payments_enabled && settings.upi_id && (
+                  <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                    Razorpay is on, so customers pay through Razorpay. Your UPI ID is used only when Razorpay is off.
+                  </p>
+                )}
+              </div>
+            </details>
           </div>
+          {showPaymentsHelp && (
+            <OnlinePaymentsHelpModal webhookUrl={webhookUrl} onClose={() => setShowPaymentsHelp(false)} />
+          )}
         </div>
         )}
 

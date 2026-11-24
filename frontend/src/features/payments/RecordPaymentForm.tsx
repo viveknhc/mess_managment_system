@@ -39,17 +39,22 @@ export function RecordPaymentForm({ onClose, onSaved }: Props) {
     // Every unpaid subscription: PENDING ones, plus ACTIVE/PAUSED ones still owing
     // (e.g. a part payment, or an extra added mid-month).
     const byName = { ordering: 'customer__name' }
+    let stale = false
     Promise.all([
       fetchAll<Sub>('/subscriptions/', { ...byName, status: 'PENDING' }),
       fetchAll<Sub>('/subscriptions/', { ...byName, status: 'ACTIVE' }),
       fetchAll<Sub>('/subscriptions/', { ...byName, status: 'PAUSED' }),
     ])
       .then(([pending, active, paused]) => {
+        if (stale) return
         const all = [...pending, ...[...active, ...paused].filter((s) => Number(s.pending_amount) > 0)]
         setSubs(all)
-        if (all.length) setSubId(all[0].id)
+        // Default to the first one, but never override a subscription the user already picked:
+        // a late response switching the selection would record the payment for the wrong customer.
+        setSubId((cur) => (cur && all.some((s) => s.id === cur) ? cur : (all[0]?.id ?? '')))
       })
-      .catch((err) => notify.error(err, "Couldn't load subscriptions"))
+      .catch((err) => { if (!stale) notify.error(err, "Couldn't load subscriptions") })
+    return () => { stale = true }
   }, [])
 
   const selectedSub = subs.find((s) => s.id === subId)

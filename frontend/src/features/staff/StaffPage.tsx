@@ -107,7 +107,7 @@ export function StaffPage() {
       ),
     },
     {
-      key: 'email',
+      key: 'email', mobile: 'subtitle',
       header: 'Contact',
       sortable: true,
       render: (s) => (

@@ -43,9 +43,9 @@ const columns: Column<Customer>[] = [
     className: 'font-mono text-xs text-gray-500',
     render: (c) => c.customer_code,
   },
-  { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-900', render: (c) => c.name },
+  { key: 'name', mobile: 'title', header: 'Name', sortable: true, className: 'font-medium text-gray-900', render: (c) => c.name },
   {
-    key: 'phone',
+    key: 'phone', mobile: 'subtitle',
     header: 'Contact',
     sortable: true,
     render: (c) => (

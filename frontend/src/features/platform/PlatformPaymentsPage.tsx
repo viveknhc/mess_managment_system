@@ -13,7 +13,7 @@ const columns: Column<SaasPayment>[] = [
     render: (p) => p.business_name,
   },
   {
-    key: 'plan__name',
+    key: 'plan__name', mobile: 'subtitle',
     header: 'Plan',
     sortable: true,
     className: 'text-gray-700',

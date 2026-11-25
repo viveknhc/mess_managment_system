@@ -14,13 +14,13 @@ const METHOD_LABELS: Record<string, string> = {
 
 const columns: Column<PortalPayment>[] = [
   {
-    key: 'payment_date',
+    key: 'payment_date', mobile: 'subtitle',
     header: 'Date',
     sortable: true,
     render: (p) => <span className="whitespace-nowrap text-gray-700">{p.payment_date}</span>,
   },
   {
-    key: 'subscription_plan',
+    key: 'subscription_plan', mobile: 'title',
     header: 'Plan',
     sortable: true,
     render: (p) => <span className="text-gray-900">{p.subscription_plan || '—'}</span>,

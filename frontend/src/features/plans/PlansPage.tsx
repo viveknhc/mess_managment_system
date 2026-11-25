@@ -90,7 +90,7 @@ export function PlansPage() {
         </>
       ),
     },
-    { key: 'meal__name', header: 'Meal', sortable: true, className: 'text-gray-600', render: (plan) => plan.meal_name },
+    { key: 'meal__name', mobile: 'subtitle', header: 'Meal', sortable: true, className: 'text-gray-600', render: (plan) => plan.meal_name },
     { key: 'duration_days', header: 'Days', sortable: true, align: 'right', className: 'text-gray-600', render: (plan) => plan.duration_days },
     { key: 'total_meals', header: 'Meals', sortable: true, align: 'right', className: 'text-gray-600', render: (plan) => plan.total_meals },
     {

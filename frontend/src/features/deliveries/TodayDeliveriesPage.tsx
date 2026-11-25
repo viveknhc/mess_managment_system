@@ -131,7 +131,7 @@ export function TodayDeliveriesPage() {
 
   const columns: Column<DeliveryItem>[] = [
     {
-      key: 'customer__name',
+      key: 'customer__name', mobile: 'title',
       header: 'Customer',
       sortable: true,
       className: 'font-medium text-gray-900',
@@ -144,7 +144,7 @@ export function TodayDeliveriesPage() {
       render: (d) => d.customer_phone || 'No phone',
     },
     {
-      key: 'customer__address',
+      key: 'customer__address', mobile: 'subtitle',
       header: 'Address',
       sortable: true,
       className: 'text-gray-500',

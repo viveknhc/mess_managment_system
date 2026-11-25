@@ -33,8 +33,8 @@ const METHOD_LABELS: Record<string, string> = {
 
 const columns: Column<Payment>[] = [
   { key: 'payment_date', header: 'Date', sortable: true, className: 'whitespace-nowrap text-gray-600', render: (p) => p.payment_date },
-  { key: 'customer__name', header: 'Customer', sortable: true, className: 'font-medium text-gray-900', render: (p) => p.customer_name },
-  { key: 'subscription__plan__name', header: 'Plan', sortable: true, className: 'text-gray-600', render: (p) => p.subscription_plan },
+  { key: 'customer__name', mobile: 'title', header: 'Customer', sortable: true, className: 'font-medium text-gray-900', render: (p) => p.customer_name },
+  { key: 'subscription__plan__name', mobile: 'subtitle', header: 'Plan', sortable: true, className: 'text-gray-600', render: (p) => p.subscription_plan },
   {
     key: 'method',
     header: 'Method',
@@ -137,18 +137,18 @@ export function PaymentsPage() {
 
       {/* Summary cards (PAY-11) */}
       {summary && (
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
             <p className="text-xs font-medium text-gray-500 uppercase">Today</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">₹{Number(summary.today).toLocaleString('en-IN')}</p>
+            <p className="mt-1 text-base font-bold sm:text-2xl text-gray-900">₹{Number(summary.today).toLocaleString('en-IN')}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
             <p className="text-xs font-medium text-gray-500 uppercase">This Month</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">₹{Number(summary.month).toLocaleString('en-IN')}</p>
+            <p className="mt-1 text-base font-bold sm:text-2xl text-gray-900">₹{Number(summary.month).toLocaleString('en-IN')}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
             <p className="text-xs font-medium text-red-500 uppercase">Pending</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">₹{Number(summary.pending).toLocaleString('en-IN')}</p>
+            <p className="mt-1 text-base font-bold sm:text-2xl text-red-600">₹{Number(summary.pending).toLocaleString('en-IN')}</p>
           </div>
         </div>
       )}

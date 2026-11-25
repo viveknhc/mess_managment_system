@@ -30,7 +30,7 @@ const columns: Column<DeliveryRow>[] = [
     render: (d) => <span className="whitespace-nowrap text-gray-700">{d.delivery_date}</span>,
   },
   {
-    key: 'meal_name',
+    key: 'meal_name', mobile: 'subtitle',
     header: 'Meal',
     sortable: true,
     render: (d) => <span className="font-medium text-gray-900">{d.meal_name}</span>,

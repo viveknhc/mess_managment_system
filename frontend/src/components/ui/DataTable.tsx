@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { isValidElement, useMemo, useState, type ReactNode } from 'react'
 import { nextSort, type SortDir, type SortState } from './tableSort'
+import { MOBILE_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
 
 export type { SortDir, SortState }
 
@@ -17,7 +18,44 @@ export interface Column<T> {
   align?: 'left' | 'right' | 'center'
   /** Extra classes for the body cell. */
   className?: string
+  /**
+   * Where this column goes in the phone card view (screens under 768px):
+   * - title: the card heading (default: the first column)
+   * - subtitle: a line under the heading
+   * - badge: top-right pill (default for `status`, `is_active`, `…__status` columns)
+   * - actions: button row at the bottom (default for the `actions` column)
+   * - field: a small "label  value" pair (default)
+   * - hidden: left out on phones
+   */
+  mobile?: 'title' | 'subtitle' | 'badge' | 'actions' | 'field' | 'hidden'
+  /** Card label when the header isn't plain text. */
+  mobileLabel?: string
 }
+
+type MobileRole = NonNullable<Column<unknown>['mobile']>
+
+function mobileRoles<T>(columns: Column<T>[]): MobileRole[] {
+  const hasTitle = columns.some((c) => c.mobile === 'title')
+  return columns.map((c, i) => {
+    if (c.mobile) return c.mobile
+    if (c.key === 'actions') return 'actions'
+    if (c.key === 'status' || c.key === 'is_active' || c.key.endsWith('__status')) return 'badge'
+    if (!hasTitle && i === 0) return 'title'
+    return 'field'
+  })
+}
+
+/** Nothing worth a card slot: empty, or just a placeholder dash (also when wrapped, e.g. <span>—</span>). */
+function isEmpty(node: ReactNode): boolean {
+  if (node === null || node === undefined || node === false) return true
+  if (typeof node === 'string') return ['', '—', '-', '–'].includes(node.trim())
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    const kids = node.props.children
+    return kids !== undefined && !Array.isArray(kids) && isEmpty(kids)
+  }
+  return false
+}
+
 
 export interface Pagination {
   page: number
@@ -85,6 +123,7 @@ export function DataTable<T>({
   onRowClick,
   rowClassName,
 }: Props<T>) {
+  const isMobile = useMediaQuery(MOBILE_QUERY)
   const isServer = onSortChange !== undefined
   const [localSort, setLocalSort] = useState<SortState | null>(defaultSort)
   const sort = isServer ? (controlledSort ?? null) : localSort
@@ -115,6 +154,29 @@ export function DataTable<T>({
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.count / pagination.pageSize)) : 1
   const firstRow = pagination && pagination.count > 0 ? (pagination.page - 1) * pagination.pageSize + 1 : 0
   const lastRow = pagination ? Math.min(pagination.page * pagination.pageSize, pagination.count) : 0
+
+  const pager = pagination && pagination.count > 0 && (
+    <Pager pagination={pagination} firstRow={firstRow} lastRow={lastRow} totalPages={totalPages} />
+  )
+
+  if (isMobile) {
+    return (
+      <div>
+        <CardList
+          columns={columns}
+          rows={sortedRows}
+          rowKey={rowKey}
+          sort={sort}
+          onSort={(next) => (isServer ? onSortChange(next) : setLocalSort(next))}
+          loading={loading}
+          emptyMessage={emptyMessage}
+          onRowClick={onRowClick}
+          rowClassName={rowClassName}
+        />
+        {pager}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -182,7 +244,16 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {pagination && pagination.count > 0 && (
+      {pager}
+    </div>
+  )
+}
+
+function Pager({ pagination, firstRow, lastRow, totalPages }: {
+  pagination: Pagination; firstRow: number; lastRow: number; totalPages: number
+}) {
+  return (
+
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
           <div className="flex items-center gap-3">
             <span>
@@ -227,6 +298,112 @@ export function DataTable<T>({
             </div>
           )}
         </div>
+  )
+}
+
+/** Phone view: one card per row instead of a wide table. */
+function CardList<T>({ columns, rows, rowKey, sort, onSort, loading, emptyMessage, onRowClick, rowClassName }: {
+  columns: Column<T>[]
+  rows: T[]
+  rowKey: (row: T) => string
+  sort: SortState | null
+  onSort: (next: SortState | null) => void
+  loading: boolean
+  emptyMessage: ReactNode
+  onRowClick?: (row: T) => void
+  rowClassName?: (row: T) => string
+}) {
+  const roles = mobileRoles(columns)
+  const pick = (role: MobileRole) => columns.filter((_, i) => roles[i] === role)
+  const [title, subtitles, badges, fields, actions] = [
+    pick('title'), pick('subtitle'), pick('badge'), pick('field'), pick('actions'),
+  ]
+  const label = (c: Column<T>) => c.mobileLabel ?? (typeof c.header === 'string' ? c.header : c.key)
+  const sortable = columns.filter((c) => c.sortable)
+
+  return (
+    <div>
+      {sortable.length > 0 && (
+        <label className="mb-2 flex items-center justify-end gap-2 text-xs text-gray-500">
+          Sort by
+          <select
+            value={sort ? `${sort.key}:${sort.dir}` : ''}
+            onChange={(e) => {
+              const [key, dir] = e.target.value.split(':')
+              onSort(key ? { key, dir: dir as SortDir } : null)
+            }}
+            className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="">Default</option>
+            {sortable.map((c) => (
+              <optgroup key={c.key} label={label(c)}>
+                <option value={`${c.key}:asc`}>{label(c)} ↑</option>
+                <option value={`${c.key}:desc`}>{label(c)} ↓</option>
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {loading && rows.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-12">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">{emptyMessage}</div>
+      ) : (
+        <ul className={`space-y-2 transition-opacity ${loading ? 'opacity-50' : ''}`}>
+          {rows.map((row) => {
+            const shownFields = fields.map((c) => [c, c.render(row)] as const).filter(([, v]) => !isEmpty(v))
+            const shownActions = actions.map((c) => c.render(row)).filter((v) => !isEmpty(v))
+            return (
+              <li
+                key={rowKey(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={`rounded-xl border border-gray-200 bg-white px-3 py-2.5 ${onRowClick ? 'cursor-pointer active:bg-gray-50' : ''} ${rowClassName?.(row) ?? ''}`}
+              >
+                {/* name · subtitle ………… badge, all on one line */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-baseline gap-1.5 text-sm">
+                    {title.map((c) => (
+                      <span key={c.key} className="shrink-0 font-medium text-gray-900 [&_*]:inline">{c.render(row)}</span>
+                    ))}
+                    {subtitles.map((c) => {
+                      const v = c.render(row)
+                      return isEmpty(v) ? null : (
+                        <span key={c.key} className="min-w-0 truncate text-xs text-gray-500 [&_*]:inline">· {v}</span>
+                      )
+                    })}
+                  </div>
+                  {badges.length > 0 && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      {badges.map((c) => <span key={c.key}>{c.render(row)}</span>)}
+                    </div>
+                  )}
+                </div>
+
+                {/* label value · label value … wrapping inline */}
+                {shownFields.length > 0 && (
+                  <dl className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs leading-5">
+                    {shownFields.map(([c, v]) => (
+                      <div key={c.key} className="flex min-w-0 items-baseline gap-1">
+                        <dt className="text-gray-500">{label(c)}</dt>
+                        <dd className="text-gray-800 [overflow-wrap:anywhere] [&_div]:inline [&_p]:inline [&_div+div]:ml-1 [&_span]:align-baseline">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {shownActions.length > 0 && (
+                  // Buttons act on their own; a tap here must not also open the row.
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs" onClick={(e) => e.stopPropagation()}>
+                    {shownActions.map((v, i) => <div key={i}>{v}</div>)}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )

@@ -284,7 +284,7 @@ export function BusinessesListPage() {
         ),
       },
       {
-        key: 'owner',
+        key: 'owner', mobile: 'subtitle',
         header: 'Owner',
         render: (biz) => (
           <>

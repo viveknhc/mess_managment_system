@@ -125,7 +125,7 @@ export function SubscriptionsPage() {
 
   const columns: Column<Subscription>[] = [
     {
-      key: 'customer__name',
+      key: 'customer__name', mobile: 'title',
       header: 'Customer',
       sortable: true,
       render: (s) => (
@@ -138,7 +138,7 @@ export function SubscriptionsPage() {
       ),
     },
     {
-      key: 'plan__name',
+      key: 'plan__name', mobile: 'subtitle',
       header: 'Plan',
       sortable: true,
       className: 'text-gray-600',

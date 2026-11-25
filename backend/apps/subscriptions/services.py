@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from apps.settings_app.services import KitchenCalendar
 from apps.subscriptions.models import Subscription, SubscriptionItem
@@ -105,7 +106,7 @@ def _start_late_from_today(subscription, today):
     with a start date already in the past (moving an existing customer into MessDeck)
     keeps the dates they chose.
     """
-    created_on = subscription.created_at.date() if subscription.created_at else today
+    created_on = timezone.localdate(subscription.created_at) if subscription.created_at else today
     backdated = subscription.start_date < created_on
     if subscription.start_date < today and not backdated:
         length = subscription.end_date - subscription.start_date

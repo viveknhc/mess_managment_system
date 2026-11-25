@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { LogoMark, Wordmark } from '../components/ui/Logo'
 import { businessLock, useAuthStore } from '../store/authStore'
 import { SuspendedNotice } from '../components/SuspendedNotice'
 import { KitchenClosedNotice } from '../components/KitchenClosedNotice'
@@ -70,7 +71,13 @@ export function CustomerLayout() {
         )}
       </main>
       <footer className="border-t border-gray-200 bg-white py-3 text-center text-xs text-gray-400">
-        Powered by Mess Management
+        <span className="inline-flex items-center gap-1.5">
+          Powered by
+          <span className="inline-flex items-center gap-1 text-brand-800">
+            <LogoMark className="h-4 w-4" />
+            <Wordmark className="text-[11px]" />
+          </span>
+        </span>
       </footer>
     </div>
   )

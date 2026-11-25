@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 
 interface Props {
-  /** Sidebar brand line, e.g. "Mess Manager". */
+  /** Sidebar brand, e.g. the MessDeck logo. */
   brand: ReactNode
   /** Nav links. Rendered in the fixed sidebar on desktop and a slide-in drawer on phones. */
   nav: ReactNode

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Logo } from '../landing/Logo'
+import { Logo } from '../../components/ui/Logo'
 import { LEGAL_NAME } from '../../config/support'
 import { LAST_UPDATED, LEGAL_LINKS } from './links'
 

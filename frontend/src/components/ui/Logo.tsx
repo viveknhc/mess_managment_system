@@ -38,11 +38,21 @@ export function Wordmark({ className = '' }: { className?: string }) {
   )
 }
 
-export function Logo({ light = false, className = '' }: { light?: boolean; className?: string }) {
+const SIZES = {
+  md: { mark: 'h-9 w-9', text: 'text-xl' },
+  lg: { mark: 'h-12 w-12', text: 'text-2xl' },
+}
+
+/** MessDeck mark + wordmark. Used on the landing page, login, and the app sidebar. */
+export function Logo({
+  light = false,
+  size = 'md',
+  className = '',
+}: { light?: boolean; size?: keyof typeof SIZES; className?: string }) {
   return (
     <span className={`flex items-center gap-2 ${light ? 'text-cream' : 'text-brand-800'} ${className}`}>
-      <LogoMark light={light} className="h-9 w-9 shrink-0" />
-      <Wordmark className="text-xl" />
+      <LogoMark light={light} className={`${SIZES[size].mark} shrink-0`} />
+      <Wordmark className={SIZES[size].text} />
     </span>
   )
 }

@@ -1,4 +1,5 @@
 import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Logo } from '../components/ui/Logo'
 import { useCallback, useState } from 'react'
 import { businessLock, trialEnded, useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
@@ -56,7 +57,7 @@ export function AdminLayout() {
 
   return (
     <AppShell
-      brand={<h1 className="text-lg font-bold text-blue-600">Mess Manager</h1>}
+      brand={<h1><Logo /></h1>}
       title={user?.business_name || 'Dashboard'}
       actions={
         <>

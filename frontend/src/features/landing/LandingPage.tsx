@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Logo } from './Logo'
+import { Logo } from '../../components/ui/Logo'
 import { whatsappLink } from '../../config/support'
 import { FIRST_PAYMENT, MONTHLY_FEE, SETUP_FEE, TRIAL_DAYS } from './pricing'
 import { LEGAL_LINKS } from '../legal/links'

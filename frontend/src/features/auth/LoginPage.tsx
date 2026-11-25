@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Logo } from '../../components/ui/Logo'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 
@@ -29,7 +30,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Mess Manager</h1>
+          <h1 className="flex justify-center"><Logo size="lg" /></h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
         </div>
 

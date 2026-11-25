@@ -366,6 +366,30 @@ class TestFreeTrial:
         assert jwt_client_a.get("/api/v1/customers/").status_code == 200
         assert jwt_client_a.get("/api/v1/auth/me/").json()["trial_ends_at"] is None
 
+    def test_paying_early_in_trial_starts_month_at_trial_end(self, sub_a, jwt_client_a):
+        """Paying 3 days before the trial ends keeps those 3 days free — the month starts after."""
+        PlatformService.start_trial(sub_a)
+        sub_a.refresh_from_db()
+        trial_end = sub_a.trial_end_date
+        today = trial_end - timedelta(days=3)
+        due = PlatformService.amount_due(sub_a, today)
+        payment = PlatformService.record_manual_payment(sub_a, amount=due.total, method="UPI", today=today)
+        sub_a.refresh_from_db()
+        assert payment.period_start == trial_end
+        assert payment.period_end == add_months(trial_end, 1)
+        assert sub_a.current_period_start == trial_end
+        assert sub_a.current_period_end == add_months(trial_end, 1)
+        assert sub_a.status == SaasStatus.ACTIVE
+        assert jwt_client_a.get("/api/v1/customers/").status_code == 200
+
+    def test_paying_after_trial_ended_starts_month_today(self, sub_a):
+        PlatformService.start_trial(sub_a)
+        sub_a.refresh_from_db()
+        today = sub_a.trial_end_date + timedelta(days=4)
+        due = PlatformService.amount_due(sub_a, today)
+        payment = PlatformService.record_manual_payment(sub_a, amount=due.total, method="UPI", today=today)
+        assert payment.period_start == today
+
     def test_trial_only_once(self, sub_a, client_super):
         url = f"/api/v1/platform/businesses/{sub_a.business_id}/start-trial/"
         assert client_super.post(url).status_code == 200

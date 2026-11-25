@@ -203,7 +203,9 @@ class PlatformService:
         """SUPER_ADMIN records a UPI/cash/bank payment. Amount must equal what is due.
 
         Pays for one month. The month continues from the previous due date if the business
-        is still within the grace period; otherwise it starts today.
+        is still within the grace period; if it pays during a running free trial, the month
+        starts when the trial ends (paying early never forfeits trial days); otherwise it
+        starts today.
         """
         today = today or timezone.localdate()
         subscription = (
@@ -218,7 +220,13 @@ class PlatformService:
         continuing = (
             subscription.setup_fee_paid and end is not None and today < end + timedelta(days=GRACE_DAYS)
         )
-        period_start = end if continuing else today
+        trial_end = subscription.trial_end_date if subscription.status == SaasStatus.TRIAL else None
+        if continuing:
+            period_start = end
+        elif trial_end is not None and trial_end > today:
+            period_start = trial_end
+        else:
+            period_start = today
         period_end = add_months(period_start, 1)
 
         payment = SaasPayment.objects.create(

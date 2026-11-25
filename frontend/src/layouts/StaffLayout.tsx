@@ -24,8 +24,8 @@ export function StaffLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <header className="bg-canvas">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-3">
             <div

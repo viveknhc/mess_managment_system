@@ -26,8 +26,8 @@ export function CustomerLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <header className="bg-canvas">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <h1 className="text-lg font-bold text-primary-600">My Mess</h1>
           <button
@@ -70,11 +70,11 @@ export function CustomerLayout() {
           </FeatureGate>
         )}
       </main>
-      <footer className="border-t border-gray-200 bg-white py-3 text-center text-xs text-gray-400">
+      <footer className="py-4 text-center text-xs text-gray-400">
         <span className="inline-flex items-center gap-1.5">
           Powered by
-          <span className="inline-flex items-center gap-1 text-brand-800">
-            <LogoMark className="h-4 w-4" />
+          <span className="inline-flex items-center gap-1 text-gray-700">
+            <LogoMark light className="h-4 w-4" />
             <Wordmark className="text-[11px]" />
           </span>
         </span>

@@ -138,6 +138,25 @@ class TestDashboardSelector:
         assert data["payments"]["today_revenue"] == Decimal("1200.00")  # 500 + 500 + 200
         assert data["payments"]["total_pending"] == Decimal("300.00")  # sub3 pending
 
+    def test_activity_last_seven_days(self, biz_a, seeded):
+        activity = get_dashboard_data(biz_a.id)["activity"]
+        assert [a["date"] for a in activity] == [str(TODAY - timedelta(days=6 - i)) for i in range(7)]
+        assert activity[-1]["meals"] == 2  # two paid subscriptions start today
+        assert all(a["meals"] == 0 for a in activity[:-1])
+
+    def test_activity_ignores_skipped_and_cancelled(self, biz_a, seeded):
+        from apps.deliveries.models import Delivery, DeliveryStatus
+
+        first_today = Delivery.objects.filter(business=biz_a, delivery_date=TODAY).first()
+        Delivery.objects.filter(id=first_today.id).update(status=DeliveryStatus.SKIPPED)
+        assert get_dashboard_data(biz_a.id)["activity"][-1]["meals"] == 1
+
+    def test_activity_is_tenant_scoped(self, biz_a, seeded):
+        from apps.businesses.models import Business
+
+        other = Business.objects.create(name="Other Mess")
+        assert all(a["meals"] == 0 for a in get_dashboard_data(other.id)["activity"])
+
     def test_meals_today(self, biz_a, seeded):
         data = get_dashboard_data(biz_a.id)
         assert len(data["meals_today"]) == 1

@@ -58,6 +58,22 @@ def get_dashboard_data(business_id):
         .order_by("meal__name")
     )
 
+    # Activity: meals served or still due on each of the last 7 days (skipped/cancelled ones aren't work)
+    week_start = today - timedelta(days=6)
+    per_day = dict(
+        Delivery.objects.filter(
+            business_id=business_id, delivery_date__gte=week_start, delivery_date__lte=today
+        )
+        .exclude(status__in=[DeliveryStatus.SKIPPED, DeliveryStatus.CANCELLED])
+        .values_list("delivery_date")
+        .annotate(count=models.Count("id"))
+        .order_by()
+    )
+    activity = [
+        {"date": str(day), "meals": per_day.get(day, 0)}
+        for day in (week_start + timedelta(days=i) for i in range(7))
+    ]
+
     # Payments
     paid_qs = Payment.objects.filter(business_id=business_id, status=PaymentStatus.PAID)
     today_revenue = paid_qs.filter(payment_date=today).aggregate(total=models.Sum("amount"))[
@@ -89,6 +105,7 @@ def get_dashboard_data(business_id):
             "pending": pending_deliveries_today,
         },
         "meals_today": meals_today,
+        "activity": activity,
         "payments": {
             "today_revenue": today_revenue,
             "month_revenue": month_revenue,

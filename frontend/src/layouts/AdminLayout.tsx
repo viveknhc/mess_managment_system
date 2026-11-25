@@ -1,11 +1,10 @@
-import { Outlet, NavLink, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Logo } from '../components/ui/Logo'
+import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useState } from 'react'
 import { businessLock, trialEnded, useAuthStore } from '../store/authStore'
 import { NotificationBell } from '../components/NotificationBell'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../config/support'
 import { FEATURES, type FeatureKey } from '../hooks/useFeature'
-import { NavIcon, type NavIconName } from '../components/ui/NavIcon'
+import { type NavIconName } from '../components/ui/NavIcon'
 import { AppShell } from '../components/AppShell'
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner'
 import { KitchenClosedNotice } from '../components/KitchenClosedNotice'
@@ -27,6 +26,8 @@ const navItems: { to: string; label: string; icon: NavIconName; end: boolean; fe
   { to: '/app/support', label: 'Help & Support', icon: 'help', end: false },
 ]
 
+const ROLE_LABELS: Record<string, string> = { OWNER: 'Owner', MANAGER: 'Manager' }
+
 /** Pages a locked business (suspended, or first payment not made) can still use — the backend allows /auth/* and /billing/* only. */
 const SUSPENDED_ALLOWED = ['/app/billing', '/app/support']
 
@@ -46,70 +47,24 @@ export function AdminLayout() {
     navigate('/login')
   }
 
-  const logoutButton = (
-    <button
-      onClick={handleLogout}
-      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-    >
-      Logout
-    </button>
-  )
+  const lockedReason =
+    lock === 'PAYMENT_REQUIRED'
+      ? trialOver ? 'Free trial ended — available after your first payment' : 'Available after your first payment'
+      : 'Unavailable while your account is suspended'
 
   return (
     <AppShell
-      brand={<h1><Logo /></h1>}
       title={user?.business_name || 'Dashboard'}
-      actions={
-        <>
-          {!suspended && <NotificationBell />}
-          <span className="hidden text-sm text-gray-600 md:inline">
-            {user?.name || user?.username}
-            <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-              {user?.role}
-            </span>
-          </span>
-          <span className="hidden sm:inline">{logoutButton}</span>
-        </>
-      }
-      drawerFooter={
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-1 text-sm text-gray-600">
-            <span className="truncate">{user?.name || user?.username}</span>
-            <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{user?.role}</span>
-          </span>
-          {logoutButton}
-        </div>
-      }
-      nav={navItems.filter((item) => !item.feature || user?.features?.includes(item.feature)).map((item) =>
-        suspended && !SUSPENDED_ALLOWED.includes(item.to) ? (
-          // Blocked while suspended — shown greyed out instead of a link that bounces back to Billing.
-          <span
-            key={item.to}
-            title={lock === 'PAYMENT_REQUIRED' ? (trialOver ? 'Free trial ended — available after your first payment' : 'Available after your first payment') : 'Unavailable while your account is suspended'}
-            aria-disabled="true"
-            className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300"
-          >
-            <NavIcon name={item.icon} />
-            {item.label}
-          </span>
-        ) : (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`
-            }
-          >
-            <NavIcon name={item.icon} />
-            {item.label}
-          </NavLink>
-        ),
-      )}
+      user={{ name: user?.name || user?.username || '', role: ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? '' }}
+      onLogout={handleLogout}
+      actions={!suspended && <NotificationBell />}
+      nav={navItems
+        .filter((item) => !item.feature || user?.features?.includes(item.feature))
+        .map((item) => ({
+          ...item,
+          // Blocked while locked — shown greyed out instead of a link that bounces back to Billing.
+          disabledReason: suspended && !SUSPENDED_ALLOWED.includes(item.to) ? lockedReason : undefined,
+        }))}
     >
       {!lock && <KitchenClosedNotice />}
       {!suspended && user?.saas_status === 'TRIAL' && user.trial_ends_at && (

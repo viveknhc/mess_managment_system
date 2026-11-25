@@ -46,7 +46,7 @@ test.describe('Login & role routing', () => {
     await login(customerTab, USERS.customer3, '/portal')
     await ownerTab.reload()
     await expect(ownerTab).toHaveURL(/\/app$/)
-    await expect(ownerTab.getByRole('banner').getByText('OWNER', { exact: true })).toBeVisible()
+    await expect(ownerTab.getByRole('banner').getByText('Owner', { exact: true })).toBeVisible()
     await customerTab.reload()
     await expect(customerTab).toHaveURL(/\/portal$/)
   })

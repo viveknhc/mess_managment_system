@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { apiClient } from '../../services/apiClient'
+import { useThemeColors } from '../../hooks/useThemeColors'
 
 interface RevenueData {
   daily: Array<{ payment_date: string; total: number; count: number }>
@@ -15,9 +16,11 @@ interface SubReport {
 
 interface MealItem { meal_name: string; delivered: number; skipped: number; not_delivered: number; pending: number; total: number }
 
-const PIE_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#6b7280', '#ef4444']
+// Status colours that read on both the light and the dark theme
+const PIE_COLORS = ['#34d399', '#fbbf24', '#7dd3fc', '#9ca3af', '#ff6b6b']
 
 export function ReportsPage() {
+  const chart = useThemeColors()
   const [revenue, setRevenue] = useState<RevenueData | null>(null)
   const [subs, setSubs] = useState<SubReport | null>(null)
   const [meals, setMeals] = useState<MealItem[]>([])
@@ -101,11 +104,11 @@ export function ReportsPage() {
             <h2 className="mb-4 text-sm font-semibold text-gray-900 uppercase tracking-wide">Revenue Trend</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={revenue.daily}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="payment_date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.muted} vertical={false} />
+                <XAxis dataKey="payment_date" tick={{ fontSize: 11, fill: chart.subtle }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: chart.subtle }} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: chart.muted, opacity: 0.4 }} contentStyle={{ background: chart.surface, border: 'none', borderRadius: 12, color: chart.text }} />
+                <Bar dataKey="total" fill={chart.accent} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -117,7 +120,7 @@ export function ReportsPage() {
             <h2 className="mb-4 text-sm font-semibold text-gray-900 uppercase tracking-wide">Subscription Status</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={subPieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                <Pie data={subPieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke={chart.surface} label={({ name, value }) => `${name}: ${value}`}>
                   {subPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
                 <Tooltip />

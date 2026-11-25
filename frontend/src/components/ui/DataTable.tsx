@@ -366,12 +366,12 @@ function CardList<T>({ columns, rows, rowKey, sort, onSort, loading, emptyMessag
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-baseline gap-1.5 text-sm">
                     {title.map((c) => (
-                      <span key={c.key} className="shrink-0 font-medium text-gray-900 [&_*]:inline">{c.render(row)}</span>
+                      <span key={c.key} className="shrink-0 font-medium text-gray-900 [&_*]:inline [&>*+*]:ml-1.5 [&_div+div]:ml-1.5 [&_p+p]:ml-1.5">{c.render(row)}</span>
                     ))}
                     {subtitles.map((c) => {
                       const v = c.render(row)
                       return isEmpty(v) ? null : (
-                        <span key={c.key} className="min-w-0 truncate text-xs text-gray-500 [&_*]:inline">· {v}</span>
+                        <span key={c.key} className="min-w-0 truncate text-xs text-gray-500 [&_*]:inline [&>*+*]:ml-1.5 [&_div+div]:ml-1.5 [&_p+p]:ml-1.5">· {v}</span>
                       )
                     })}
                   </div>
@@ -388,7 +388,7 @@ function CardList<T>({ columns, rows, rowKey, sort, onSort, loading, emptyMessag
                     {shownFields.map(([c, v]) => (
                       <div key={c.key} className="flex min-w-0 items-baseline gap-1">
                         <dt className="text-gray-500">{label(c)}</dt>
-                        <dd className="text-gray-800 [overflow-wrap:anywhere] [&_div]:inline [&_p]:inline [&_div+div]:ml-1 [&_span]:align-baseline">{v}</dd>
+                        <dd className="text-gray-800 [overflow-wrap:anywhere] [&_div]:inline [&_p]:inline [&>*+*]:ml-1.5 [&_div+div]:ml-1.5 [&_p+p]:ml-1.5 [&_span]:align-baseline">{v}</dd>
                       </div>
                     ))}
                   </dl>

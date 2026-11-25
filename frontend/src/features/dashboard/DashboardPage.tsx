@@ -44,11 +44,11 @@ export function DashboardPage() {
 
   const newThisMonth = data.customers.new_this_month
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-3 pb-8 sm:px-6">
+    <div className="mx-auto max-w-7xl space-y-3 px-3 pb-6 sm:space-y-4 sm:px-6">
       <h1 className="sr-only">Dashboard</h1>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiCard highlight label="Active Customers" value={data.customers.active}
           note={`+${newThisMonth} new this month`} onClick={() => navigate('/app/customers')} />
         <KpiCard label="Active Subscriptions" value={data.subscriptions.active}
@@ -59,16 +59,16 @@ export function DashboardPage() {
           note="still to collect" onClick={() => navigate('/app/payments')} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <Panel title="Activity" tag="Last 7 days">
           <ActivityChart data={data.activity ?? []} />
         </Panel>
         <TodaysDeliveries data={data} onOpen={() => navigate('/app/deliveries')} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         <Panel title="Expiring Subscriptions">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <PillRow label="Expiring today" count={data.subscriptions.expiring_today} tone="danger" />
             <PillRow label="Within 3 days" count={data.subscriptions.expiring_3_days} tone="warning" />
             <PillRow label="This week" count={data.subscriptions.expiring_week} tone="soft" />
@@ -78,13 +78,13 @@ export function DashboardPage() {
         </Panel>
 
         <Panel title="Revenue" tag="This month">
-          <p className="text-4xl font-light tracking-tight text-gray-900 sm:text-5xl">{inr(data.payments.month_revenue)}</p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-gray-200 p-4">
+          <p className="text-3xl font-light tracking-tight text-gray-900 sm:text-4xl">{inr(data.payments.month_revenue)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-gray-200 p-3">
               <p className="text-xs text-gray-500">Today</p>
               <p className="mt-1 text-xl font-medium text-gray-900">{inr(data.payments.today_revenue)}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 p-4">
+            <div className="rounded-2xl border border-gray-200 p-3">
               <p className="text-xs text-red-600">Total pending</p>
               <p className="mt-1 text-xl font-medium text-red-600">{inr(data.payments.total_pending)}</p>
             </div>
@@ -92,7 +92,7 @@ export function DashboardPage() {
         </Panel>
 
         <Panel title="Quick Actions">
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 2xl:grid-cols-2">
             <QuickAction label="Add Customer" onClick={() => navigate('/app/customers')} />
             <QuickAction label="New Subscription" onClick={() => navigate('/app/subscriptions')} />
             <QuickAction label="Record Payment" onClick={() => navigate('/app/payments')} />
@@ -117,20 +117,20 @@ function KpiCard({ label, value, note, highlight, tone, onClick }: {
 }) {
   return (
     <button onClick={onClick}
-      className={`group flex min-h-36 flex-col justify-between rounded-[1.75rem] p-5 text-left transition-transform hover:-translate-y-0.5 ${
+      className={`group flex min-h-28 min-w-0 flex-col justify-between rounded-3xl p-3.5 text-left sm:min-h-32 sm:rounded-[1.75rem] sm:p-5 transition-transform hover:-translate-y-0.5 ${
         highlight ? 'bg-accent text-accent-ink' : 'border border-gray-200 bg-white text-gray-900'
       }`}>
       <span className="flex items-start justify-between gap-3">
-        <span className={`text-sm font-medium ${highlight ? '' : 'text-gray-700'}`}>{label}</span>
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+        <span className={`text-xs font-medium sm:text-sm ${highlight ? '' : 'text-gray-700'}`}>{label}</span>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
           highlight ? 'bg-accent-ink text-accent' : 'border border-gray-300 text-gray-700 group-hover:bg-gray-100'
         }`}>
           <ArrowIcon />
         </span>
       </span>
-      <span className="mt-6 flex flex-wrap items-baseline gap-x-2">
-        <span className={`text-4xl font-light tracking-tight ${tone === 'danger' && !highlight ? 'text-red-600' : ''}`}>{value}</span>
-        {note && <span className={`text-xs ${highlight ? 'opacity-70' : 'text-gray-500'}`}>{note}</span>}
+      <span className="mt-3 flex min-w-0 flex-col sm:mt-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+        <span className={`truncate text-2xl font-light tracking-tight sm:text-4xl ${tone === 'danger' && !highlight ? 'text-red-600' : ''}`}>{value}</span>
+        {note && <span className={`truncate text-[11px] sm:text-xs ${highlight ? 'opacity-70' : 'text-gray-500'}`}>{note}</span>}
       </span>
     </button>
   )
@@ -138,9 +138,9 @@ function KpiCard({ label, value, note, highlight, tone, onClick }: {
 
 function Panel({ title, tag, action, children }: { title: string; tag?: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-[1.75rem] border border-gray-200 bg-white p-5 sm:p-6">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-normal text-gray-900 sm:text-2xl">{title}</h2>
+    <section className="rounded-3xl border border-gray-200 bg-white p-4 sm:rounded-[1.75rem] sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
+        <h2 className="text-lg font-normal text-gray-900 sm:text-xl">{title}</h2>
         {action ?? (tag && <span className="rounded-full bg-gray-100 px-3.5 py-1.5 text-xs text-gray-700">{tag}</span>)}
       </div>
       {children}
@@ -161,11 +161,11 @@ function ActivityChart({ data }: { data: Array<{ date: string; meals: number }> 
   }))
 
   if (rows.every((r) => r.meals === 0)) {
-    return <p className="py-16 text-center text-sm text-gray-500">No meals scheduled in the last 7 days yet.</p>
+    return <p className="py-10 text-center text-sm text-gray-500">No meals scheduled in the last 7 days yet.</p>
   }
   return (
     <div>
-      <div className="h-60">
+      <div className="h-40 sm:h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 8, right: 0, left: -24, bottom: 0 }} barCategoryGap="18%">
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: c.subtle, fontSize: 11 }} />
@@ -214,7 +214,7 @@ function TodaysDeliveries({ data, onOpen }: { data: DashboardData; onOpen: () =>
         <ArrowIcon />
       </button>
     }>
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         <CountPill label="Pending" count={d.pending} active />
         <CountPill label="Delivered" count={d.delivered} />
         <CountPill label="Total" count={d.total_today} />
@@ -230,8 +230,8 @@ function TodaysDeliveries({ data, onOpen }: { data: DashboardData; onOpen: () =>
           <tbody>
             {data.meals_today.map((m) => (
               <tr key={m.meal__name} className="border-b border-gray-200 last:border-0">
-                <td className="py-3.5 text-gray-900">{m.meal__name}</td>
-                <td className="py-3.5 text-right">
+                <td className="py-2.5 text-gray-900">{m.meal__name}</td>
+                <td className="py-2.5 text-right">
                   <span className="inline-flex min-w-12 justify-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-900">
                     {m.count}
                   </span>
@@ -241,7 +241,7 @@ function TodaysDeliveries({ data, onOpen }: { data: DashboardData; onOpen: () =>
           </tbody>
         </table>
       ) : (
-        <p className="py-10 text-center text-sm text-gray-500">No meals to deliver today.</p>
+        <p className="py-6 text-center text-sm text-gray-500">No meals to deliver today.</p>
       )}
     </Panel>
   )
@@ -272,9 +272,9 @@ const PILL_TONES = {
 
 function PillRow({ label, count, tone }: { label: string; count: number; tone: keyof typeof PILL_TONES }) {
   return (
-    <div className="flex items-center justify-between rounded-full border border-gray-200 py-1.5 pl-4 pr-1.5">
+    <div className="flex items-center justify-between rounded-full border border-gray-200 py-1 pl-4 pr-1">
       <span className="text-sm text-gray-700">{label}</span>
-      <span className={`flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold ${PILL_TONES[tone]}`}>{count}</span>
+      <span className={`flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-semibold ${PILL_TONES[tone]}`}>{count}</span>
     </div>
   )
 }
@@ -282,7 +282,7 @@ function PillRow({ label, count, tone }: { label: string; count: number; tone: k
 function QuickAction({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="group flex items-center justify-between gap-2 whitespace-nowrap rounded-full border border-gray-300 py-1.5 pl-4 pr-1.5 text-sm font-medium text-gray-800 transition-colors hover:border-transparent hover:bg-accent hover:text-accent-ink">
+      className="group flex items-center justify-between gap-2 whitespace-nowrap rounded-full border border-gray-300 py-1 pl-3.5 pr-1 text-xs font-medium text-gray-800 sm:text-sm transition-colors hover:border-transparent hover:bg-accent hover:text-accent-ink">
       {label}
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-700 group-hover:bg-accent-ink group-hover:text-accent">
         <ArrowIcon className="h-3.5 w-3.5" />

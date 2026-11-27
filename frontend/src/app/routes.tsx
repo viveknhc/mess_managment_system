@@ -23,6 +23,7 @@ import { PortalProfilePage } from '../features/portal/PortalProfilePage'
 import { PortalSubscriptionPage } from '../features/portal/PortalSubscriptionPage'
 import { DeliveryRunPage } from '../features/deliveries/DeliveryRunPage'
 import { KitchenCountsPage } from '../features/deliveries/KitchenCountsPage'
+import { KitchenMealPage } from '../features/deliveries/KitchenMealPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { BusinessProfilePage } from '../features/business/BusinessProfilePage'
 import { CustomersPage } from '../features/customers/CustomersPage'
@@ -151,6 +152,7 @@ export function AppRoutes() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['KITCHEN_STAFF']} />}>
             <Route path="kitchen/summary" element={<KitchenCountsPage showSummary />} />
+            <Route path="kitchen/meals/:mealId" element={<KitchenMealPage />} />
           </Route>
         </Route>
       </Route>

@@ -1,5 +1,7 @@
 """Delivery API (D-04, D-05, D-06, D-11)."""
 
+import uuid
+
 from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters import rest_framework as django_filters
@@ -76,6 +78,7 @@ class DeliveryViewSet(TenantScopedViewSet):
         # Customers skip through the portal (/portal/subscriptions/{id}/skip/), which applies plan rules.
         "skip": [Role.OWNER, Role.MANAGER],
         "kitchen_counts": [Role.OWNER, Role.MANAGER, Role.KITCHEN_STAFF],
+        "kitchen_meal": [Role.OWNER, Role.MANAGER, Role.KITCHEN_STAFF],
         "today_summary": [Role.OWNER, Role.MANAGER, Role.DELIVERY_STAFF, Role.KITCHEN_STAFF],
     }
 
@@ -178,6 +181,19 @@ class DeliveryViewSet(TenantScopedViewSet):
         """GET /deliveries/kitchen_counts/ — today's meal totals."""
         counts = DeliverySelector.get_kitchen_counts(request.user.business_id)
         return Response(list(counts))
+
+    @action(detail=False, methods=["get"])
+    def kitchen_meal(self, request):
+        """GET /deliveries/kitchen_meal/?meal=<id> — today's customers for one meal (kitchen drill-down)."""
+        meal_id = request.query_params.get("meal", "")
+        try:
+            uuid.UUID(meal_id)
+        except ValueError:
+            return _error("VALIDATION_ERROR", "Pass ?meal=<meal id>.")
+        data = DeliverySelector.get_kitchen_meal(request.user.business_id, meal_id)
+        if data is None:
+            return _error("NOT_FOUND", "Meal not found.", status.HTTP_404_NOT_FOUND)
+        return Response(data)
 
     @action(detail=False, methods=["get"])
     def today_summary(self, request):

@@ -219,12 +219,34 @@ class TestKitchenAndDelivery:
         counts = DeliverySelector.get_kitchen_counts(biz.id)
         assert counts == [
             {
+                "meal_id": plan.meal_id,
                 "meal__name": "Lunch",
                 "count": 4,
                 "extras": [{"label": "Extra chicken 100g", "count": 3}, {"label": "No rice", "count": 1}],
+                # 3 customers × 100 g — "No rice" isn't food to cook.
+                "extra_food": [
+                    {
+                        "food": "Chicken",
+                        "unit": "g",
+                        "total": 300.0,
+                        "customers": 3,
+                        "labels": ["Extra chicken 100g"],
+                    }
+                ],
             }
         ]
-        assert client(owner).get("/api/v1/deliveries/kitchen_counts/").json() == counts
+        api = client(owner).get("/api/v1/deliveries/kitchen_counts/").json()
+        assert api == [{**counts[0], "meal_id": str(plan.meal_id)}]
+
+    def test_kitchen_adds_up_same_food_in_different_amounts(self, biz, plan):
+        lists = [[CHICKEN], [{"label": "Extra chicken 150g"}], [{"label": "Add 2 chapati"}], [CHICKEN]]
+        for i, items in enumerate(lists):
+            self.active(biz, plan, Customer.objects.create(business=biz, name=f"C{i}", phone=f"90{i}"), items)
+        food = {
+            f["food"]: (f["total"], f["unit"], f["customers"])
+            for f in DeliverySelector.get_kitchen_counts(biz.id)[0]["extra_food"]
+        }
+        assert food == {"Chicken": (350.0, "g", 3), "Chapati": (2.0, "pcs", 1)}
 
     def test_delivery_shows_customizations(self, biz, plan, cust, owner):
         self.active(biz, plan, cust, [CHICKEN, NO_RICE])
@@ -310,3 +332,48 @@ class TestPortal:
         assert dash["active_subscription"]["items"][0]["label"] == "Extra chicken 100g"
         deliveries = c.get("/api/v1/portal/deliveries/").json()
         assert deliveries[0]["customizations"] == ["Extra chicken 100g"]
+
+
+@pytest.mark.django_db
+class TestKitchenMealDrillDown:
+    URL = "/api/v1/deliveries/kitchen_meal/"
+
+    def test_lists_customers_with_their_customizations(self, biz, plan, owner):
+        a = Customer.objects.create(
+            business=biz, name="Bina", phone="901", address="Flat 1", location="Room 12"
+        )
+        b = Customer.objects.create(business=biz, name="Arun", phone="902")
+        TestKitchenAndDelivery.active(biz, plan, a, [CHICKEN, NO_RICE])
+        TestKitchenAndDelivery.active(biz, plan, b, [])
+        kitchen = User.objects.create_user(username="k", password="p", role=Role.KITCHEN_STAFF, business=biz)
+
+        data = client(kitchen).get(self.URL, {"meal": str(plan.meal_id)}).json()
+        assert data["meal_name"] == "Lunch"
+        assert data["count"] == 2
+        assert [c["name"] for c in data["customers"]] == ["Arun", "Bina"]
+        bina = data["customers"][1]
+        assert bina["customizations"] == ["Extra chicken 100g", "No rice"]
+        assert bina["location"] == "Room 12"
+        assert "phone" not in bina and "address" not in bina  # kitchen needs names, not contact details
+        assert data["extra_food"][0]["food"] == "Chicken"
+        assert data["extra_food"][0]["total"] == 100.0
+
+    def test_delivered_plates_drop_off(self, biz, plan, cust, owner):
+        TestKitchenAndDelivery.active(biz, plan, cust, [])
+        Delivery.objects.filter(subscription__customer=cust).update(status="DELIVERED")
+        data = client(owner).get(self.URL, {"meal": str(plan.meal_id)}).json()
+        assert data["count"] == 0
+
+    def test_other_business_meal_is_404(self, biz, plan, cust):
+        TestKitchenAndDelivery.active(biz, plan, cust, [CHICKEN])
+        other = Business.objects.create(name="Other")
+        owner_b = User.objects.create_user(username="ob", password="p", role=Role.OWNER, business=other)
+        resp = client(owner_b).get(self.URL, {"meal": str(plan.meal_id)})
+        assert resp.status_code == 404
+
+    def test_bad_meal_id_is_400(self, owner):
+        assert client(owner).get(self.URL, {"meal": "nope"}).status_code == 400
+
+    def test_delivery_staff_cannot_see_kitchen_list(self, biz, plan):
+        staff = User.objects.create_user(username="d", password="p", role=Role.DELIVERY_STAFF, business=biz)
+        assert client(staff).get(self.URL, {"meal": str(plan.meal_id)}).status_code == 403

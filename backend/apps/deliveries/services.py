@@ -2,6 +2,7 @@
 
 import datetime
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import models, transaction
 from django.utils import timezone
@@ -17,6 +18,7 @@ from apps.deliveries.models import (
     SubscriptionPause,
 )
 from apps.settings_app.services import KitchenCalendar
+from apps.subscriptions.extras import parse_extra
 from apps.subscriptions.models import Subscription
 from common.constants import Role, SubStatus
 
@@ -427,16 +429,19 @@ class DeliverySelector:
     def get_kitchen_counts(business_id):
         """Today's meal totals per meal type — for kitchen staff.
 
-        ``[{meal__name, count, extras: [{label, count}]}]`` — ``extras`` totals the
+        ``[{meal_id, meal__name, count, extras: [{label, count}]}]`` — ``extras`` totals the
         subscriptions' food customizations (custom_subscriptions), e.g. "Extra chicken
-        100g ×5". Aggregates only, no customer data.
+        100g ×5". ``extra_food`` adds those up per food (Chicken 500 g). Aggregates only,
+        no customer data.
         """
         to_cook = Delivery.objects.filter(
             business_id=business_id,
             delivery_date=datetime.date.today(),
             status__in=[DeliveryStatus.PENDING, DeliveryStatus.OUT_FOR_DELIVERY],
         )
-        counts = list(to_cook.values("meal__name").annotate(count=models.Count("id")).order_by("meal__name"))
+        counts = list(
+            to_cook.values("meal_id", "meal__name").annotate(count=models.Count("id")).order_by("meal__name")
+        )
         extras = {}
         for meal, label in to_cook.filter(subscription__items__isnull=False).values_list(
             "meal__name", "subscription__items__label"
@@ -453,7 +458,85 @@ class DeliverySelector:
                     extras.get(row["meal__name"], {}).items(), key=lambda kv: (-kv[1], kv[0])
                 )
             ]
+            row["extra_food"] = DeliverySelector._extra_food(row["extras"])
         return counts
+
+    @staticmethod
+    def get_kitchen_meal(business_id, meal_id):
+        """Who gets ``meal_id`` today — the kitchen's drill-down from a meal count.
+
+        Same deliveries as ``get_kitchen_counts`` (still to cook), one row per customer with
+        what the kitchen needs to cook and pack: name, area/route and customizations. No phone
+        or address. ``None`` when the meal isn't this business's.
+        """
+        from apps.meals.models import Meal
+
+        meal = Meal.objects.filter(business_id=business_id, id=meal_id).values("id", "name").first()
+        if meal is None:
+            return None
+        rows = (
+            Delivery.objects.filter(
+                business_id=business_id,
+                meal_id=meal_id,
+                delivery_date=datetime.date.today(),
+                status__in=[DeliveryStatus.PENDING, DeliveryStatus.OUT_FOR_DELIVERY],
+            )
+            .select_related("customer__route")
+            .prefetch_related("subscription__items")
+            .order_by("customer__route__name", "customer__name")
+        )
+        customers = [
+            {
+                "delivery_id": str(d.id),
+                "name": d.customer.name,
+                "customer_code": d.customer.customer_code,
+                "location": d.customer.location,
+                "route_name": d.customer.route.name if d.customer.route_id else None,
+                "status": d.status,
+                "customizations": [item.label for item in d.subscription.items.all()],
+            }
+            for d in rows
+        ]
+        extras = {}
+        for c in customers:
+            for label in c["customizations"]:
+                key = " ".join(label.split())
+                match = next((k for k in extras if k.lower() == key.lower()), key)
+                extras[match] = extras.get(match, 0) + 1
+        return {
+            "meal_id": str(meal["id"]),
+            "meal_name": meal["name"],
+            "count": len(customers),
+            "extra_food": DeliverySelector._extra_food(
+                [{"label": label, "count": n} for label, n in sorted(extras.items())]
+            ),
+            "customers": customers,
+        }
+
+    @staticmethod
+    def _extra_food(extras):
+        """Customizations with an amount, added up per food: "Extra chicken 100g" ×5 →
+        ``{food: "Chicken", unit: "g", total: 500, customers: 5, labels: [...]}``.
+
+        Labels without an amount ("No rice") aren't food to cook and stay out.
+        """
+        foods = {}
+        for extra in extras:
+            parsed = parse_extra(extra["label"])
+            if parsed is None:
+                continue
+            food, qty, unit = parsed
+            line = foods.setdefault(
+                (food.lower(), unit),
+                {"food": food, "unit": unit, "total": Decimal("0"), "customers": 0, "labels": []},
+            )
+            line["total"] += qty * extra["count"]
+            line["customers"] += extra["count"]
+            line["labels"].append(extra["label"])
+        return [
+            {**line, "total": float(line["total"])}
+            for line in sorted(foods.values(), key=lambda f: f["food"])
+        ]
 
     @staticmethod
     def get_today_summary(business_id):

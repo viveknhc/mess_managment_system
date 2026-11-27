@@ -3,6 +3,7 @@ import { platformApi, type SaasPayment } from './platformApi'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { METHOD_LABEL } from './billingFormat'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 const columns: Column<SaasPayment>[] = [
   {
@@ -52,17 +53,7 @@ const columns: Column<SaasPayment>[] = [
     header: 'Status',
     sortable: true,
     render: (p) => (
-      <span
-        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          p.status === 'PAID'
-            ? 'bg-green-100 text-green-700'
-            : p.status === 'FAILED'
-              ? 'bg-red-100 text-red-700'
-              : 'bg-gray-100 text-gray-700'
-        }`}
-      >
-        {p.status}
-      </span>
+      <StatusBadge status={p.status} />
     ),
   },
   {

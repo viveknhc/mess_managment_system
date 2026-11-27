@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { platformApi, type CreateBusinessInput, type ManualPaymentMethod, type PlatformBusiness } from './platformApi'
-import { STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, formatDateTime, rupees, trialLeftLabel } from './billingFormat'
+import { STATUS_LABEL, dayBefore, formatDate, formatDateTime, rupees, trialLeftLabel } from './billingFormat'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { CustomizeBusinessModal } from './CustomizeBusinessModal'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm'
@@ -15,9 +17,7 @@ function statusBadge(biz: PlatformBusiness) {
   if (!biz.saas_status) return <span className="text-gray-400">—</span>
   return (
     <>
-      <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[biz.saas_status]}`}>
-        {STATUS_LABEL[biz.saas_status]}
-      </span>
+      <StatusBadge status={biz.saas_status} label={STATUS_LABEL[biz.saas_status]} />
       {biz.saas_status === 'TRIAL' && biz.trial_ends_at && (
         <p className="mt-1 whitespace-nowrap text-xs text-gray-500" title={`Ends ${formatDateTime(biz.trial_ends_at)}`}>
           {trialLeftLabel(biz.trial_ends_at)}
@@ -353,49 +353,31 @@ export function BusinessesListPage() {
         header: 'Actions',
         render: (biz) => (
           <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setPaying(biz)}
-              className="whitespace-nowrap rounded bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-700 hover:bg-purple-200"
-            >
+            <ActionButton tone="accent" solid onClick={() => setPaying(biz)}>
               Record Payment
-            </button>
+            </ActionButton>
             {/* Never paid (setup fee still due): awaiting first payment, or auto-suspended for it. */}
             {(biz.saas_status === 'PENDING' || biz.saas_status === 'SUSPENDED') && !biz.trial_ends_at && Number(biz.amount_due?.setup_fee ?? 0) > 0 && (
-              <button
-                onClick={() => handleStartTrial(biz)}
-                className="whitespace-nowrap rounded bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
-              >
+              <ActionButton tone="success" onClick={() => handleStartTrial(biz)}>
                 Start 7-day trial
-              </button>
+              </ActionButton>
             )}
-            <button
-              onClick={() => setCustomizing(biz)}
-              className="rounded bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
-            >
+            <ActionButton tone="primary" onClick={() => setCustomizing(biz)}>
               Customize
-            </button>
+            </ActionButton>
             {biz.status === 'SUSPENDED' ? (
-              <button
-                onClick={() => handleReactivate(biz)}
-                className="rounded bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
-              >
+              <ActionButton tone="success" onClick={() => handleReactivate(biz)}>
                 Reactivate
-              </button>
+              </ActionButton>
             ) : (
-              <button
-                onClick={() => handleSuspend(biz)}
-                className="rounded bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
-              >
+              <ActionButton tone="danger" onClick={() => handleSuspend(biz)}>
                 Suspend
-              </button>
+              </ActionButton>
             )}
             {biz.saas_status && CANCELLABLE.includes(biz.saas_status) && (
-              <button
-                onClick={() => handleCancel(biz)}
-                className="rounded bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-              >
+              <ActionButton tone="neutral" onClick={() => handleCancel(biz)}>
                 Cancel Plan
-              </button>
+              </ActionButton>
             )}
           </div>
         ),

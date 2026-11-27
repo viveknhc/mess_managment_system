@@ -4,6 +4,8 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 type PlanWithAdmin = SaasPlan & { razorpay_plan_id: string; is_active: boolean }
 
@@ -179,13 +181,7 @@ export function PlatformPlansPage() {
         header: 'Status',
         sortable: true,
         render: (plan) => (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              plan.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {plan.is_active ? 'Active' : 'Inactive'}
-          </span>
+          <StatusBadge status={plan.is_active ? 'ACTIVE' : 'INACTIVE'} label={plan.is_active ? 'Active' : 'Inactive'} />
         ),
       },
       {
@@ -193,18 +189,12 @@ export function PlatformPlansPage() {
         header: 'Actions',
         render: (plan) => (
           <div className="flex gap-2">
-            <button
-              onClick={() => openEdit(plan)}
-              className="rounded bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-            >
+            <ActionButton tone="primary" onClick={() => openEdit(plan)}>
               Edit
-            </button>
-            <button
-              onClick={() => handleDelete(plan)}
-              className="rounded bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
-            >
+            </ActionButton>
+            <ActionButton tone="danger" onClick={() => handleDelete(plan)}>
               Delete
-            </button>
+            </ActionButton>
           </div>
         ),
       },

@@ -8,6 +8,8 @@ import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { CustomizeSubscriptionModal, inr as inrFmt, type CustomItem } from './CustomizationEditor'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Subscription {
   id: string
@@ -44,14 +46,6 @@ const ACTION_TOAST: Record<string, string> = {
   resume: 'Subscription resumed',
   cancel: 'Subscription cancelled',
   renew: 'Subscription renewed',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-50 text-yellow-700',
-  ACTIVE: 'bg-green-50 text-green-700',
-  PAUSED: 'bg-blue-50 text-blue-700',
-  EXPIRED: 'bg-gray-100 text-gray-600',
-  CANCELLED: 'bg-red-50 text-red-700',
 }
 
 export function SubscriptionsPage() {
@@ -121,7 +115,6 @@ export function SubscriptionsPage() {
   }
 
   const inr = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
-  const actionBtn = 'rounded px-2 py-1 text-xs font-medium'
 
   const columns: Column<Subscription>[] = [
     {
@@ -165,7 +158,7 @@ export function SubscriptionsPage() {
       header: 'Status',
       sortable: true,
       render: (s) => (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[s.status] || ''}`}>{s.status}</span>
+        <StatusBadge status={s.status} />
       ),
     },
     { key: 'start_date', header: 'Start', sortable: true, className: 'whitespace-nowrap text-gray-600', render: (s) => s.start_date },
@@ -212,24 +205,24 @@ export function SubscriptionsPage() {
       header: 'Actions',
       align: 'right',
       render: (s) => (
-        <div className="flex justify-end gap-1">
+        <div className="flex justify-end gap-1.5">
           {customOn && ['PENDING', 'ACTIVE', 'PAUSED'].includes(s.status) && (
-            <button onClick={() => openCustomize(s)} className={`${actionBtn} text-orange-600 hover:bg-orange-50`}>Customize</button>
+            <ActionButton tone="warning" onClick={() => openCustomize(s)}>Customize</ActionButton>
           )}
           {s.status === 'ACTIVE' && (
             <>
-              <button onClick={() => handleAction(s, 'pause')} className={`${actionBtn} text-blue-600 hover:bg-blue-50`}>Pause</button>
-              <button onClick={() => handleAction(s, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+              <ActionButton tone="primary" onClick={() => handleAction(s, 'pause')}>Pause</ActionButton>
+              <ActionButton tone="danger" onClick={() => handleAction(s, 'cancel')}>Cancel</ActionButton>
             </>
           )}
           {s.status === 'PAUSED' && (
-            <button onClick={() => handleAction(s, 'resume')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Resume</button>
+            <ActionButton tone="success" onClick={() => handleAction(s, 'resume')}>Resume</ActionButton>
           )}
           {s.status === 'PENDING' && (
-            <button onClick={() => handleAction(s, 'cancel')} className={`${actionBtn} text-red-600 hover:bg-red-50`}>Cancel</button>
+            <ActionButton tone="danger" onClick={() => handleAction(s, 'cancel')}>Cancel</ActionButton>
           )}
           {(s.status === 'EXPIRED' || s.status === 'CANCELLED') && (
-            <button onClick={() => handleAction(s, 'renew')} className={`${actionBtn} text-green-600 hover:bg-green-50`}>Renew</button>
+            <ActionButton tone="success" onClick={() => handleAction(s, 'renew')}>Renew</ActionButton>
           )}
         </div>
       ),

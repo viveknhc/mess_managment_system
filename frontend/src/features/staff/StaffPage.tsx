@@ -6,6 +6,8 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Staff {
   id: string
@@ -132,13 +134,7 @@ export function StaffPage() {
       header: 'Status',
       sortable: true,
       render: (s) => (
-        <span
-          className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            s.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {s.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <StatusBadge status={s.is_active ? 'ACTIVE' : 'INACTIVE'} label={s.is_active ? 'Active' : 'Inactive'} />
       ),
     },
     {
@@ -157,20 +153,15 @@ export function StaffPage() {
       align: 'right',
       render: (s) => (
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => handleEdit(s)}
-            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-          >
+          <ActionButton tone="primary" onClick={() => handleEdit(s)}>
             Edit
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
             onClick={() => handleToggleActive(s)}
-            className={`rounded px-2 py-1 text-xs font-medium ${
-              s.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
-            }`}
+            tone={s.is_active ? 'danger' : 'success'}
           >
             {s.is_active ? 'Deactivate' : 'Activate'}
-          </button>
+          </ActionButton>
         </div>
       ),
     })

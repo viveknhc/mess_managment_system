@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { billingApi, type BillingData, type SaasSubscription } from './platformApi'
-import { STATUS_COLOR, STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, formatDateTime, rupees } from './billingFormat'
+import { STATUS_LABEL, METHOD_LABEL, dayBefore, formatDate, formatDateTime, rupees } from './billingFormat'
 import { useAuthStore } from '../../store/authStore'
 import { SUPPORT_EMAIL, supportEmailLink, whatsappLink } from '../../config/support'
 import { payOnline } from '../../utils/razorpay'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 const CANCELLABLE = ['PENDING', 'TRIAL', 'ACTIVE', 'PAST_DUE']
 
@@ -146,9 +147,7 @@ export function BillingPage() {
               {plan && <span className="ml-2 text-sm font-normal text-gray-500">{rupees(plan.price_monthly)}/month</span>}
             </p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[sub.status]}`}>
-            {STATUS_LABEL[sub.status]}
-          </span>
+          <StatusBadge status={sub.status} label={STATUS_LABEL[sub.status]} size="md" />
         </div>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>

@@ -2,21 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { platformApi, type MessOverview, type PlatformBusiness } from './platformApi'
 import { CustomizeBusinessModal } from './CustomizeBusinessModal'
-import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
+import { METHOD_LABEL, STATUS_LABEL, dayBefore, formatDate, rupees } from './billingFormat'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 const ROLE_LABEL: Record<string, string> = {
   OWNER: 'Owner',
   MANAGER: 'Manager',
   DELIVERY_STAFF: 'Delivery',
   KITCHEN_STAFF: 'Kitchen',
-}
-
-const SUB_STATUS_COLOR: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  PENDING: 'bg-blue-100 text-blue-700',
-  PAUSED: 'bg-yellow-100 text-yellow-700',
-  EXPIRED: 'bg-gray-100 text-gray-600',
-  CANCELLED: 'bg-red-100 text-red-700',
 }
 
 const SOURCE_LABEL = { plan: 'From plan', default: 'Standard', override: 'Changed for this mess' } as const
@@ -54,9 +47,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 function OnOff({ on }: { on: boolean }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${on ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-      {on ? 'On' : 'Off'}
-    </span>
+    <StatusBadge status={on ? 'ON' : 'OFF'} label={on ? 'On' : 'Off'} />
   )
 }
 
@@ -118,12 +109,8 @@ function MessOverviewPanel({ data, onCustomize }: { data: MessOverview; onCustom
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[billing.status]}`}>
-              {STATUS_LABEL[billing.status]}
-            </span>
-            {business.status === 'SUSPENDED' && (
-              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Suspended</span>
-            )}
+            <StatusBadge status={billing.status} label={STATUS_LABEL[billing.status]} />
+            {business.status === 'SUSPENDED' && <StatusBadge status="SUSPENDED" label="Suspended" />}
           </div>
           <p className="mt-1 text-sm text-gray-500">
             {[business.address, business.phone, business.email].filter(Boolean).join(' · ') || 'No contact details'}
@@ -226,9 +213,7 @@ function MessOverviewPanel({ data, onCustomize }: { data: MessOverview; onCustom
               <li key={p.point} className="py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm text-gray-500">{p.point_label}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${p.is_default ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>
-                    {p.is_default ? 'Default' : 'Custom'}
-                  </span>
+                  <StatusBadge status={p.is_default ? 'DEFAULT' : 'CUSTOM'} label={p.is_default ? 'Default' : 'Custom'} />
                 </div>
                 <p className="text-sm font-medium text-gray-900">{p.policy_label}</p>
                 <p className="text-xs text-gray-500">{p.description}</p>
@@ -279,9 +264,16 @@ function MessOverviewPanel({ data, onCustomize }: { data: MessOverview; onCustom
           <div className="flex flex-wrap gap-2">
             {Object.keys(subscriptions.by_status).length === 0 && <p className="text-sm text-gray-500">No subscriptions yet.</p>}
             {Object.entries(subscriptions.by_status).map(([status, n]) => (
-              <span key={status} className={`rounded-lg px-3 py-1.5 text-sm ${SUB_STATUS_COLOR[status] ?? 'bg-gray-100 text-gray-700'}`}>
-                <span className="font-semibold">{n}</span> {status.toLowerCase()}
-              </span>
+              <StatusBadge
+                key={status}
+                status={status}
+                size="md"
+                label={
+                  <>
+                    <span className="font-semibold">{n}</span> {status.toLowerCase()}
+                  </>
+                }
+              />
             ))}
           </div>
           <p className="mt-3 text-xs text-gray-500">

@@ -9,6 +9,7 @@ import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { routeApi, type DeliveryRoute } from '../deliveries/routeApi'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Customer {
   id: string
@@ -60,17 +61,7 @@ const columns: Column<Customer>[] = [
     header: 'Status',
     sortable: true,
     render: (c) => (
-      <span
-        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          c.status === 'ACTIVE'
-            ? 'bg-green-50 text-green-700'
-            : c.status === 'BLOCKED'
-              ? 'bg-red-50 text-red-700'
-              : 'bg-gray-100 text-gray-500'
-        }`}
-      >
-        {c.status}
-      </span>
+      <StatusBadge status={c.status} />
     ),
   },
   { key: 'location', header: 'Location', sortable: true, className: 'text-gray-500', render: (c) => c.location || '—' },

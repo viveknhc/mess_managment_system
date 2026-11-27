@@ -3,6 +3,7 @@ import { apiClient } from '../../services/apiClient'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 export interface PortalLogin {
   username: string
@@ -121,13 +122,7 @@ export function PortalLoginCard({ customerId, customerName, customerPhone, busin
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-gray-900">Customer portal login</h2>
         {login && (
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              login.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {login.is_active ? 'Active' : 'Disabled'}
-          </span>
+          <StatusBadge status={login.is_active ? 'ACTIVE' : 'DISABLED'} label={login.is_active ? 'Active' : 'Disabled'} />
         )}
       </div>
 

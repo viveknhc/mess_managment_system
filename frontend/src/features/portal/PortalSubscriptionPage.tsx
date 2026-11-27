@@ -5,16 +5,9 @@ import { portalApi } from './portalApi'
 import { PaymentDueList } from './PaymentDueList'
 import { CustomizationChips } from './CustomizationChips'
 import { notify } from '../../utils/notify'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 type DialogKind = 'skip' | 'pause' | 'renew' | null
-
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: 'bg-green-50 text-green-700',
-  PAUSED: 'bg-yellow-50 text-yellow-700',
-  EXPIRED: 'bg-gray-100 text-gray-600',
-  PENDING: 'bg-blue-50 text-blue-700',
-  CANCELLED: 'bg-red-50 text-red-700',
-}
 
 const formatINR = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
 
@@ -42,13 +35,7 @@ const historyColumns: Column<PortalSubscription>[] = [
     header: 'Status',
     sortable: true,
     render: (s) => (
-      <span
-        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600'
-        }`}
-      >
-        {s.status}
-      </span>
+      <StatusBadge status={s.status} />
     ),
   },
   {
@@ -184,13 +171,7 @@ export function PortalSubscriptionPage() {
                   </p>
                   <CustomizationChips sub={current} />
                 </div>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    STATUS_STYLES[current.status] ?? 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {current.status}
-                </span>
+                <StatusBadge status={current.status} />
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3">
                 <div className="rounded-lg bg-blue-50 p-3 text-center">

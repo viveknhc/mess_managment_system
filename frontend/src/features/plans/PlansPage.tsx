@@ -5,6 +5,8 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Meal {
   id: string
@@ -121,13 +123,7 @@ export function PlansPage() {
       header: 'Status',
       sortable: true,
       render: (plan) => (
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            plan.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {plan.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <StatusBadge status={plan.is_active ? 'ACTIVE' : 'INACTIVE'} label={plan.is_active ? 'Active' : 'Inactive'} />
       ),
     },
   ]
@@ -139,20 +135,15 @@ export function PlansPage() {
       align: 'right',
       render: (plan) => (
         <div className="flex justify-end gap-2">
-          <button
-            onClick={() => { setEditing(plan); setShowForm(true) }}
-            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-          >
+          <ActionButton tone="primary" onClick={() => { setEditing(plan); setShowForm(true) }}>
             Edit
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
             onClick={() => handleToggleActive(plan)}
-            className={`rounded px-2 py-1 text-xs font-medium ${
-              plan.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
-            }`}
+            tone={plan.is_active ? 'danger' : 'success'}
           >
             {plan.is_active ? 'Deactivate' : 'Activate'}
-          </button>
+          </ActionButton>
         </div>
       ),
     })

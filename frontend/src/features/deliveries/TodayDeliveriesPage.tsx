@@ -8,18 +8,11 @@ import { notify } from '../../utils/notify'
 import { NOT_DELIVERED_REASONS, deliveryApi, isOpen, type DeliveryItem } from './deliveryApi'
 import { FEATURES, useFeature } from '../../hooks/useFeature'
 import { routeApi, type DeliveryRoute } from './routeApi'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 /** Route filter value: '' = all, NO_ROUTE = customers on no route, else a route id. */
 const NO_ROUTE = 'none'
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-50 text-yellow-700',
-  OUT_FOR_DELIVERY: 'bg-blue-50 text-blue-700',
-  DELIVERED: 'bg-green-50 text-green-700',
-  NOT_DELIVERED: 'bg-red-50 text-red-700',
-  SKIPPED: 'bg-gray-100 text-gray-500',
-  CANCELLED: 'bg-gray-100 text-gray-400',
-}
 
 function formatTime(iso: string | null) {
   if (!iso) return '—'
@@ -173,11 +166,7 @@ export function TodayDeliveriesPage() {
       header: 'Status',
       sortable: true,
       render: (d) => (
-        <span
-          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${STATUS_COLORS[d.status] || ''}`}
-        >
-          {d.status.replace(/_/g, ' ')}
-        </span>
+        <StatusBadge status={d.status} />
       ),
     },
     ...(routesOn
@@ -220,28 +209,16 @@ export function TodayDeliveriesPage() {
       render: (d) =>
         isOpen(d.status) ? (
           <div className="flex justify-end gap-2 whitespace-nowrap">
-            <button
-              type="button"
-              onClick={() => handleDelivered(d)}
-              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-            >
+            <ActionButton tone="success" solid onClick={() => handleDelivered(d)}>
               Delivered
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNotDelivered(d)}
-              className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200"
-            >
+            </ActionButton>
+            <ActionButton tone="danger" onClick={() => handleNotDelivered(d)}>
               Not Delivered
-            </button>
+            </ActionButton>
             {d.status === 'PENDING' && canSkip && (
-              <button
-                type="button"
-                onClick={() => handleSkip(d)}
-                className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
-              >
+              <ActionButton tone="neutral" onClick={() => handleSkip(d)}>
                 Skip
-              </button>
+              </ActionButton>
             )}
           </div>
         ) : null,

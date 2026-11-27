@@ -38,15 +38,6 @@ export const STATUS_LABEL: Record<SaasStatus, string> = {
   CANCELLED: 'Cancelled',
 }
 
-export const STATUS_COLOR: Record<SaasStatus, string> = {
-  PENDING: 'bg-blue-100 text-blue-700',
-  TRIAL: 'bg-blue-100 text-blue-700',
-  ACTIVE: 'bg-green-100 text-green-700',
-  PAST_DUE: 'bg-yellow-100 text-yellow-700',
-  SUSPENDED: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-700',
-}
-
 export const METHOD_LABEL: Record<string, string> = {
   UPI: 'UPI',
   CASH: 'Cash',

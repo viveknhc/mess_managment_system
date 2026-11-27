@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import type { PortalDelivery } from './portalApi'
 import { portalApi } from './portalApi'
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: 'bg-yellow-50 text-yellow-700',
-  OUT_FOR_DELIVERY: 'bg-blue-50 text-blue-700',
-  DELIVERED: 'bg-green-50 text-green-700',
-  NOT_DELIVERED: 'bg-red-50 text-red-700',
-  SKIPPED: 'bg-gray-100 text-gray-500',
-  CANCELLED: 'bg-gray-100 text-gray-400',
-}
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 // The backend DeliveryListSerializer also returns `delivered_at`; it is not on the shared type yet.
 type DeliveryRow = PortalDelivery & { delivered_at?: string | null }
@@ -40,13 +32,7 @@ const columns: Column<DeliveryRow>[] = [
     header: 'Status',
     sortable: true,
     render: (d) => (
-      <span
-        className={`rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${
-          STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'
-        }`}
-      >
-        {d.status.replace(/_/g, ' ')}
-      </span>
+      <StatusBadge status={d.status} />
     ),
   },
   {

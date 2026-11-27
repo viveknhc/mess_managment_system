@@ -3,6 +3,7 @@ import type { PortalDashboardData, PortalSubscription } from './portalApi'
 import { portalApi } from './portalApi'
 import { PaymentDueList } from './PaymentDueList'
 import { CustomizationChips } from './CustomizationChips'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 export function PortalDashboard() {
   const [data, setData] = useState<PortalDashboardData | null>(null)
@@ -58,17 +59,7 @@ export function PortalDashboard() {
               </p>
               <CustomizationChips sub={sub} />
             </div>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                sub.status === 'ACTIVE'
-                  ? 'bg-green-50 text-green-700'
-                  : sub.status === 'PAUSED'
-                    ? 'bg-yellow-50 text-yellow-700'
-                    : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {sub.status}
-            </span>
+            <StatusBadge status={sub.status} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
             <div className="rounded-lg bg-blue-50 p-3 text-center">
@@ -105,17 +96,7 @@ export function PortalDashboard() {
               <h3 className="mt-0.5 font-semibold text-gray-900">{meal.meal_name}</h3>
               <p className="text-xs text-gray-500">{meal.delivery_date}</p>
             </div>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                meal.status === 'DELIVERED'
-                  ? 'bg-green-50 text-green-700'
-                  : meal.status === 'PENDING' || meal.status === 'OUT_FOR_DELIVERY'
-                    ? 'bg-yellow-50 text-yellow-700'
-                    : 'bg-gray-100 text-gray-500'
-              }`}
-            >
-              {meal.status.replace(/_/g, ' ')}
-            </span>
+            <StatusBadge status={meal.status} />
           </div>
         </div>
       )}

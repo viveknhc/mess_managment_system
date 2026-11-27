@@ -5,6 +5,8 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
 import { notify } from '../../utils/notify'
 import { confirmDialog } from '../../components/ui/dialog'
+import { ActionButton } from '../../components/ui/ActionButton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Meal {
   id: string
@@ -87,13 +89,7 @@ export function MealsPage() {
       header: 'Status',
       sortable: true,
       render: (meal) => (
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            meal.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {meal.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <StatusBadge status={meal.is_active ? 'ACTIVE' : 'INACTIVE'} label={meal.is_active ? 'Active' : 'Inactive'} />
       ),
     },
   ]
@@ -105,23 +101,21 @@ export function MealsPage() {
       align: 'right',
       render: (meal) => (
         <div className="flex items-center justify-end gap-2">
-          <button
+          <ActionButton
+            tone="primary"
             onClick={() => {
               setEditing(meal)
               setShowForm(true)
             }}
-            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
           >
             Edit
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
             onClick={() => handleToggleActive(meal)}
-            className={`rounded px-2 py-1 text-xs font-medium ${
-              meal.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
-            }`}
+            tone={meal.is_active ? 'danger' : 'success'}
           >
             {meal.is_active ? 'Deactivate' : 'Activate'}
-          </button>
+          </ActionButton>
         </div>
       ),
     })

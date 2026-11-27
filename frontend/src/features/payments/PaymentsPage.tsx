@@ -6,6 +6,7 @@ import { RecordPaymentForm } from './RecordPaymentForm'
 import { UpiClaimsPanel } from './UpiClaimsPanel'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { useServerTable } from '../../hooks/useServerTable'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Payment {
   id: string
@@ -64,13 +65,7 @@ const columns: Column<Payment>[] = [
     header: 'Status',
     sortable: true,
     render: (p) => (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-        p.status === 'PAID' ? 'bg-green-50 text-green-700' :
-        p.status === 'FAILED' ? 'bg-red-50 text-red-700' :
-        'bg-gray-100 text-gray-600'
-      }`}>
-        {p.status}
-      </span>
+      <StatusBadge status={p.status} />
     ),
   },
 ]

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { useBusinessStore } from '../../store/businessStore'
 import { useAuthStore } from '../../store/authStore'
 import { notify } from '../../utils/notify'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 /** Matches backend businesses.serializers.MAX_LOGO_BYTES. */
 const MAX_LOGO_BYTES = 1024 * 1024
@@ -126,15 +127,7 @@ export function BusinessProfilePage() {
           </div>
           <div className="flex-1">
             <h2 className="font-semibold text-gray-900">{business.name}</h2>
-            <span
-              className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                business.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {business.status}
-            </span>
+            <StatusBadge status={business.status} className="mt-1" />
           </div>
           {isOwner && (
             <div className="flex flex-col items-end gap-1">
